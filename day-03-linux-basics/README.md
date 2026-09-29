@@ -1,0 +1,450 @@
+# Day 3 - Linux Basics & Commands
+
+## Table of Contents
+
+1. [Connecting to EC2](#connecting-to-ec2)
+2. [Absolute vs Relative Path](#absolute-vs-relative-path)
+3. [Command Structure](#command-structure)
+4. [User & System Info](#user--system-info)
+5. [CRUD on Files & Folders](#crud-on-files--folders)
+6. [Listing Files (ls)](#listing-files-ls)
+7. [Reading Files](#reading-files)
+8. [Downloading Files (wget & curl)](#downloading-files-wget--curl)
+9. [Searching (grep)](#searching-grep)
+10. [Piping](#piping)
+11. [cut & awk](#cut--awk)
+12. [/etc/passwd & User Types](#etcpasswd--user-types)
+13. [Archives (tar)](#archives-tar)
+14. [Vim Editor](#vim-editor)
+15. [Commands Covered](#commands-covered)
+
+---
+
+## Connecting to EC2
+
+### Security Group Rule
+
+| Type | Port | Source |
+|------|------|--------|
+| SSH | 22 | My IP |
+
+### Connect
+
+```bash
+ssh -i <private-key> ec2-user@<public-ip>
+```
+
+```bash
+ssh -i joindevops ec2-user@107.23.134.115                       # relative path to key
+ssh -i /c/devops/daws-92s/joindevops ec2-user@107.23.134.115    # absolute path to key
+```
+
+- `ec2-user` = default user on Amazon Linux (`ubuntu` on Ubuntu)
+- If you see a permissions error on the key: `chmod 400 joindevops`
+
+---
+
+## Absolute vs Relative Path
+
+| Type | Meaning | Example |
+|------|---------|---------|
+| Absolute | Full path from the beginning (`/`) | `/c/devops/daws-92s` |
+| Relative | Path from where you are now | `daws-92s` |
+
+```bash
+cd /c/devops/daws-92s     # absolute - works from anywhere
+cd /c/devops
+cd daws-92s               # relative - works only because I'm in /c/devops
+cd ..                     # one step back
+cd                        # go to home directory
+```
+
+Home directory:
+
+| OS | Home |
+|----|------|
+| Linux | `/home/ec2-user` |
+| Windows (Git Bash) | `/c/Users/<name>` |
+
+---
+
+## Command Structure
+
+**Everything in Linux is a command.**
+
+```text
+<command-name> <options> <inputs>
+```
+
+```bash
+ls -l /home
+#  ^   ^   ^
+#  |   |   input
+#  |   option
+#  command
+```
+
+> Linux is **case sensitive** - `Devops` and `devops` are different.
+
+---
+
+## User & System Info
+
+```bash
+whoami     # current username
+pwd        # present working directory
+id         # user ID, group ID, groups
+uname      # system (kernel) information
+uname -a   # all system information
+```
+
+```bash
+id
+# uid=1000(ec2-user) gid=1000(ec2-user) groups=1000(ec2-user),4(adm),10(wheel),190(systemd-journal)
+```
+
+`wheel` group = sudo access on RHEL/Amazon Linux.
+
+---
+
+## CRUD on Files & Folders
+
+**CRUD = Create, Read, Update, Delete**
+
+### Create
+
+```bash
+touch devops.txt           # create empty file
+mkdir aws                  # create folder
+```
+
+### Write to a File
+
+```bash
+cat > devops.txt           # overwrite
+Hi, I am learning DevOps   # type text, press Enter, then Ctrl+D to save
+
+cat >> devops.txt          # append
+```
+
+| Symbol | Meaning |
+|--------|---------|
+| `>` | Overwrite (replace content) |
+| `>>` | Append (add to end) |
+
+```bash
+echo "Hello" > file.txt     # overwrite
+echo "World" >> file.txt    # append
+```
+
+### Copy
+
+```bash
+cp <source> <destination>
+cp devops.txt /tmp/
+cp -r aws/ aws-backup/     # -r = recursive (for folders)
+```
+
+### Move / Rename
+
+```bash
+mv <source> <destination>
+mv devops.txt /tmp/        # move (cut & paste)
+mv old.txt new.txt         # rename (same folder)
+```
+
+### Delete
+
+```bash
+rm aiops.txt               # delete file
+rm -r aws                  # delete folder (recursive)
+```
+
+> There's no recycle bin in Linux. `rm` is permanent.
+
+---
+
+## Listing Files (ls)
+
+| Command | Meaning |
+|---------|---------|
+| `ls` | List files and folders |
+| `ls -l` | Long format (permissions, owner, size, date) |
+| `ls -la` | Long format including hidden files (starting with `.`) |
+| `ls -lr` | Reverse alphabetical order |
+| `ls -lt` | Sort by time, latest first |
+| `ls -ltr` | Sort by time, **latest at the bottom** (most used) |
+
+### Reading ls -l Output
+
+```text
+-rw-r--r--.  1       ec2-user  ec2-user  0      Sep 23 02:08  devops.txt
+<permissions> <links> <owner>   <group>   <size> <date>        <file/folder name>
+```
+
+First character: `-` = file, `d` = directory.
+
+---
+
+## Reading Files
+
+```bash
+cat devops.txt             # show whole file
+head devops.txt            # top 10 lines (default)
+tail devops.txt            # bottom 10 lines (default)
+head -n 4 devops.txt       # top 4 lines
+tail -n 4 devops.txt       # bottom 4 lines
+tail -f app.log            # follow a log file live (Ctrl+C to stop)
+```
+
+### Print a Range of Lines
+
+Print lines 5 to 13 (9 lines):
+
+```bash
+head -n 13 04-linux.md | tail -n 9
+```
+
+`head -n 13` takes lines 1-13, `tail -n 9` keeps the last 9 of those → lines 5-13.
+
+---
+
+## Downloading Files (wget & curl)
+
+| Command | Does |
+|---------|------|
+| `wget <url>` | **Downloads** the file and saves it |
+| `curl <url>` | **Shows** the content on screen (doesn't save by default) |
+
+```bash
+wget https://raw.githubusercontent.com/daws-92s/concepts/refs/heads/main/04-linux.md
+curl https://raw.githubusercontent.com/daws-92s/concepts/refs/heads/main/04-linux.md
+curl -o 04-linux.md <url>    # save with curl
+```
+
+---
+
+## Searching (grep)
+
+```bash
+grep <word> <file>
+grep linux 04-linux.md
+```
+
+| Option | Meaning |
+|--------|---------|
+| `-i` | Case insensitive |
+| `-n` | Show line numbers |
+| `-c` | Count matching lines |
+| `-v` | Invert - show lines that **don't** match |
+| `-r` | Search in all files in a folder |
+
+```bash
+grep -i linux 04-linux.md       # linux, Linux, LINUX
+grep -in linux 04-linux.md      # with line numbers
+grep -ic linux 04-linux.md      # count
+grep -inv linux 04-linux.md     # lines WITHOUT the word linux
+```
+
+---
+
+## Piping
+
+`|` sends the output of one command as input to the next.
+
+```bash
+cat 04-linux.md | grep linux
+cat 04-linux.md | grep -inv linux
+head -n 13 04-linux.md | tail -n 9
+```
+
+---
+
+## cut & awk
+
+### cut - Split Text by a Delimiter
+
+```bash
+cut -d "<delimiter>" -f<field-number>
+```
+
+- `-d` = delimiter (separator)
+- `-f` = field number
+
+```bash
+cut -d ":" -f1 /etc/passwd     # all usernames
+```
+
+Splitting a URL by `/`:
+
+| Field | Value |
+|-------|-------|
+| f1 | `https:` |
+| f2 | (empty - between `//`) |
+| f3 | `raw.githubusercontent.com` |
+| f4 | `daws-92s` |
+| f5 | `concepts` |
+| f6 | `refs` |
+| f7 | `heads` |
+| f8 | `main` |
+| f9 | `04-linux.md` |
+
+```bash
+echo "https://raw.githubusercontent.com/daws-92s/concepts/refs/heads/main/04-linux.md" | cut -d "/" -f9
+# 04-linux.md
+```
+
+### awk - More Powerful Than cut
+
+```bash
+awk -F "<delimiter>" '{print $<field-number>}'
+```
+
+- `-F` = delimiter
+- `$1` = first field, `$NF` = last field
+
+```bash
+# Last field of a URL (no need to count fields)
+echo "https://raw.githubusercontent.com/daws-92s/concepts/refs/heads/main/04-linux.md" | awk -F "/" '{print $NF}'
+# 04-linux.md
+
+# All usernames
+awk -F ":" '{print $1}' /etc/passwd
+
+# Usernames and UIDs of normal users (UID > 999)
+awk -F ":" '$3 > 999 {print $1, $3}' /etc/passwd
+```
+
+| | cut | awk |
+|---|-----|-----|
+| Split by delimiter | Yes | Yes |
+| Last field (`$NF`) | No | Yes |
+| Conditions (`$3 > 999`) | No | Yes |
+
+---
+
+## /etc/passwd & User Types
+
+`/etc/passwd` stores Linux user information.
+
+```text
+root:x:0:0:root:/root:/bin/bash
+sshd:x:74:74:Privilege-separated SSH:/usr/share/empty.sshd:/usr/sbin/nologin
+ec2-user:x:1000:1000:EC2 Default User:/home/ec2-user:/bin/bash
+```
+
+| Field | Example | Meaning |
+|-------|---------|---------|
+| 1 | `ec2-user` | Username |
+| 2 | `x` | Password (stored in `/etc/shadow`) |
+| 3 | `1000` | UID (user ID) |
+| 4 | `1000` | GID (primary group ID) |
+| 5 | `EC2 Default User` | Comment |
+| 6 | `/home/ec2-user` | Home directory |
+| 7 | `/bin/bash` | Login shell |
+
+### User Types by UID
+
+| UID | Type |
+|-----|------|
+| 0 | root |
+| 1 - 999 | System users (for services, e.g. `sshd`, `chrony`) - shell is `/sbin/nologin` |
+| 1000+ | Normal users (created manually, e.g. `ec2-user`) |
+
+---
+
+## Archives (tar)
+
+`.tar.gz` = files bundled (tar) and compressed (gzip).
+
+```bash
+# Create
+tar -czf devops.tar.gz 04-linux.md devops.txt
+
+# Extract
+tar -xzf devops.tar.gz
+
+# List contents without extracting
+tar -tzf devops.tar.gz
+```
+
+| Option | Meaning |
+|--------|---------|
+| `c` | Create |
+| `x` | Extract |
+| `t` | List contents |
+| `z` | gzip (`.gz`) format |
+| `f` | File name follows |
+
+---
+
+## Vim Editor
+
+**Vim = Vi IMproved** - text editor available on every Linux server.
+
+```bash
+vim devops.txt
+```
+
+### Modes
+
+| Mode | Enter With | Used For |
+|------|------------|----------|
+| Normal (Esc) mode | `Esc` | Default mode - navigate, delete, copy |
+| Insert mode | `i` | Type text |
+| Command (colon) mode | `:` (from Normal) | Save, quit, search/replace |
+
+```text
+Normal ──i──▶ Insert ──Esc──▶ Normal ──:──▶ Command
+```
+
+### Essential Commands
+
+| Command | Action |
+|---------|--------|
+| `i` | Start typing (insert mode) |
+| `Esc` | Back to normal mode |
+| `:w` | Save |
+| `:q` | Quit |
+| `:wq` | Save and quit |
+| `:q!` | Quit without saving |
+| `dd` | Delete current line |
+| `yy` | Copy current line |
+| `p` | Paste |
+| `u` | Undo |
+| `/word` | Search for word (`n` = next) |
+| `:set nu` | Show line numbers |
+| `gg` / `G` | Go to top / bottom |
+
+Other ways to create/edit files: `cat >`, `nano`.
+
+---
+
+## Commands Covered
+
+| Command | Use |
+|---------|-----|
+| `whoami` | Current user |
+| `pwd` | Current directory |
+| `cd` / `cd ..` | Change directory / go back |
+| `id` | User and group info |
+| `uname` | System info |
+| `touch` | Create file |
+| `mkdir` | Create folder |
+| `ls` | List files |
+| `cat` | Show/create file |
+| `cp` | Copy |
+| `mv` | Move/rename |
+| `rm` | Delete |
+| `wget` | Download file |
+| `curl` | Show URL content |
+| `head` / `tail` | Top / bottom lines |
+| `\|` | Piping |
+| `grep` | Search text |
+| `cut` | Split text |
+| `awk` | Split and filter text |
+| `tar` | Create/extract archives |
+| `history` | Previous commands |
+| `echo` | Print text |
+| `clear` | Clear screen |
+| `vim` | Edit files |

@@ -9,4 +9,4 @@ day to day devops notes of my learning
 - [Day 4 - Vim, User Management, Permissions & Sudo](day-04-vim-users-permissions/README.md)
 - [Day 5 - Key-Based Auth, Offboarding, Packages, Services, Network & Processes](day-05-users-packages-services-processes/README.md)
 - [Day 6 - 3-Tier Architecture & Databases](day-06-3-tier-architecture-databases/README.md)
-- [Day 7 - Expense Project: Backend Setup](day-07-expense-backend-setup/README.md)
+- [Day 7 - Expense Project: Database, Backend & Frontend](day-07-expense-project/README.md)

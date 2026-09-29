@@ -6,11 +6,16 @@
 2. [Group Management](#group-management)
 3. [Password Management](#password-management)
 4. [User Permissions](#user-permissions)
-5. [Sudo Configuration](#sudo-configuration)
-6. [File Ownership](#file-ownership)
+5. [File Ownership](#file-ownership)
+6. [Sudo Configuration](#sudo-configuration)
 7. [User Account Security](#user-account-security)
 8. [User Information Files](#user-information-files)
-9. [Best Practices](#best-practices)
+9. [User Account Limits](#user-account-limits)
+10. [Sudo Usage Examples](#sudo-usage-examples)
+11. [User Management Workflows](#user-management-workflows)
+12. [Best Practices](#best-practices)
+13. [Quick Reference Commands](#quick-reference-commands)
+14. [Common Issues & Solutions](#common-issues--solutions)
 
 ---
 
@@ -84,7 +89,7 @@ cut -d: -f1 /etc/passwd
 #### View Specific User
 
 ```bash
-grep username /etc/passwd
+grep "^username:" /etc/passwd
 ```
 
 #### Get User Information
@@ -193,13 +198,14 @@ sudo userdel -r username
 
 - `-r` = Remove home directory
 
-#### Delete User and Home + Mail Spool
+#### Force Delete User (even if logged in)
 
 ```bash
 sudo userdel -r -f username
 ```
 
-- `-f` = Force removal
+- `-f` = Force removal, even if the user is still logged in
+- `-r` also removes the user's mail spool
 
 ---
 
@@ -246,7 +252,7 @@ cut -d: -f1 /etc/group
 #### View Specific Group
 
 ```bash
-grep groupname /etc/group
+grep "^groupname:" /etc/group
 ```
 
 #### View User's Groups
@@ -270,10 +276,10 @@ sudo usermod -aG groupname username
 #### Remove User from Group
 
 ```bash
-sudo deluser username groupname
+sudo deluser username groupname   # Ubuntu/Debian only
 ```
 
-Or:
+Or (works on any distro):
 
 ```bash
 sudo gpasswd -d username groupname
@@ -324,6 +330,10 @@ passwd
 #### Set Password Without Prompt (Script)
 
 ```bash
+# Any distro
+echo "username:password123" | sudo chpasswd
+
+# RedHat/CentOS only
 echo "password123" | sudo passwd --stdin username
 ```
 
@@ -333,13 +343,13 @@ echo "password123" | sudo passwd --stdin username
 sudo passwd -e username
 ```
 
-#### Disable Password Login (require SSH key)
+#### Lock Password (SSH key login still works)
 
 ```bash
 sudo passwd -l username
 ```
 
-- `-l` = Lock account
+- `-l` = Lock the password (password login blocked)
 
 #### Unlock Account
 
@@ -417,7 +427,7 @@ sudo chage -d 0 username
 #### Check Password Policy
 
 ```bash
-cat /etc/login.defs | grep PASS
+grep ^PASS /etc/login.defs
 ```
 
 #### Install Password Validator
@@ -434,13 +444,20 @@ sudo nano /etc/security/pwquality.conf
 
 Common settings:
 
+```ini
+# Minimum 12 characters
+minlen = 12
+# At least 1 digit
+dcredit = -1
+# At least 1 uppercase
+ucredit = -1
+# At least 1 lowercase
+lcredit = -1
+# At least 1 special character
+ocredit = -1
 ```
-minlen = 12              # Minimum 12 characters
-dcredit = -1            # At least 1 digit
-ucredit = -1            # At least 1 uppercase
-lcredit = -1            # At least 1 lowercase
-ocredit = -1            # At least 1 special character
-```
+
+> Keep comments on their own line — pwquality.conf does not support comments after a value.
 
 ---
 
@@ -448,19 +465,16 @@ ocredit = -1            # At least 1 special character
 
 ### Understanding Permissions
 
-```
+```text
 -rwxrw-r--
-| ||| || |
-| ||| || +-- Others: read (4)
-| ||| |+---- Others: write (2)
-| ||| +------- Others: execute (1)
-| ||+--------- Group: read (4)
-| |+---------- Group: write (2)
-| +----------- Group: execute (1)
-| +----------- User: read (4)
-| +----------- User: write (2)
-| +----------- User: execute (1)
+│└┬┘└┬┘└┬┘
+│ │  │  └── Others: r-- = read only        (4)
+│ │  └───── Group:  rw- = read + write     (4+2 = 6)
+│ └──────── User:   rwx = read+write+exec  (4+2+1 = 7)
+└────────── File type: - = file, d = directory, l = link
 ```
+
+So `-rwxrw-r--` = `764`.
 
 ### View Permissions
 
@@ -539,8 +553,8 @@ chmod -R 755 directory/
 ```bash
 ls -l filename
 
-# Output: -rw-r--r-- 1 user group 1024 filename
-#         ownership: user = user, group = group
+# Output: -rw-r--r-- 1 alice developers 1024 Sep 27 10:30 filename
+#         owner = alice, group = developers
 ```
 
 ### Change Owner
@@ -609,19 +623,19 @@ sudo visudo
 
 Add line:
 
-```
+```text
 username ALL=(ALL) NOPASSWD:ALL
 ```
 
 ### Grant Specific Sudo Commands Only
 
 ```bash
-visudo
+sudo visudo
 ```
 
 Add:
 
-```
+```text
 username ALL=(ALL) /usr/bin/systemctl, /usr/bin/apt
 ```
 
@@ -629,7 +643,7 @@ Now user can only run systemctl and apt with sudo.
 
 ### Restrict Sudo to Specific Host
 
-```
+```text
 username host1=(ALL) ALL
 ```
 
@@ -657,8 +671,9 @@ sudo passwd -u username
 sudo passwd -S username
 
 # Output: username L 09/25/2026 1 30 30 7
-#         L = Locked
-#         P = Password set
+#         L  = Locked
+#         P  = Password set (usable)
+#         NP = No password
 ```
 
 ### Disable Login Shell
@@ -695,7 +710,7 @@ sudo chage -l username
 
 ### /etc/passwd - All Users
 
-```
+```text
 username:x:uid:gid:comment:/home/username:/bin/bash
 ```
 
@@ -711,16 +726,25 @@ username:x:uid:gid:comment:/home/username:/bin/bash
 
 ### /etc/shadow - Password Hashes (root only)
 
-```
+```text
 username:$6$hash:18500:0:99999:7:::
 ```
 
-Stores encrypted passwords. Only root can read.
+Stores password hashes. Only root can read.
+
+| Field | Meaning |
+|-------|---------|
+| username | User login name |
+| $6$hash | Password hash (`$6$` = SHA-512, `!` or `*` = locked) |
+| 18500 | Last password change (days since Jan 1, 1970) |
+| 0 | Minimum days between changes |
+| 99999 | Maximum days before password must change |
+| 7 | Warning days before expiry |
 
 ### /etc/group - All Groups
 
-```
-groupname:x:gid:members
+```text
+groupname:x:gid:member1,member2
 ```
 
 ### /etc/gshadow - Group Passwords (root only)
@@ -768,7 +792,7 @@ sudo nano /etc/security/limits.conf
 
 Add:
 
-```
+```text
 username soft nofile 2048
 username hard nofile 4096
 ```
@@ -807,10 +831,17 @@ sudo !!
 sudo -l
 ```
 
+### Run Interactive Shell as Root
+
+```bash
+sudo -s      # root shell, keeps your environment
+sudo -i      # root login shell (root's environment)
+```
+
 ### Run Interactive Shell as Another User
 
 ```bash
-sudo -s
+sudo -i -u username
 ```
 
 ---
@@ -863,7 +894,7 @@ sudo usermod -s /bin/bash username
 # Remove user and home directory
 sudo userdel -r username
 
-# Remove user group
+# Remove the user's group (only if userdel left it behind)
 sudo groupdel username
 ```
 
@@ -876,8 +907,11 @@ sudo groupdel username
 ```bash
 # Install password quality checker
 sudo apt install libpam-pwquality
+```
 
-# Enforce in /etc/security/pwquality.conf
+Enforce in `/etc/security/pwquality.conf`:
+
+```ini
 minlen = 12
 dcredit = -1
 ```
@@ -888,7 +922,7 @@ dcredit = -1
 # Set password expiration policy
 sudo chage -M 90 username    # Expire every 90 days
 sudo chage -W 14 username    # Warn 14 days before
-sudo chage -I 7 username     # Lock after 7 days inactive
+sudo chage -I 7 username     # Lock 7 days after password expires
 ```
 
 ### 3. Monitor User Activity
@@ -903,10 +937,9 @@ sudo grep "Failed password" /var/log/auth.log
 
 ### 4. Limit Sudo Access
 
-```bash
-# Only grant necessary sudo permissions
-# Edit with: sudo visudo
+Only grant the sudo permissions a user needs (edit with `sudo visudo`):
 
+```text
 # Specific commands only
 username ALL=(ALL) /usr/bin/systemctl, /usr/bin/apt
 
@@ -922,17 +955,18 @@ sudo nano /etc/ssh/sshd_config
 # PasswordAuthentication no
 
 # Restart SSH
-sudo systemctl restart ssh
+sudo systemctl restart ssh     # Ubuntu/Debian
+sudo systemctl restart sshd    # RedHat/CentOS
 ```
 
 ### 6. Use SSH Keys Instead of Passwords
 
 ```bash
 # Generate key pair
-ssh-keygen -t rsa -b 4096
+ssh-keygen -t ed25519
 
 # Copy to server
-ssh-copy-id -i ~/.ssh/id_rsa.pub user@host
+ssh-copy-id -i ~/.ssh/id_ed25519.pub user@host
 
 # Disable password login
 sudo nano /etc/ssh/sshd_config
@@ -996,7 +1030,7 @@ id username
 sudo passwd -S username
 
 # Check shell
-grep username /etc/passwd
+grep "^username:" /etc/passwd
 
 # Reset shell
 sudo usermod -s /bin/bash username

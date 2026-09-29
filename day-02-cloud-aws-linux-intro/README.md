@@ -74,7 +74,7 @@ If one AZ goes down, the app keeps running in the others → **high availability
 
 | Region Code | Location |
 |-------------|----------|
-| `us-east-1` | N. Virginia (used in class) |
+| `us-east-1` | N. Virginia |
 | `ap-south-1` | Mumbai |
 | `ap-south-2` | Hyderabad |
 
@@ -255,15 +255,15 @@ pwd       # present working directory
 ### Create an SSH Key Pair
 
 ```bash
-ssh-keygen -f joindevops
+ssh-keygen -f devops-key
 ```
 
 Creates two files:
 
 | File | Keep Where |
 |------|------------|
-| `joindevops` | Private key - stays on your laptop, never share |
-| `joindevops.pub` | Public key - goes to the server (import in AWS) |
+| `devops-key` | Private key - stays on your laptop, never share |
+| `devops-key.pub` | Public key - goes to the server (import in AWS) |
 
 Connecting to the server is covered in [Day 3](../day-03-linux-basics/README.md#connecting-to-ec2).
 

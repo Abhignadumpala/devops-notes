@@ -107,7 +107,6 @@ Install, upgrade, backup, restore, create schemas, monitor, scale, clustering.
 | AMI name | `Redhat-9-DevOps-Practice` |
 | AMI ID | `ami-0220d79f3f480ecf5` |
 | Username | `ec2-user` |
-| Password | (given in class) |
 
 ---
 
@@ -159,13 +158,13 @@ Institute ─1:many→ Courses ─1:many→ Batches ─1:many→ Students
 
 | trainer_id | name | email | mobile |
 |------------|------|-------|--------|
-| 1 | Siva | trainer@example.com | 9XXXXXXXXX |
+| 1 | Ravi | ravi@example.com | 9XXXXXXXXX |
 
 **course** table:
 
 | course_id | course_name | course_description | course_code | trainer_id |
 |-----------|-------------|--------------------|-------------|------------|
-| 1 | AIOps with DevSecOps | Linux, admin, DevOps | daws-92s | 1 |
+| 1 | AIOps with DevSecOps | Linux, admin, DevOps | DEVOPS-01 | 1 |
 
 `trainer_id` in the **course** table points to `trainer_id` in the **trainer** table - that link is the **relation**.
 

@@ -35,12 +35,12 @@ ssh -i <private-key> ec2-user@<public-ip>
 ```
 
 ```bash
-ssh -i joindevops ec2-user@107.23.134.115                       # relative path to key
-ssh -i /c/devops/daws-92s/joindevops ec2-user@107.23.134.115    # absolute path to key
+ssh -i devops-key ec2-user@<public-ip>                       # relative path to key
+ssh -i /c/devops/practice/devops-key ec2-user@<public-ip>    # absolute path to key
 ```
 
 - `ec2-user` = default user on Amazon Linux (`ubuntu` on Ubuntu)
-- If you see a permissions error on the key: `chmod 400 joindevops`
+- If you see a permissions error on the key: `chmod 400 devops-key`
 
 ---
 
@@ -48,13 +48,13 @@ ssh -i /c/devops/daws-92s/joindevops ec2-user@107.23.134.115    # absolute path 
 
 | Type | Meaning | Example |
 |------|---------|---------|
-| Absolute | Full path from the beginning (`/`) | `/c/devops/daws-92s` |
-| Relative | Path from where you are now | `daws-92s` |
+| Absolute | Full path from the beginning (`/`) | `/c/devops/practice` |
+| Relative | Path from where you are now | `practice` |
 
 ```bash
-cd /c/devops/daws-92s     # absolute - works from anywhere
+cd /c/devops/practice     # absolute - works from anywhere
 cd /c/devops
-cd daws-92s               # relative - works only because I'm in /c/devops
+cd practice               # relative - works only because I'm in /c/devops
 cd ..                     # one step back
 cd                        # go to home directory
 ```
@@ -202,7 +202,7 @@ tail -f app.log            # follow a log file live (Ctrl+C to stop)
 Print lines 5 to 13 (9 lines):
 
 ```bash
-head -n 13 04-linux.md | tail -n 9
+head -n 13 README.md | tail -n 9
 ```
 
 `head -n 13` takes lines 1-13, `tail -n 9` keeps the last 9 of those → lines 5-13.
@@ -217,9 +217,9 @@ head -n 13 04-linux.md | tail -n 9
 | `curl <url>` | **Shows** the content on screen (doesn't save by default) |
 
 ```bash
-wget https://raw.githubusercontent.com/daws-92s/concepts/refs/heads/main/04-linux.md
-curl https://raw.githubusercontent.com/daws-92s/concepts/refs/heads/main/04-linux.md
-curl -o 04-linux.md <url>    # save with curl
+wget https://raw.githubusercontent.com/Abhignadumpala/devops-notes/refs/heads/main/README.md
+curl https://raw.githubusercontent.com/Abhignadumpala/devops-notes/refs/heads/main/README.md
+curl -o README.md <url>    # save with curl
 ```
 
 ---
@@ -228,7 +228,7 @@ curl -o 04-linux.md <url>    # save with curl
 
 ```bash
 grep <word> <file>
-grep linux 04-linux.md
+grep linux README.md
 ```
 
 | Option | Meaning |
@@ -240,10 +240,10 @@ grep linux 04-linux.md
 | `-r` | Search in all files in a folder |
 
 ```bash
-grep -i linux 04-linux.md       # linux, Linux, LINUX
-grep -in linux 04-linux.md      # with line numbers
-grep -ic linux 04-linux.md      # count
-grep -inv linux 04-linux.md     # lines WITHOUT the word linux
+grep -i linux README.md       # linux, Linux, LINUX
+grep -in linux README.md      # with line numbers
+grep -ic linux README.md      # count
+grep -inv linux README.md     # lines WITHOUT the word linux
 ```
 
 ---
@@ -253,9 +253,9 @@ grep -inv linux 04-linux.md     # lines WITHOUT the word linux
 `|` sends the output of one command as input to the next.
 
 ```bash
-cat 04-linux.md | grep linux
-cat 04-linux.md | grep -inv linux
-head -n 13 04-linux.md | tail -n 9
+cat README.md | grep linux
+cat README.md | grep -inv linux
+head -n 13 README.md | tail -n 9
 ```
 
 ---
@@ -282,16 +282,16 @@ Splitting a URL by `/`:
 | f1 | `https:` |
 | f2 | (empty - between `//`) |
 | f3 | `raw.githubusercontent.com` |
-| f4 | `daws-92s` |
-| f5 | `concepts` |
+| f4 | `Abhignadumpala` |
+| f5 | `devops-notes` |
 | f6 | `refs` |
 | f7 | `heads` |
 | f8 | `main` |
-| f9 | `04-linux.md` |
+| f9 | `README.md` |
 
 ```bash
-echo "https://raw.githubusercontent.com/daws-92s/concepts/refs/heads/main/04-linux.md" | cut -d "/" -f9
-# 04-linux.md
+echo "https://raw.githubusercontent.com/Abhignadumpala/devops-notes/refs/heads/main/README.md" | cut -d "/" -f9
+# README.md
 ```
 
 ### awk - More Powerful Than cut
@@ -305,8 +305,8 @@ awk -F "<delimiter>" '{print $<field-number>}'
 
 ```bash
 # Last field of a URL (no need to count fields)
-echo "https://raw.githubusercontent.com/daws-92s/concepts/refs/heads/main/04-linux.md" | awk -F "/" '{print $NF}'
-# 04-linux.md
+echo "https://raw.githubusercontent.com/Abhignadumpala/devops-notes/refs/heads/main/README.md" | awk -F "/" '{print $NF}'
+# README.md
 
 # All usernames
 awk -F ":" '{print $1}' /etc/passwd
@@ -359,7 +359,7 @@ ec2-user:x:1000:1000:EC2 Default User:/home/ec2-user:/bin/bash
 
 ```bash
 # Create
-tar -czf devops.tar.gz 04-linux.md devops.txt
+tar -czf devops.tar.gz README.md devops.txt
 
 # Extract
 tar -xzf devops.tar.gz

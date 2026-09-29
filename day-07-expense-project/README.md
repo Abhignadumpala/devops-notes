@@ -51,7 +51,7 @@ See [Day 6](../day-06-3-tier-architecture-databases/README.md) for 3-tier basics
 |---------|-------|
 | AMI | `Redhat-9-DevOps-Practice` (`ami-0220d79f3f480ecf5`) |
 | Names | `mysql`, `backend`, `frontend` |
-| Login | `ec2-user` / password given in class |
+| Username | `ec2-user` |
 
 Note the **private IP** of each server - servers talk to each other using private IPs.
 

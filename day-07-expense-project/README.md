@@ -122,7 +122,7 @@ AWS Console → **EC2** → **Instances** → **Launch instances**. Repeat 3 tim
 | Name | `mysql` | `backend` | `frontend` |
 | AMI (My AMIs / Community AMIs) | `Redhat-9-DevOps-Practice`<br>`ami-0220d79f3f480ecf5` | same | same |
 | Instance type | `t3.micro` | `t3.micro` | `t3.micro` |
-| Key pair | `devops-key` | `devops-key` | `devops-key` |
+| Key pair (login) | Proceed without a key pair | same | same |
 | VPC / Subnet | Default | Default | Default |
 | Auto-assign public IP | Enable | Enable | Enable |
 | Firewall → Select existing security group | `mysql-sg` | `backend-sg` | `frontend-sg` |
@@ -130,6 +130,8 @@ AWS Console → **EC2** → **Instances** → **Launch instances**. Repeat 3 tim
 
 Click **Launch instance**.
 
+> **Key pair:** open the dropdown and pick the first option, **"Proceed without a key pair (Not recommended)"**. This AMI has password login enabled for `ec2-user`, so no key is needed. For a normal AMI (Amazon Linux, plain RHEL) a key pair is required, because password login is disabled by default.
+>
 > Use `t2.micro` if `t3.micro` isn't free-tier eligible in the region.
 
 ### Step 3: Note the IPs
@@ -144,8 +146,11 @@ Select each instance → **Details** tab:
 
 ### Step 4: Connect
 
+No key needed - log in with the AMI's password:
+
 ```bash
 ssh ec2-user@<public-ip>
+# enter the password when asked
 ```
 
 > **Stop the instances** after practice to save free-tier credits. Public IPs change after stop/start; private IPs don't.

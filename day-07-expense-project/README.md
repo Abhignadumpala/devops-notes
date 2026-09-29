@@ -119,6 +119,14 @@ Create them in this order: **frontend-sg → backend-sg → mysql-sg**. Each rul
 
 ### Step 2: Launch 3 EC2 Instances
 
+#### Easiest Way to Find the AMI
+
+1. Region (top-right) = **N. Virginia (us-east-1)**.
+2. EC2 → left menu → **Images → AMIs**.
+3. Change the dropdown next to the search bar from **Owned by me** to **Public images**.
+4. Search `ami-0220d79f3f480ecf5` → press Enter → tick **Redhat-9-DevOps-Practice**.
+5. Click **Launch instance from AMI** → the launch page opens with the AMI already selected (skip step 3 below).
+
 #### Clicks (repeat 3 times - mysql, backend, frontend)
 
 1. EC2 → left menu → **Instances** → **Launch instances**.

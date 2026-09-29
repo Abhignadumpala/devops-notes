@@ -268,7 +268,7 @@ id expense
 >
 > Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege.
 >
-> A system user has no password, no login and no shell, so even if the app is hacked, the attacker can't log in or reach anything beyond the app.
+> System users don't have interactive logins, so there are no credentials, no login, and no shell/terminal access. Even if the app is hacked, the attacker can't log in or reach anything beyond the app.
 
 More detail → [Concepts Learned](#1-system-user).
 
@@ -491,7 +491,7 @@ Check from **frontend to database**, one tier at a time.
 >
 > Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege.
 >
-> A system user has no password, no login and no shell, so even if the app is hacked, the attacker can't log in or reach anything beyond the app.
+> System users don't have interactive logins, so there are no credentials, no login, and no shell/terminal access. Even if the app is hacked, the attacker can't log in or reach anything beyond the app.
 
 Detailed reasons - why not run the app as a human or root user?
 

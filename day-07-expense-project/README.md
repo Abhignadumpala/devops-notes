@@ -46,28 +46,111 @@ See [Day 6](../day-06-3-tier-architecture-databases/README.md) for 3-tier basics
 
 ## Before You Start
 
-### Create 3 EC2 Servers
+Create the **security groups first**, then the servers - each server needs its security group while launching.
 
-| Setting | Value |
-|---------|-------|
-| AMI | `Redhat-9-DevOps-Practice` (`ami-0220d79f3f480ecf5`) |
-| Names | `mysql`, `backend`, `frontend` |
-| Username | `ec2-user` |
+### Overview
 
-Note the **private IP** of each server - servers talk to each other using private IPs.
-
-### Security Groups
-
-| Server | Inbound Port | Allow From |
-|--------|--------------|------------|
-| Frontend | 80 | Internet (`0.0.0.0/0`) |
-| Backend | 8080 | Frontend only |
-| Database | 3306 | Backend only |
-| All | 22 | My IP (for SSH) |
+| Server Name | Security Group | Inbound Rules | Public Access? |
+|-------------|----------------|---------------|----------------|
+| `frontend` | `frontend-sg` | 22 from My IP, 80 from anywhere | Yes |
+| `backend` | `backend-sg` | 22 from My IP, 8080 from `frontend-sg` | No |
+| `mysql` | `mysql-sg` | 22 from My IP, 3306 from `backend-sg` | No |
 
 > Only the frontend is open to the internet. Backend and database are hidden behind it.
 
-### Setup Order
+### Step 1: Create Security Groups
+
+AWS Console → **EC2** → **Security Groups** → **Create security group**.
+
+Create them in this order (backend's rule needs `frontend-sg` to exist, mysql's needs `backend-sg`).
+
+#### 1. frontend-sg
+
+| Field | Value |
+|-------|-------|
+| Name | `frontend-sg` |
+| Description | `Allow HTTP from internet and SSH from my IP` |
+| VPC | Default VPC |
+
+Inbound rules:
+
+| Type | Port | Source | Why |
+|------|------|--------|-----|
+| SSH | 22 | My IP | Log in from my laptop |
+| HTTP | 80 | Anywhere-IPv4 (`0.0.0.0/0`) | Users open the website |
+
+#### 2. backend-sg
+
+| Field | Value |
+|-------|-------|
+| Name | `backend-sg` |
+| Description | `Allow 8080 from frontend and SSH from my IP` |
+| VPC | Default VPC |
+
+Inbound rules:
+
+| Type | Port | Source | Why |
+|------|------|--------|-----|
+| SSH | 22 | My IP | Log in from my laptop |
+| Custom TCP | 8080 | `frontend-sg` (select from list) | Only frontend can call backend |
+
+#### 3. mysql-sg
+
+| Field | Value |
+|-------|-------|
+| Name | `mysql-sg` |
+| Description | `Allow MySQL from backend and SSH from my IP` |
+| VPC | Default VPC |
+
+Inbound rules:
+
+| Type | Port | Source | Why |
+|------|------|--------|-----|
+| SSH | 22 | My IP | Log in from my laptop |
+| MYSQL/Aurora | 3306 | `backend-sg` (select from list) | Only backend can reach DB |
+
+**Outbound rules:** leave the default (all traffic allowed) for all three - servers need internet to install packages.
+
+> Using a **security group as the source** (instead of an IP) means the rule keeps working even if the server's IP changes.
+
+### Step 2: Launch 3 EC2 Instances
+
+AWS Console → **EC2** → **Instances** → **Launch instances**. Repeat 3 times:
+
+| Field | mysql | backend | frontend |
+|-------|-------|---------|----------|
+| Name | `mysql` | `backend` | `frontend` |
+| AMI (My AMIs / Community AMIs) | `Redhat-9-DevOps-Practice`<br>`ami-0220d79f3f480ecf5` | same | same |
+| Instance type | `t3.micro` | `t3.micro` | `t3.micro` |
+| Key pair | `devops-key` | `devops-key` | `devops-key` |
+| VPC / Subnet | Default | Default | Default |
+| Auto-assign public IP | Enable | Enable | Enable |
+| Firewall → Select existing security group | `mysql-sg` | `backend-sg` | `frontend-sg` |
+| Storage | Default | Default | Default |
+
+Click **Launch instance**.
+
+> Use `t2.micro` if `t3.micro` isn't free-tier eligible in the region.
+
+### Step 3: Note the IPs
+
+Select each instance → **Details** tab:
+
+| Server | Public IP (for SSH / browser) | Private IP (for server-to-server) |
+|--------|-------------------------------|------------------------------------|
+| mysql | `<mysql-public-ip>` | `<mysql-private-ip>` → used in backend service file |
+| backend | `<backend-public-ip>` | `<backend-private-ip>` → used in nginx config |
+| frontend | `<frontend-public-ip>` → open in browser | - |
+
+### Step 4: Connect
+
+```bash
+ssh ec2-user@<public-ip>
+```
+
+> **Stop the instances** after practice to save free-tier credits. Public IPs change after stop/start; private IPs don't.
+
+### Step 5: Install in This Order
 
 **Database → Backend → Frontend.** Each tier needs the one after it to be ready.
 

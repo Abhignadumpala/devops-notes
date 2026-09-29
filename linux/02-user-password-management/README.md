@@ -127,14 +127,46 @@ who
 sudo usermod -s /bin/bash username
 ```
 
-#### Add User to Group
+#### Primary vs Secondary Groups
+
+Every user has:
+- **One primary group**: new files the user creates belong to this group. Stored in `/etc/passwd` (4th field).
+- **Any number of secondary groups**: give extra access (e.g. `docker`, `sudo`). Stored in `/etc/group`.
 
 ```bash
-sudo usermod -aG groupname username
+id abhi
+
+# Output:
+# uid=1001(abhi) gid=2001(devops) groups=2001(devops),2002(testers)
+#                ^^^ primary       ^^^ all groups (primary + secondary)
+```
+
+#### Set Primary Group
+
+```bash
+sudo usermod -g devops abhi
+```
+
+- `-g` (small g) = Set **primary** group. Replaces the old primary group.
+
+#### Add User to Secondary Group
+
+```bash
+sudo usermod -aG testers abhi
 ```
 
 - `-a` = Append (keep existing groups)
-- `-G` = Specify groups
+- `-G` (capital G) = **Secondary** groups
+
+> Always use `-aG` together. `usermod -G testers abhi` without `-a` **removes** abhi from every other secondary group (including `sudo`).
+
+| Command | Effect |
+|---------|--------|
+| `usermod -g devops abhi` | devops becomes abhi's primary group |
+| `usermod -aG testers abhi` | Adds testers, keeps existing groups |
+| `usermod -G testers abhi` | Sets testers as the **only** secondary group (removes others) |
+
+User must log out and back in for group changes to take effect.
 
 #### Add User to Multiple Groups
 
@@ -649,6 +681,37 @@ username host1=(ALL) ALL
 
 User can only use sudo on host1.
 
+### /etc/sudoers.d/ - Per-User Sudo Files (Recommended)
+
+Instead of editing the main `/etc/sudoers`, put each user's or team's rules in its own file under `/etc/sudoers.d/`. The main file includes them automatically.
+
+```bash
+sudo visudo -f /etc/sudoers.d/ramesh
+```
+
+Add:
+
+```text
+ramesh ALL=(ALL) NOPASSWD: /usr/bin/systemctl, /usr/bin/docker
+```
+
+For a whole group, prefix with `%`:
+
+```bash
+sudo visudo -f /etc/sudoers.d/devops
+```
+
+```text
+%devops ALL=(ALL) ALL
+```
+
+Why use `/etc/sudoers.d/`:
+- Main `/etc/sudoers` stays untouched (safe during OS upgrades)
+- Easy to remove access: `sudo rm /etc/sudoers.d/ramesh`
+- Easy to manage with Ansible and other automation tools
+
+> File names must not contain `.` or end with `~`, or they are ignored. Always use `visudo -f` so syntax is checked.
+
 ---
 
 ## User Account Security
@@ -708,6 +771,21 @@ sudo chage -l username
 
 ## User Information Files
 
+### Important Files at a Glance
+
+| File | What It Stores |
+|------|----------------|
+| `/etc/passwd` | User info (username, UID, primary group, home, shell) |
+| `/etc/shadow` | Password hashes and expiry info (root only) |
+| `/etc/group` | Group info and secondary group members |
+| `/etc/gshadow` | Group passwords (root only, rarely used) |
+| `/etc/sudoers` | Main sudo configuration (edit with `visudo`) |
+| `/etc/sudoers.d/` | Extra sudo rules, one file per user/team (e.g. `/etc/sudoers.d/ramesh`) |
+| `/etc/ssh/sshd_config` | SSH server configuration |
+| `/etc/login.defs` | Defaults for new users (password expiry, UID range) |
+| `/etc/skel/` | Files copied into every new user's home directory |
+| `/etc/security/pwquality.conf` | Password rules (length, complexity) |
+
 ### /etc/passwd - All Users
 
 ```text
@@ -758,7 +836,41 @@ Stores group password hashes (rarely used).
 sudo visudo
 ```
 
-Never edit directly - use visudo!
+Never edit directly - use visudo! See [/etc/sudoers.d/](#etcsudoersd---per-user-sudo-files-recommended) for per-user files.
+
+### /etc/ssh/sshd_config - SSH Server Configuration
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+Common settings:
+
+```text
+Port 22
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AllowUsers abhi ramesh
+```
+
+| Setting | Meaning |
+|---------|---------|
+| `Port` | Port SSH listens on |
+| `PermitRootLogin no` | Block direct root login |
+| `PasswordAuthentication no` | Only allow SSH key login |
+| `PubkeyAuthentication yes` | Allow SSH key login |
+| `AllowUsers` | Only these users can SSH in |
+
+Check syntax, then restart:
+
+```bash
+sudo sshd -t                     # Test config (no output = OK)
+sudo systemctl restart ssh       # Ubuntu/Debian
+sudo systemctl restart sshd      # RedHat/CentOS
+```
+
+> Keep your current SSH session open and test login from a new terminal before closing it.
 
 ---
 
@@ -1005,7 +1117,8 @@ sudo cp /etc/group /backup/group.bak
 | Set password | `sudo passwd username` |
 | Add to sudo | `sudo usermod -aG sudo username` |
 | Change shell | `sudo usermod -s /bin/bash username` |
-| Add to group | `sudo usermod -aG groupname username` |
+| Set primary group | `sudo usermod -g groupname username` |
+| Add to secondary group | `sudo usermod -aG groupname username` |
 | List users | `cut -d: -f1 /etc/passwd` |
 | List groups | `cut -d: -f1 /etc/group` |
 | View user info | `id username` |
@@ -1014,6 +1127,7 @@ sudo cp /etc/group /backup/group.bak
 | Change permissions | `chmod 755 filename` |
 | Change owner | `sudo chown user:group filename` |
 | Edit sudoers | `sudo visudo` |
+| Per-user sudo file | `sudo visudo -f /etc/sudoers.d/username` |
 | View sudo access | `sudo -l` |
 
 ---

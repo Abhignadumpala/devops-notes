@@ -68,11 +68,11 @@ stat -c '%a %U:%G %n' filename
 
 Permissions mean different things on files and directories.
 
-| Permission | Value | On a File | On a Directory |
-|------------|-------|-----------|----------------|
-| `r` | 4 | Read contents | List contents (`ls`) |
-| `w` | 2 | Modify contents | Create, delete, rename files inside |
-| `x` | 1 | Run as program | Enter it (`cd`) and access files inside |
+| Permission | Name | Value | On a File | On a Directory |
+|------------|------|-------|-----------|----------------|
+| `r` | read | 4 | Read contents | List contents (`ls`) |
+| `w` | write | 2 | Modify contents | Create, delete, rename files inside |
+| `x` | execute | 1 | Execute (run) as a program | Enter it (`cd`) and access files inside |
 
 Key points:
 

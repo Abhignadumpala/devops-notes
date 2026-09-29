@@ -264,7 +264,13 @@ id expense
 | `--shell /sbin/nologin` | Nobody can log in as this user |
 | `--comment` | Description |
 
-Why a system user? → see [Concepts Learned](#1-system-user).
+> **Why a system user instead of a human user?**
+>
+> Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege.
+>
+> A system user has no password, no login and no shell, so even if the app is hacked, the attacker can't log in or reach anything beyond the app.
+
+More detail → [Concepts Learned](#1-system-user).
 
 ### 3. Download the Code
 
@@ -481,7 +487,13 @@ Check from **frontend to database**, one tier at a time.
 
 ### 1. System User
 
-Why not run the app as a human or root user?
+> **Why a system user instead of a human user?**
+>
+> Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege.
+>
+> A system user has no password, no login and no shell, so even if the app is hacked, the attacker can't log in or reach anything beyond the app.
+
+Detailed reasons - why not run the app as a human or root user?
 
 1. **Too many privileges** - if the server is hacked, their credentials leak.
 2. **Bigger blast radius** - attacker gets everything that user can access.
@@ -489,7 +501,6 @@ Why not run the app as a human or root user?
 4. **Person resigns** → account removed → app breaks.
 5. **Auditing** - hard to tell whether a human or the app did something.
 
-A **system user** has no password, no login, no shell. It follows **least privilege** and limits the **blast radius**.
 
 ### 2. Build Tools
 
@@ -560,7 +571,7 @@ I built an expense app on 3 EC2 servers. **DB**: installed MySQL, set the root p
 
 **2. Why run an application as a system user, not root or a human user?**
 
-Least privilege and smaller blast radius if hacked; no password or login (`/sbin/nologin`); the app doesn't break when an employee leaves; clear auditing of what the app did.
+Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege. It has no password, no login and no shell (`/sbin/nologin`), the app doesn't break when an employee leaves, and audit logs clearly show what the app did.
 
 **3. What is a systemd service file? Where is it stored?**
 

@@ -60,79 +60,97 @@ Create the **security groups first**, then the servers - each server needs its s
 
 ### Step 1: Create Security Groups
 
-AWS Console → **EC2** → **Security Groups** → **Create security group**.
+Create them in this order: **frontend-sg → backend-sg → mysql-sg**. Each rule points to the previous group, so that group must already exist.
 
-Create them in this order (backend's rule needs `frontend-sg` to exist, mysql's needs `backend-sg`).
+#### Clicks (same for every security group)
 
-#### 1. frontend-sg
+1. Log in to the AWS Console → search **EC2** → open it.
+2. Top-right corner → check the region is **N. Virginia (us-east-1)**.
+3. Left menu → **Network & Security** → **Security Groups**.
+4. Click **Create security group**.
+5. **Basic details**: fill in **Security group name**, **Description**, and leave **VPC** as the default VPC.
+6. **Inbound rules** → click **Add rule** for each rule in the table below:
+   - **Type**: choose from the dropdown (port fills in automatically, except Custom TCP)
+   - **Source**: `My IP`, `Anywhere-IPv4`, or `Custom` → start typing `sg-` / the group name and select it
+7. **Outbound rules**: leave as is (All traffic).
+8. Click **Create security group**.
+
+#### Values for Each Security Group
+
+**1. frontend-sg**
 
 | Field | Value |
 |-------|-------|
 | Name | `frontend-sg` |
 | Description | `Allow HTTP from internet and SSH from my IP` |
-| VPC | Default VPC |
-
-Inbound rules:
 
 | Type | Port | Source | Why |
 |------|------|--------|-----|
 | SSH | 22 | My IP | Log in from my laptop |
 | HTTP | 80 | Anywhere-IPv4 (`0.0.0.0/0`) | Users open the website |
 
-#### 2. backend-sg
+**2. backend-sg**
 
 | Field | Value |
 |-------|-------|
 | Name | `backend-sg` |
 | Description | `Allow 8080 from frontend and SSH from my IP` |
-| VPC | Default VPC |
-
-Inbound rules:
 
 | Type | Port | Source | Why |
 |------|------|--------|-----|
 | SSH | 22 | My IP | Log in from my laptop |
-| Custom TCP | 8080 | `frontend-sg` (select from list) | Only frontend can call backend |
+| Custom TCP | 8080 | Custom → `frontend-sg` | Only frontend can call backend |
 
-#### 3. mysql-sg
+**3. mysql-sg**
 
 | Field | Value |
 |-------|-------|
 | Name | `mysql-sg` |
 | Description | `Allow MySQL from backend and SSH from my IP` |
-| VPC | Default VPC |
-
-Inbound rules:
 
 | Type | Port | Source | Why |
 |------|------|--------|-----|
 | SSH | 22 | My IP | Log in from my laptop |
-| MYSQL/Aurora | 3306 | `backend-sg` (select from list) | Only backend can reach DB |
+| MYSQL/Aurora | 3306 | Custom → `backend-sg` | Only backend can reach DB |
 
-**Outbound rules:** leave the default (all traffic allowed) for all three - servers need internet to install packages.
+> Using a **security group as the source** (instead of an IP) keeps the rule working even if the server's IP changes.
 
-> Using a **security group as the source** (instead of an IP) means the rule keeps working even if the server's IP changes.
+> **Created them in the wrong order?** If a group doesn't exist yet, don't use `0.0.0.0/0` for 3306 or 8080 - that opens the DB/backend to the whole internet. Create the missing group, then fix the rule: select the security group → **Inbound rules** tab → **Edit inbound rules** → change **Source** to the right group → **Save rules**.
 
 ### Step 2: Launch 3 EC2 Instances
 
-AWS Console → **EC2** → **Instances** → **Launch instances**. Repeat 3 times:
+#### Clicks (repeat 3 times - mysql, backend, frontend)
+
+1. EC2 → left menu → **Instances** → **Launch instances**.
+2. **Name and tags** → Name: `mysql` (then `backend`, then `frontend`).
+3. **Application and OS Images (AMI)**:
+   - In the search box type `ami-0220d79f3f480ecf5` → press **Enter**.
+   - Open the **Community AMIs** tab → click **Select** next to `Redhat-9-DevOps-Practice`.
+   - Check the name shows **Redhat-9-DevOps-Practice**.
+4. **Instance type** → `t3.micro` (or `t2.micro` if that's the free-tier one in the region).
+5. **Key pair (login)** → open the dropdown → pick the first option **Proceed without a key pair (Not recommended)**.
+6. **Network settings** → click **Edit**:
+   - VPC: default
+   - Subnet: No preference
+   - **Auto-assign public IP**: Enable
+   - **Firewall (security groups)**: **Select existing security group** → choose `mysql-sg` (then `backend-sg`, then `frontend-sg`).
+7. **Configure storage** → leave the default.
+8. **Summary** (right side) → Number of instances: `1` → click **Launch instance**.
+9. Click **View all instances** → wait until **Instance state = Running** and **Status check = 2/2 checks passed**.
+
+#### Values for Each Instance
 
 | Field | mysql | backend | frontend |
 |-------|-------|---------|----------|
 | Name | `mysql` | `backend` | `frontend` |
-| AMI (My AMIs / Community AMIs) | `Redhat-9-DevOps-Practice`<br>`ami-0220d79f3f480ecf5` | same | same |
+| AMI | `Redhat-9-DevOps-Practice` (`ami-0220d79f3f480ecf5`) | same | same |
 | Instance type | `t3.micro` | `t3.micro` | `t3.micro` |
-| Key pair (login) | Proceed without a key pair | same | same |
-| VPC / Subnet | Default | Default | Default |
+| Key pair | Proceed without a key pair | same | same |
 | Auto-assign public IP | Enable | Enable | Enable |
-| Firewall → Select existing security group | `mysql-sg` | `backend-sg` | `frontend-sg` |
+| Security group | `mysql-sg` | `backend-sg` | `frontend-sg` |
 | Storage | Default | Default | Default |
 
-Click **Launch instance**.
-
-> **Key pair:** open the dropdown and pick the first option, **"Proceed without a key pair (Not recommended)"**. This AMI has password login enabled for `ec2-user`, so no key is needed. For a normal AMI (Amazon Linux, plain RHEL) a key pair is required, because password login is disabled by default.
->
-> Use `t2.micro` if `t3.micro` isn't free-tier eligible in the region.
+> **Pick the right AMI.** The practice AMI has password login enabled, so no key pair is needed. The official Red Hat images (names like `RHEL-10.x_HVM...-Hourly2`) have password login disabled - an instance launched from them without a key pair can't be logged into - and they add an hourly Red Hat license charge.
 
 ### Step 3: Note the IPs
 

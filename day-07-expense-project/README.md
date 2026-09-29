@@ -127,6 +127,7 @@ Create them in this order: **frontend-sg → backend-sg → mysql-sg**. Each rul
    - In the search box type `ami-0220d79f3f480ecf5` → press **Enter**.
    - Open the **Community AMIs** tab → click **Select** next to `Redhat-9-DevOps-Practice`.
    - Check the name shows **Redhat-9-DevOps-Practice**.
+   - It shows **"No results found in Quick Start AMIs"** at first - that's normal. The AMI is under the **Community AMIs** tab. Search by the **AMI ID** (not the name) to get exactly one result, and make sure the region is **N. Virginia (us-east-1)** - the AMI exists only there.
 4. **Instance type** → `t3.micro` (or `t2.micro` if that's the free-tier one in the region).
 5. **Key pair (login)** → open the dropdown → pick the first option **Proceed without a key pair (Not recommended)**.
 6. **Network settings** → click **Edit**:

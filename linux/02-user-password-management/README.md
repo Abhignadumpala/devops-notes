@@ -1070,3 +1070,7 @@ sudo pkill -u username
 # Remove user
 sudo userdel -r username
 ```
+
+---
+
+See also: [File Permissions (in depth)](../03-file-permissions/README.md) · [Password Management (in depth)](../04-password-management/README.md)

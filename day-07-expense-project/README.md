@@ -504,7 +504,16 @@ Detailed reasons - why not run the app as a human or root user?
 
 ### 2. Build Tools
 
-Before an app can run, someone has to download dependencies, compile, run tests and package it into an **artifact** (`.zip`, `.tar.gz`, `.jar`, `.war`, `.ear`). A **build tool** automates this. A **build file** describes the app (name, version, dependencies, how to start).
+Developers write a lot of files. Before the app can run, the same steps have to be repeated every time. A **build tool** automates them.
+
+**What a build tool does:**
+
+1. **Installs dependencies** (libraries the code needs).
+2. **Automates repeating steps**: clean old output → download new code → compile the code → install dependencies → create the application.
+3. **Gives a standard project structure**, so every project is organised the same way.
+4. **Runs test cases** automatically and **creates the artifact**, the packaged app (`.zip`, `.tar.gz`, `.jar`, `.war`, `.ear`).
+
+A **build file** holds info about the application: name, description, version, dependencies, and how to start it.
 
 | Language | Build Tool | Build File | Code Extension |
 |----------|------------|------------|----------------|

@@ -238,6 +238,15 @@ exit
 
 SSH into the **backend** server.
 
+**Backend setup steps:**
+
+1. Install the programming runtime (Node.js)
+2. Create a system user
+3. Create one directory for the code (`/app`)
+4. Download the code
+5. Install dependencies/libraries
+6. Create a systemctl service file
+
 ### 1. Install Node.js
 
 RHEL offers multiple versions of the same software as **modules**. The default Node.js is old, so pick the version the app needs.
@@ -249,6 +258,13 @@ dnf module enable nodejs:24 -y      # enable required version
 dnf install nodejs -y
 node -v
 ```
+
+| Command | What It Does |
+|---------|--------------|
+| `dnf module list nodejs` | Lists the Node.js versions available |
+| `dnf install nodejs` (alone) | Installs the **default** version - you don't know which version you get |
+| `dnf module disable nodejs -y` | Disables the default version |
+| `dnf module enable nodejs:24 -y` | Enables the exact version the app needs |
 
 ### 2. Create a System User
 
@@ -265,6 +281,8 @@ id expense
 | `--comment` | Description |
 
 > **Why a system user instead of a human user?**
+>
+> A human user logs in with a username/password or a username/key.
 >
 > Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege.
 >
@@ -530,7 +548,31 @@ Nginx and MySQL come with service files, so `systemctl start nginx` just works. 
 - **How** to run it (`ExecStart=`)
 - **What settings** it needs (`Environment=`)
 
-On `systemctl start backend`, Linux finds `backend.service`, injects the environment, and runs `ExecStart` as `User`.
+A service file answers 3 questions:
+1. **Who** has to run this application?
+2. **How** to run the application?
+3. Does the application need any **environment** (DB URL, credentials, etc.)?
+
+What happens on `systemctl start backend`:
+1. Goes to `/etc/systemd/system`
+2. Searches for `backend.service`
+3. Runs the start command (`ExecStart`) and injects the environment
+4. Uses the `User` info to decide who runs the service
+
+#### systemctl Commands
+
+Works the same for packages (`nginx`) and our custom service (`backend`):
+
+```bash
+systemctl start backend      # start now
+systemctl stop backend       # stop
+systemctl restart backend    # stop + start
+systemctl status backend     # is it running?
+systemctl enable backend     # start automatically on boot
+systemctl disable backend    # don't start on boot
+```
+
+Example with a package: `dnf install nginx -y` → `systemctl start nginx` works straight away, because the package brings its own service file. Our backend is a customised application developed by us, so it can't start through systemctl until we write its service file.
 
 ### 4. Server vs Client Packages
 
@@ -557,6 +599,16 @@ Nginx on the frontend forwards `/api/` requests to the backend. The user never t
 ---
 
 ## Summary
+
+### Key Topics
+
+1. **System user** - why apps don't run as human users
+2. **Programming languages** - extensions, build tools, build files, dependencies
+3. **Systemctl service files** - running custom apps as services
+4. **Public IP vs private IP**
+5. **Security group** - DB must allow inbound 3306 from the backend
+
+### Servers at a Glance
 
 | Server | Install | Key Files | Port |
 |--------|---------|-----------|------|

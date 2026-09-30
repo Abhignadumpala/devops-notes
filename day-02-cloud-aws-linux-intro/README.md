@@ -266,7 +266,7 @@ Creates two files:
 | `devops-key` | Private key - stays on your laptop, never share |
 | `devops-key.pub` | Public key - goes to the server (import in AWS) |
 
-Connecting to the server is covered in [Day 3](../day-03-linux-basics/README.md#connecting-to-ec2).
+Connecting to the server: see [Day 3](../day-03-linux-basics/README.md#connecting-to-ec2).
 
 ---
 

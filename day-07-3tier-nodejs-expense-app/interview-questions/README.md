@@ -101,3 +101,7 @@ GET reads, POST creates, PUT updates, DELETE deletes. 201 = created, 204 = succe
 **25. Why install the `mysql` package on the backend server?**
 
 It's the MySQL **client**, not the server. The backend uses it to connect to the DB server (`mysql -h <db-ip> -u root -p`) and load the schema file, which creates the database, table and app DB user on the DB server.
+
+**26. Do we still need heavy application servers like WebLogic or JBoss?**
+
+Mostly no. Modern apps come with a built-in lightweight server - Spring Boot (embedded Tomcat/Jetty), Node.js (`http`/Express), Go (`net/http`), .NET (Kestrel) - so the app just runs and listens on a port. Nginx sits in front as the web server / reverse proxy. Our backend runs as `node /app/index.js` on port 8080 with no separate app server.

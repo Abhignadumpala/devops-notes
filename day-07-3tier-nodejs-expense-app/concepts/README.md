@@ -149,7 +149,25 @@ Nginx is more than a web server. It can be:
 - **SSL/TLS termination** - handles HTTPS so the servers behind it don't have to
 - **Cache** - stores responses to answer faster
 
-Newer backend frameworks (like our Node.js app) come with their **own built-in server**, so a separate heavy app server isn't needed - Nginx just sits in front.
+### Heavy App Servers vs Built-in Lightweight Servers
+
+In the old days, the app was packaged (e.g. a Java `.war` file) and deployed **into a separate, heavy application server** that had to be installed, configured and run on its own. Nowadays there's no need for that - applications come with a **built-in lightweight server**, so the app just starts and listens on a port by itself. Nginx sits in front as the web server / reverse proxy.
+
+| Old Days - Heavy App Servers | Nowadays - Built-in Lightweight Servers |
+|------------------------------|-----------------------------------------|
+| Apache Tomcat (as a separate install) | **Spring Boot** (Java) - embedded Tomcat/Jetty, runs with `java -jar app.jar` |
+| JBoss / WildFly | **Node.js** - built-in `http` module / Express, runs with `node index.js` |
+| Oracle WebLogic | **Go** - `net/http` built into the language |
+| IBM WebSphere | **.NET** - Kestrel built in |
+| | **Python** - FastAPI/Flask with a small server like Uvicorn or Gunicorn |
+
+Our expense backend is an example: `ExecStart=/bin/node /app/index.js` - Node.js itself listens on port **8080**, no separate app server installed.
+
+| | Heavy App Server | Built-in Server |
+|---|------------------|-----------------|
+| Setup | Install + configure the server, then deploy the app into it | Just run the app |
+| Size / startup | Big, slow to start | Small, starts in seconds |
+| Fits containers/cloud | Harder | Easy - one app = one process |
 
 ### Important Paths
 

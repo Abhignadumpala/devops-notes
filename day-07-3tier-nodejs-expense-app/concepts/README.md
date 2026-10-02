@@ -4,16 +4,16 @@
 
 ## Table of Contents
 
-1. [1. System User](#1-system-user)
-2. [2. Build Tools](#2-build-tools)
-3. [3. Systemd Service Files](#3-systemd-service-files)
-4. [4. Server vs Client Packages](#4-server-vs-client-packages)
-5. [5. Public IP vs Private IP](#5-public-ip-vs-private-ip)
-6. [6. Reverse Proxy](#6-reverse-proxy)
-7. [7. Nginx](#7-nginx)
-8. [8. Nginx as a Load Balancer](#8-nginx-as-a-load-balancer)
-9. [9. REST API & HTTP Methods](#9-rest-api--http-methods)
-10. [10. HTTP Status Codes](#10-http-status-codes)
+- [1. System User](#1-system-user)
+- [2. Build Tools](#2-build-tools)
+- [3. Systemd Service Files](#3-systemd-service-files)
+- [4. Server vs Client Packages](#4-server-vs-client-packages)
+- [5. Public IP vs Private IP](#5-public-ip-vs-private-ip)
+- [6. Reverse Proxy](#6-reverse-proxy)
+- [7. Nginx](#7-nginx)
+- [8. Nginx as a Load Balancer](#8-nginx-as-a-load-balancer)
+- [9. REST API & HTTP Methods](#9-rest-api--http-methods)
+- [10. HTTP Status Codes](#10-http-status-codes)
 
 ---
 

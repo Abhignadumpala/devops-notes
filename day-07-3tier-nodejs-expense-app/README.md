@@ -25,6 +25,17 @@ A complete 3-tier app on 3 Linux servers, set up step by step.
 >
 > Once I understand this structure, I can deploy an app in any language.
 
+> **📌 Node.js - things to remember**
+>
+> | Item | What It Is |
+> |------|------------|
+> | File extension | `.js` |
+> | Build tool | `npm` |
+> | Build file | `package.json` → app name, version, description, start scripts, dependencies |
+> | Install command | `npm install` → reads `package.json` and downloads the dependencies |
+> | `package-lock.json` | Locks the **exact versions** of all dependencies **and their sub-dependencies**, so every install is the same |
+> | `node_modules/` | Folder where all the downloaded dependencies live |
+
 ## Table of Contents
 
 1. [What We Are Building](#what-we-are-building)
@@ -309,7 +320,7 @@ All 3 servers use the AMI **`Redhat-9-DevOps-Practice`** (`ami-0220d79f3f480ecf5
 > |-------|--------------|----------------|
 > | Node.js version | `24` | The version the app is written for. Install the same one, or the app may not run. |
 > | Build tool | `npm` | The tool that downloads libraries and builds/runs the app. |
-> | Build file | `package.json` | Lists the app's name, version and the libraries it needs. `npm` reads this file. |
+> | Build file | `package.json` | Lists the app's name, version, description, start scripts and the libraries it needs. `npm` reads this file. |
 > | Dependencies folder | `node_modules/` | Where `npm install` puts all the downloaded libraries. |
 > | Lock file | `package-lock.json` | One dependency depends on other dependencies, and those depend on more. All of them (not just the ones in `package.json`) are listed here with exact versions, so every install gets the same versions. |
 >

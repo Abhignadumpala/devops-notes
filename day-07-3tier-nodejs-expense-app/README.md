@@ -255,7 +255,7 @@ SSH into the **backend** server.
 > | Build tool | `npm` | The tool that downloads libraries and builds/runs the app. |
 > | Build file | `package.json` | Lists the app's name, version and the libraries it needs. `npm` reads this file. |
 > | Dependencies folder | `node_modules/` | Where `npm install` puts all the downloaded libraries. |
-> | Lock file | `package-lock.json` | Records the full list of dependencies with exact versions, so every install gets the same versions. |
+> | Lock file | `package-lock.json` | One dependency depends on other dependencies, and those depend on more. All of them (not just the ones in `package.json`) are listed here with exact versions, so every install gets the same versions. |
 >
 > Ask the developers (or check `package.json`) for these before you start, so you install the right version and know where everything goes.
 
@@ -681,7 +681,7 @@ The packaged, ready-to-deploy output of a build - `.jar`, `.war`, `.zip`, `.tar.
 
 **8. `package.json` vs `package-lock.json` vs `node_modules`?**
 
-`package.json` lists dependencies and app info. `package-lock.json` pins exact versions. `node_modules/` holds the downloaded dependencies.
+`package.json` lists dependencies and app info. `package-lock.json` lists every dependency, including the dependencies of dependencies, with exact versions. `node_modules/` holds the downloaded dependencies.
 
 **9. What is a reverse proxy? Why use Nginx for it?**
 

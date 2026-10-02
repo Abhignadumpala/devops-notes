@@ -994,14 +994,22 @@ Frontend: 80/443 from `0.0.0.0/0`. Backend: 8080 only from frontend SG. DB: 3306
 
 `mysql-server` is the database server (on the DB machine). `mysql` is the client used to connect to it (on the backend machine).
 
-**15. Why use `dnf module`?**
+**15. Why do you load the DB schema, and why from the backend server? Where is the table created?**
+
+The app needs a table to store expenses, and the table structure (schema) comes from the application team in `/app/schema/backend.sql`. We load it from the backend because the file comes with the backend code, and it also tests the same connection the app will use (DB IP, port 3306, login). The `mysql` client on the backend only sends the SQL - the database, table and user are created on the **DB server**.
+
+**16. What does `IF NOT EXISTS` do in the schema file?**
+
+Creates the database/table/user only if it's missing. If it already exists, it's skipped with no error and existing data is safe, so the file can be run again safely.
+
+**17. Why use `dnf module`?**
 
 RHEL offers several versions of software like Node.js as modules. `dnf module disable` / `enable nodejs:24` installs the exact version the app needs.
 
-**16. The page loads but shows no data. How do you debug?**
+**18. The page loads but shows no data. How do you debug?**
 
 Check backend status and logs (`systemctl status backend`, `journalctl -u backend`), test `curl http://localhost:8080/health`, check backend IP in Nginx config, check DB connectivity from backend (`mysql -h <db-ip>`), and check SG ports 8080 and 3306.
 
-**17. How do you validate Nginx config before restarting?**
+**19. How do you validate Nginx config before restarting?**
 
 `nginx -t`.

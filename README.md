@@ -3,7 +3,7 @@ day to day devops notes of my learning
 
 ## Notes
 
-Each day ends with **Interview Questions** for quick revision.
+Each day has an **interview-questions/** folder for quick revision.
 
 
 - [Day 1 - SDLC, Waterfall, Agile & Why DevOps](day-01-sdlc-agile-devops/README.md)

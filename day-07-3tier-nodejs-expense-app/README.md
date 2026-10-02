@@ -309,6 +309,10 @@ Instead of running applications or services with human credentials, we create a 
 - has **no interactive login** - no password, no key, no login, no shell/terminal. Even if the app is hacked, the attacker can't log in as this user.
 - doesn't depend on any person - nobody "owns" it, so nothing breaks when someone leaves.
 
+> **If nobody can log in as the system user, how does the app run?**
+>
+> Nobody logs in and starts the app by hand. **systemd** (the service manager) starts it for us. In the service file we write `User=expense`, so when we run `systemctl start backend`, systemd starts the app **as the `expense` user**. The app runs with only that user's permissions, and nobody ever needs a login. See [Step 5](#5-create-the-service-file).
+
 #### Create It
 
 ```bash

@@ -22,8 +22,8 @@ A complete 3-tier app on 3 Linux servers, set up step by step.
 |---------------|---------------|
 | [hands-on/](hands-on/README.md) | My actual run with screenshots, mistakes and fixes |
 | [troubleshooting/](troubleshooting/README.md) | Debug steps, common mistakes, what each error means |
-| [concepts/](concepts/README.md) | System user, build tools, service files, IPs, reverse proxy |
-| [interview-questions/](interview-questions/README.md) | 19 questions with short answers |
+| [concepts/](concepts/README.md) | System user, build tools, service files, IPs, reverse proxy, Nginx, load balancer, REST API, status codes |
+| [interview-questions/](interview-questions/README.md) | 23 questions with short answers |
 | [01-mysql.md](01-mysql.md), [02-backend.md](02-backend.md), [03-frontend.md](03-frontend.md) | Quick setup commands per server |
 
 ---
@@ -734,7 +734,7 @@ tar -xzf /tmp/frontend.tar.gz --strip-components=1
 The browser only talks to the frontend. Nginx forwards any `/api/` request to the backend.
 
 ```text
-Browser ── /api/expense ──▶ Nginx (frontend) ──▶ http://<backend-private-ip>:8080/expense
+Browser ── /api/transaction ──▶ Nginx (frontend) ──▶ http://<backend-private-ip>:8080/transaction
 ```
 
 ```bash
@@ -807,7 +807,7 @@ My actual run with screenshots, including the mistakes I hit and how I fixed the
 
 ## Concepts Learned
 
-System user, build tools, systemd service files, package vs service, server vs client, public vs private IP, reverse proxy → [concepts/](concepts/README.md)
+System user, build tools, service files, package vs service, server vs client, public vs private IP, reverse proxy, Nginx & load balancing, REST API, HTTP status codes → [concepts/](concepts/README.md)
 
 ---
 
@@ -839,4 +839,4 @@ System user, build tools, systemd service files, package vs service, server vs c
 
 ## Interview Questions
 
-19 questions with short answers → [interview-questions/](interview-questions/README.md)
+23 questions with short answers → [interview-questions/](interview-questions/README.md)

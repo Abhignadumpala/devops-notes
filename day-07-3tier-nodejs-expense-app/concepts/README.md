@@ -2,6 +2,21 @@
 
 [← Back to Day 7 notes](../README.md)
 
+## Table of Contents
+
+1. [1. System User](#1-system-user)
+2. [2. Build Tools](#2-build-tools)
+3. [3. Systemd Service Files](#3-systemd-service-files)
+4. [4. Server vs Client Packages](#4-server-vs-client-packages)
+5. [5. Public IP vs Private IP](#5-public-ip-vs-private-ip)
+6. [6. Reverse Proxy](#6-reverse-proxy)
+7. [7. Nginx](#7-nginx)
+8. [8. Nginx as a Load Balancer](#8-nginx-as-a-load-balancer)
+9. [9. REST API & HTTP Methods](#9-rest-api--http-methods)
+10. [10. HTTP Status Codes](#10-http-status-codes)
+
+---
+
 ## 1. System User
 
 - **Human user** → for people, logs in with username/password or key, has a shell.
@@ -98,3 +113,171 @@ Example with a package: `dnf install nginx -y` → `systemctl start nginx` works
 ## 6. Reverse Proxy
 
 Nginx on the frontend forwards `/api/` requests to the backend. The user never talks to the backend directly, so the backend stays private.
+
+### Forward Proxy vs Reverse Proxy
+
+Both stand "in the middle", but on opposite sides:
+
+| | Forward Proxy | Reverse Proxy |
+|---|---------------|---------------|
+| Works for | The **client** | The **server** |
+| Hides | Client's identity from the server | Server's identity from the client |
+| Examples | VPN, changing location, office internet filtering | SSL termination, caching, load balancing, our Nginx `/api/` |
+
+Our frontend Nginx is a **reverse proxy** - the browser only ever talks to Nginx, never to the backend.
+
+### Why the `X-Forwarded-*` Headers?
+
+After Nginx forwards a request, the backend sees **every request coming from Nginx's IP**, not the real user. These headers carry the original details along:
+
+| Header | Carries |
+|--------|---------|
+| `X-Real-IP` | The real client IP |
+| `X-Forwarded-For` | The client IP plus every proxy it passed through |
+| `X-Forwarded-Proto` | Whether the user came on `http` or `https` |
+| `Host` | The domain/IP the user typed |
+
+So the backend logs still show **who** made the request.
+
+## 7. Nginx
+
+Nginx is more than a web server. It can be:
+
+- **HTTP server** - serves HTML/CSS/JS
+- **Reverse proxy** - forwards requests to the backend (what we did)
+- **Load balancer** - spreads requests across many servers
+- **SSL/TLS termination** - handles HTTPS so the servers behind it don't have to
+- **Cache** - stores responses to answer faster
+
+Newer backend frameworks (like our Node.js app) come with their **own built-in server**, so a separate heavy app server isn't needed - Nginx just sits in front.
+
+### Important Paths
+
+| Path | What |
+|------|------|
+| `/usr/share/nginx/html/` | Default folder for web files (`index.html`) |
+| `/etc/nginx/nginx.conf` | Main config file |
+| `/etc/nginx/default.d/*.conf` | Extra config loaded into the default server (our `expense.conf`) |
+| `/var/log/nginx/access.log` | Every request |
+| `/var/log/nginx/error.log` | Errors |
+
+### Ports and Domains
+
+- HTTP = port **80**, HTTPS = port **443** - the browser adds them automatically.
+- Any other port must be typed in the URL, e.g. `http://<public-ip>:81`.
+- A **domain name** is just an easy name for the same public IP - `http://mydomain.com` and `http://<frontend-public-ip>` reach the same server.
+
+### Reading an Access Log Line
+
+```text
+203.0.113.42 - - [30/Sep/2026:02:24:50 +0000] "GET / HTTP/1.1" 200 9466 "-" "Mozilla/5.0 ..."
+```
+
+| Part | Meaning |
+|------|---------|
+| `203.0.113.42` | Client IP |
+| `[30/Sep/2026:02:24:50 +0000]` | Time |
+| `"GET / HTTP/1.1"` | Method + path |
+| `200` | Status code |
+| `9466` | Response size (bytes) |
+| `"Mozilla/5.0 ..."` | Browser (user agent) |
+
+```bash
+tail -f /var/log/nginx/access.log     # watch requests live
+```
+
+## 8. Nginx as a Load Balancer
+
+In our setup Nginx serves the frontend **and** proxies to one backend. Nginx can also run on its **own server** just to balance traffic across many identical servers:
+
+```text
+        Internet
+           │
+           ▼
+   ┌───────────────────┐
+   │ Load Balancer EC2 │  ← Nginx only, no app code
+   └───────────────────┘
+       │           │
+       ▼           ▼
+ Frontend-1    Frontend-2     ← same app on both
+```
+
+```nginx
+upstream app_servers {
+    server <frontend-1-private-ip>:80;
+    server <frontend-2-private-ip>:80;
+}
+
+server {
+    listen 80;
+    location / {
+        proxy_pass http://app_servers;
+    }
+}
+```
+
+- `upstream` = a named group of servers.
+- By default Nginx uses **round-robin** - request 1 → server 1, request 2 → server 2, then back to server 1.
+- If one server goes down or is replaced, users don't notice - the others keep serving. This is how "add more servers" actually works.
+
+## 9. REST API & HTTP Methods
+
+An **API** is how the frontend talks to the backend. A **REST API** maps CRUD to HTTP methods, with the resource in the URL:
+
+| Operation | Method | Example |
+|-----------|--------|---------|
+| Read all | `GET` | `GET /transaction` |
+| Read one | `GET` | `GET /transaction/2` |
+| Create | `POST` | `POST /transaction` + JSON body |
+| Update | `PUT` | `PUT /transaction` + JSON body with `id` |
+| Delete one | `DELETE` | `DELETE /transaction/4` |
+| Delete all | `DELETE` | `DELETE /transaction` |
+
+Our v3 backend supports `GET`, `POST` and `DELETE` (no `PUT`).
+
+**Same API, two URLs:**
+
+- Backend's own URL: `http://<backend-private-ip>:8080/transaction`
+- What the browser calls: `http://<frontend-public-ip>/api/transaction` → Nginx strips `/api` and forwards it
+
+So the browser never needs the backend's IP or port.
+
+**Test without the UI** using `curl`:
+
+```bash
+# create
+curl -X POST http://<frontend-public-ip>/api/transaction \
+     -H "Content-Type: application/json" \
+     -d '{"amount": 100, "category": "Food", "description": "dosa"}'
+# → 201 Created
+
+# read all
+curl http://<frontend-public-ip>/api/transaction
+```
+
+Response is **JSON** - key-value data, easy for people and code to read:
+
+```json
+{
+  "result": [
+    { "id": 2, "amount": 1000, "description": "travelling", "category": "Travel" },
+    { "id": 1, "amount": 5000, "description": "lunch with family", "category": "Food" }
+  ]
+}
+```
+
+## 10. HTTP Status Codes
+
+The server answers with a number that says what happened:
+
+| Range | Meaning | Common Codes |
+|-------|---------|--------------|
+| 1XX | Info | - |
+| 2XX | Success | `200` OK, `201` Created, `204` No Content (e.g. after delete) |
+| 3XX | Redirect | `301` Moved Permanently, `304` Not Modified (use your cached copy) |
+| 4XX | **Client** mistake | `400` Bad Request, `401` Unauthorized, `403` Forbidden, `404` Not Found, `405` Method Not Allowed |
+| 5XX | **Server** problem | `500` Internal Server Error, `501` Not Implemented, `502` Bad Gateway, `503` Service Unavailable, `504` Gateway Timeout |
+
+- **401 vs 403:** `401` = "I don't know who you are" (no/invalid login). `403` = "I know who you are, but you're not allowed".
+- **405:** the URL exists but not for that method - e.g. our backend returns `405` for `PUT /transaction`.
+- **502 / 504 in 3-tier:** usually not Nginx's fault - the backend behind it is down (`502`) or too slow (`504`). See [Troubleshooting](../troubleshooting/README.md#the-error-tells-you-the-layer).

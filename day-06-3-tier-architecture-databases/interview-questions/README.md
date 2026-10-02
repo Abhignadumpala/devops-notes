@@ -41,3 +41,11 @@ SQL: relational tables with a fixed schema (MySQL, PostgreSQL). NoSQL: flexible 
 **10. What database tasks does a DevOps engineer handle?**
 
 Install, upgrade, backup, restore, create schemas, monitor, scale and set up clustering/replication.
+
+**11. Stateless vs stateful - which tiers are which?**
+
+Frontend and backend are stateless - they keep no user data, so any server can handle any request and they scale easily behind a load balancer. The database is stateful - its data must survive restarts and stay consistent, so it's harder to scale.
+
+**12. Why split an application into separate tiers?**
+
+Security (DB not reachable from the internet), independent scaling, separate team ownership, fault isolation (a backend crash doesn't take down the DB) and freedom to change one tier's technology without touching the others.

@@ -4,12 +4,13 @@
 
 1. [3-Tier Architecture - Food Analogy](#3-tier-architecture---food-analogy)
 2. [1-Tier, 2-Tier, 3-Tier](#1-tier-2-tier-3-tier)
-3. [Tier Technologies](#tier-technologies)
-4. [Practice Server Setup](#practice-server-setup)
-5. [Types of Data](#types-of-data)
-6. [DBMS vs RDBMS](#dbms-vs-rdbms)
-7. [Summary](#summary)
-8. [Interview Questions](#interview-questions)
+3. [Stateless vs Stateful](#stateless-vs-stateful)
+4. [Tier Technologies](#tier-technologies)
+5. [Practice Server Setup](#practice-server-setup)
+6. [Types of Data](#types-of-data)
+7. [DBMS vs RDBMS](#dbms-vs-rdbms)
+8. [Summary](#summary)
+9. [Interview Questions](#interview-questions)
 
 ---
 
@@ -69,6 +70,31 @@ User → Load Balancer → Frontend → Backend → Database
 | Database | DB / Data tier |
 
 Benefits: each tier can be scaled, secured and updated separately.
+
+### Why Separate Tiers?
+
+| Reason | Simple Meaning |
+|--------|----------------|
+| **Security** | The DB is never reachable from the internet - only the backend can talk to it |
+| **Scalability** | Scale one tier alone - e.g. add more backend servers without touching the DB |
+| **Maintainability** | Different teams own different tiers - frontend, backend, DBA |
+| **Fault isolation** | If the backend crashes, the DB doesn't go down with it |
+| **Technology freedom** | Change the web server or DB engine without rewriting the other tiers |
+
+---
+
+## Stateless vs Stateful
+
+- **Stateless** = the server doesn't keep any user data. Every request is handled on its own, so **any** server can answer **any** request.
+- **Stateful** = the server keeps data that must survive a restart.
+
+| | Stateless | Stateful |
+|---|-----------|----------|
+| Tiers | Frontend, Backend | Database |
+| Scaling | Easy - add more servers behind a load balancer | Hard - data must stay the same on every node |
+| Restart | Nothing lost | Data can be lost without proper storage/backups |
+
+Like the restaurant: any waiter or chef can serve any customer (stateless), but there's only one food store and it must not lose stock (stateful).
 
 ---
 
@@ -180,6 +206,8 @@ Institute ─1:many→ Courses ─1:many→ Batches ─1:many→ Students
 
 - **3-tier** = Load Balancer → Frontend → Backend → Database.
 - Restaurant analogy: Captain = LB, Waiter = Frontend, Chef = Backend, Raw materials = Data.
+- **Stateless** (frontend, backend) = easy to scale; **stateful** (database) = hard to scale.
+- Separate tiers → security, scalability, maintainability, fault isolation, technology freedom.
 - **Data types**: structured (tables), semi-structured (logs, JSON), unstructured (images, videos).
 - **RDBMS** = tables related by IDs (primary key ↔ foreign key).
 
@@ -187,4 +215,4 @@ Institute ─1:many→ Courses ─1:many→ Batches ─1:many→ Students
 
 ## Interview Questions
 
-10 questions with short answers → [interview-questions/](interview-questions/README.md)
+12 questions with short answers → [interview-questions/](interview-questions/README.md)

@@ -77,3 +77,19 @@ Check backend status and logs (`systemctl status backend`, `journalctl -u backen
 **19. How do you validate Nginx config before restarting?**
 
 `nginx -t`.
+
+**20. Forward proxy vs reverse proxy?**
+
+A forward proxy works for the client and hides the client from the server (VPN, office filtering). A reverse proxy works for the server and hides the server from the client (SSL termination, caching, load balancing) - like our Nginx forwarding `/api/` to the backend.
+
+**21. Why does Nginx add `X-Forwarded-For` / `X-Real-IP` headers?**
+
+Behind a proxy the backend sees every request coming from Nginx's IP. These headers carry the real client IP and protocol so the backend and its logs still know who made the request.
+
+**22. How does Nginx load balance? What's the default method?**
+
+An `upstream` block lists a group of servers and `proxy_pass` sends traffic to that group. Default is round-robin - requests go to each server in turn, so one server failing doesn't take the app down.
+
+**23. Explain REST API methods and these status codes: 201, 204, 401 vs 403, 405, 502, 503, 504.**
+
+GET reads, POST creates, PUT updates, DELETE deletes. 201 = created, 204 = success with no content (e.g. delete), 401 = not logged in / bad credentials, 403 = logged in but not allowed, 405 = method not allowed on that URL, 502 = proxy can't reach the backend, 503 = service unavailable (e.g. DB down), 504 = backend too slow.

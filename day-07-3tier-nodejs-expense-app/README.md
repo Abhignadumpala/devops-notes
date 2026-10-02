@@ -192,11 +192,28 @@ ssh ec2-user@<public-ip>
 
 **Database → Backend → Frontend.** Each tier needs the one after it to be ready.
 
-Run all commands as root:
+Run all setup commands as **root**, not ec2-user. Log in as `ec2-user`, then switch to root:
 
 ```bash
-sudo su -
+ssh ec2-user@<public-ip>    # 1. log in as ec2-user
+sudo su -                   # 2. become root
+whoami                      # 3. should print: root
 ```
+
+The prompt also shows it: `#` = root, `$` = normal user.
+
+**Why root?** Every setup step changes the system, and a normal user isn't allowed to:
+
+| Command | Why It Needs Root |
+|---------|-------------------|
+| `dnf install ...` | Installs software system-wide |
+| `useradd ...` | Creates users |
+| `mkdir /app`, `tar` into `/app` | `/` is owned by root. As ec2-user: `mkdir: cannot create directory '/app': Permission denied` |
+| `npm install` in `/app` | Writes `node_modules/` inside `/app` |
+| `vim /etc/systemd/system/backend.service` | `/etc` is owned by root |
+| `systemctl ...` | Manages system services |
+
+> **Root sets up, the system user runs.** We use root only to set up the server (install packages, create the `expense` user, create `/app`, put the code there, write the service file). The app itself runs as `expense` because systemd reads `User=expense`. So the running app never has root power. Check with `ps -ef | grep node` → the process owner is `expense`, not root.
 
 ---
 
@@ -242,7 +259,7 @@ exit
 
 ## Part 2 - Backend Server (Node.js)
 
-SSH into the **backend** server.
+SSH into the **backend** server and switch to root (`sudo su -`). All the steps below (create the system user, create `/app`, download the code, `npm install`, service file) are run as **root**.
 
 **Backend setup steps:**
 

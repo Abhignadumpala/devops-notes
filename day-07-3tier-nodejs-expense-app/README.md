@@ -247,6 +247,18 @@ SSH into the **backend** server.
 5. Install dependencies/libraries
 6. Create a systemctl service file
 
+> **Note - Before building any Node.js application, check these first:**
+>
+> | Check | For This App | Simple Meaning |
+> |-------|--------------|----------------|
+> | Node.js version | `24` | The version the app is written for. Install the same one, or the app may not run. |
+> | Build tool | `npm` | The tool that downloads libraries and builds/runs the app. |
+> | Build file | `package.json` | Lists the app's name, version and the libraries it needs. `npm` reads this file. |
+> | Dependencies folder | `node_modules/` | Where `npm install` puts all the downloaded libraries. |
+> | Lock file | `package-lock.json` | Records the full list of dependencies with exact versions, so every install gets the same versions. |
+>
+> Ask the developers (or check `package.json`) for these before you start, so you install the right version and know where everything goes.
+
 ### 1. Install Node.js
 
 RHEL offers multiple versions of the same software as **modules**. The default Node.js is old, so pick the version the app needs.

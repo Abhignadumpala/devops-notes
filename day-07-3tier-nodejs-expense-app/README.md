@@ -280,6 +280,37 @@ node -v
 
 ### 2. Create a System User
 
+Before creating the user, understand why we need one.
+
+#### Human User vs System User
+
+| | Human User | System User |
+|---|------------|-------------|
+| Who uses it | A real person (you, a teammate) | An application or service |
+| How it logs in | Username/password or username/key | It doesn't log in at all |
+| Shell/terminal | Yes | No (`/sbin/nologin`) |
+| UID | 1000 and above | Below 1000 |
+| Example | `ec2-user`, `ramesh` | `expense`, `nginx`, `mysql` |
+
+#### Problems with Running the App as a Human or Root User
+
+1. **Too much access** - a human/root user can do a lot on the server. If the server is hacked, their credentials leak and the attacker gets all those privileges.
+2. **Bigger blast radius** - "blast radius" means how much damage spreads. The attacker can reach everything that user can reach, not just the app.
+3. **Files owned by a person** - the app's files and folders end up under a person's name, which gets messy.
+4. **What if the person resigns?** - their account gets removed, and the app running under it stops working.
+5. **Auditing and accountability** - in the logs you can't tell whether the person did something or the app did it.
+
+#### Why a System User
+
+Instead of running applications or services with human credentials, we create a **system user** just for the app. This:
+
+- **limits the blast radius** - if the app is hacked, the damage stays inside the app.
+- **follows least privilege** - the app gets only the access it needs, nothing more.
+- has **no interactive login** - no password, no key, no login, no shell/terminal. Even if the app is hacked, the attacker can't log in as this user.
+- doesn't depend on any person - nobody "owns" it, so nothing breaks when someone leaves.
+
+#### Create It
+
 ```bash
 useradd --system --home /app --shell /sbin/nologin --comment "expense system user" expense
 id expense
@@ -291,16 +322,6 @@ id expense
 | `--home /app` | Home directory |
 | `--shell /sbin/nologin` | Nobody can log in as this user |
 | `--comment` | Description |
-
-> **Why a system user instead of a human user?**
->
-> A human user logs in with a username/password or a username/key.
->
-> Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege.
->
-> System users don't have interactive logins, so there are no credentials, no login, and no shell/terminal access. Even if the app is hacked, the attacker can't log in or reach anything beyond the app.
-
-More detail → [Concepts Learned](#1-system-user).
 
 ### 3. Download the Code
 
@@ -517,20 +538,12 @@ Check from **frontend to database**, one tier at a time.
 
 ### 1. System User
 
-> **Why a system user instead of a human user?**
->
-> Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege.
->
-> System users don't have interactive logins, so there are no credentials, no login, and no shell/terminal access. Even if the app is hacked, the attacker can't log in or reach anything beyond the app.
+- **Human user** → for people, logs in with username/password or key, has a shell.
+- **System user** → for apps/services, no login, no credentials, no shell.
+- Running apps as a human/root user means more privileges, bigger blast radius, files under a person's name, breaks when the person resigns, and poor auditing.
+- So we run apps as a system user → smaller blast radius and least privilege.
 
-Detailed reasons - why not run the app as a human or root user?
-
-1. **Too many privileges** - if the server is hacked, their credentials leak.
-2. **Bigger blast radius** - attacker gets everything that user can access.
-3. Files and folders end up owned by a person's name.
-4. **Person resigns** → account removed → app breaks.
-5. **Auditing** - hard to tell whether a human or the app did something.
-
+Full explanation → [Part 2, Step 2](#2-create-a-system-user).
 
 ### 2. Build Tools
 

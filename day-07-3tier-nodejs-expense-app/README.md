@@ -350,6 +350,16 @@ npm install
 
 ### 5. Create the Service File
 
+When we install a package like Nginx (`dnf install nginx -y`), it brings its own service file, so `systemctl start nginx` works straight away.
+
+Our backend is a customised app developed by us, so it has no service file. systemctl can't start it until we write one. The service file answers 3 questions:
+
+1. **Who** runs the app? → `User=`
+2. **How** to run the app? → `ExecStart=`
+3. **What settings** does the app need (DB address, username, password)? → `Environment=`
+
+Custom service files go in `/etc/systemd/system/`:
+
 ```bash
 vim /etc/systemd/system/backend.service
 ```
@@ -410,6 +420,21 @@ systemctl enable backend
 systemctl start backend
 systemctl status backend
 ```
+
+| Command | What It Does |
+|---------|--------------|
+| `systemctl daemon-reload` | Makes systemd read the new/changed service file |
+| `systemctl enable backend` | Starts the app automatically when the server boots |
+| `systemctl start backend` | Starts the app now |
+| `systemctl status backend` | Shows if the app is running |
+
+**What happens when we run `systemctl start backend`:**
+
+1. systemd looks in `/etc/systemd/system/`.
+2. It finds `backend.service`.
+3. It reads `User=expense` and runs the app as that user.
+4. It passes the `Environment=` values (DB details) into the app.
+5. It runs the `ExecStart=` command → `/bin/node /app/index.js`, and the app starts.
 
 ### 8. Verify
 

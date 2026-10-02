@@ -576,6 +576,39 @@ What it does:
 3. Creates the `expense` DB user with a password (if it doesn't exist).
 4. Gives that user full access to the `transactions` database. The backend logs in to the DB as this user (`DB_USER` / `DB_PWD` in the service file).
 
+#### Where Is the Table Created?
+
+On the **DB server**, not on the backend. The backend only **sends** the SQL:
+
+```
+BACKEND SERVER                              DB SERVER
+┌───────────────────────┐                   ┌────────────────────────────┐
+│ /app/schema/          │                   │ mysql-server (mysqld)      │
+│   backend.sql         │   port 3306       │                            │
+│        │              │ ───────────────►  │ runs the SQL               │
+│        ▼              │   sends the SQL   │   → creates DB, table, user│
+│ mysql (client)        │                   │ stored in /var/lib/mysql/  │
+└───────────────────────┘                   └────────────────────────────┘
+```
+
+1. The `mysql` client on the backend reads `backend.sql`.
+2. `-h <mysql-private-ip>` tells it to connect to the DB server on port 3306.
+3. The MySQL server runs the SQL and stores the database, table and user on its own disk.
+
+#### Why Load It From the Backend?
+
+1. **The file is on the backend.** `backend.sql` comes inside the backend code package. The developers ship the table structure with the code that uses it. The DB server only has MySQL, not this file.
+2. **It tests the same connection the app will use.** If this works, the DB IP is right, port 3306 is open in the security group, and MySQL is accepting logins. If it fails here, the app would fail too.
+
+#### What `IF NOT EXISTS` Does
+
+| On the DB server | What Happens |
+|------------------|--------------|
+| Table **doesn't exist** | It gets **created** |
+| Table **already exists** | **Skipped** - no error, existing data is safe |
+
+Same for the database and the user. Without it, running the file again gives `ERROR 1050: Table 'transactions' already exists`. With it, the file is **safe to run again**.
+
 #### Install the MySQL client
 
 To talk to the DB server from the backend server, we need the MySQL **client**, not the server:

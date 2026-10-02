@@ -2,6 +2,29 @@
 
 A complete 3-tier app on 3 Linux servers, set up step by step.
 
+> **📌 Remember this structure - it works for ANY programming language**
+>
+> 1. Install the programming language - Node.js 24
+> 2. Create one directory for the application - `/app`
+> 3. Create one system user to run the application - `expense`
+> 4. Download the application as `.tar.gz` into `/tmp`
+> 5. Extract it into `/app`
+> 6. Install dependencies
+> 7. Create the systemctl service file
+> 8. Load the schema into the DB
+> 9. Start the application
+>
+> Whether the app is Node.js, Java or Python, these **9 steps stay the same**. Only the language, build tool, build file and file extension change:
+>
+> | Step | Node.js | Java | Python |
+> |------|---------|------|--------|
+> | 1. Install language | `nodejs:24` | Java (JDK) | Python 3 |
+> | 6. Install dependencies | `npm install` (reads `package.json`) | `mvn package` (reads `pom.xml`) | `pip install -r requirements.txt` |
+> | Code extension | `.js` | `.java` | `.py` |
+> | 7. `ExecStart=` in service file | `/bin/node /app/index.js` | `/bin/java -jar /app/<app>.jar` | `/bin/python3 /app/<app>.py` |
+>
+> Once I understand this structure, I can deploy an app in any language.
+
 ## Table of Contents
 
 1. [What We Are Building](#what-we-are-building)

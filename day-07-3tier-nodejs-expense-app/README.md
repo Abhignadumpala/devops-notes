@@ -408,12 +408,69 @@ WantedBy=multi-user.target
 4. It passes the `Environment=` values (DB details) into the app.
 5. It runs the `ExecStart=` command → `/bin/node /app/index.js`, and the app starts.
 
+> **Note:** The backend needs to know where the database is, so we give the DB server's IP in `Environment=DB_HOST=`. Use the DB server's **private IP**: it doesn't change on stop/start and the traffic stays inside AWS. More → [Public IP vs Private IP](#5-public-ip-vs-private-ip).
+
 ### 6. Load the Database Schema
 
-Install the MySQL **client** (the server is on the other machine):
+**Why?** The app stores expenses, so the database needs a **table** to keep them in. Each expense is one row:
+
+| id | category | amount | description |
+|----|----------|--------|-------------|
+| 1 | food | 100 | masala dosa |
+
+The table structure (the **schema**) is given by the application team inside the code, in `/app/schema/backend.sql`. We just load it into the DB server.
+
+#### Check the schema file first
+
+```bash
+cat /app/schema/backend.sql
+```
+
+```sql
+CREATE DATABASE IF NOT EXISTS transactions;
+USE transactions;
+
+CREATE TABLE IF NOT EXISTS transactions (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    amount      INT NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    category    VARCHAR(50) NOT NULL
+);
+
+CREATE USER IF NOT EXISTS 'expense'@'%' IDENTIFIED BY '<db-app-password>';
+GRANT ALL ON transactions.* TO 'expense'@'%';
+FLUSH PRIVILEGES;
+```
+
+What it does:
+
+1. Creates the `transactions` database (if it doesn't exist).
+2. Creates the `transactions` table with columns `id`, `amount`, `description`, `category`.
+3. Creates the `expense` DB user with a password (if it doesn't exist).
+4. Gives that user full access to the `transactions` database. The backend logs in to the DB as this user (`DB_USER` / `DB_PWD` in the service file).
+
+#### Install the MySQL client
+
+To talk to the DB server from the backend server, we need the MySQL **client**, not the server:
+
+| | Server | Client |
+|---|--------|--------|
+| Web | facebook.com | Chrome |
+| MySQL | `mysql-server` → on the DB server | `mysql` → on the backend server |
+
+Just like Chrome (client) connects to facebook.com (server), the `mysql` client on the backend connects to `mysql-server` on the DB server.
 
 ```bash
 dnf install mysql -y
+```
+
+#### Allow backend → DB in the security group
+
+The DB server must accept connections from the backend on port **3306**. In `mysql-sg`, allow inbound **3306** from `backend-sg` (or from the backend server's private IP). Without this, the `mysql` command just hangs. See [Step 1](#step-1-create-security-groups).
+
+#### Load it
+
+```bash
 mysql -h <mysql-private-ip> -u root -p < /app/schema/backend.sql
 ```
 
@@ -424,7 +481,9 @@ mysql -h <mysql-private-ip> -u root -p < /app/schema/backend.sql
 | `-p` | Ask for password |
 | `< file.sql` | Run the SQL file |
 
-This creates the `transactions` database, table, and the `expense` DB user.
+Now the table is ready, and the backend can read and write expenses.
+
+> Here we connect to the DB directly from the backend server. In real projects we connect to the DB through a **bastion host** (a jump server). That comes later.
 
 ### 7. Start the Backend
 
@@ -447,10 +506,20 @@ Flow of `systemctl start backend` → [Step 5](#5-create-the-service-file).
 ### 8. Verify
 
 ```bash
-netstat -lntp                       # 8080 should be listening
-curl http://localhost:8080/health   # should respond OK
+systemctl status backend            # should say active (running)
+ps -ef | grep node                  # node process running as the expense user
+netstat -lntp                       # port 8080 should be listening
+curl http://localhost:8080/health   # app health check
 journalctl -u backend -f            # live logs (Ctrl+C to exit)
 ```
+
+| Command | What It Checks |
+|---------|----------------|
+| `systemctl status backend` | Is the service running? |
+| `ps -ef \| grep node` | Is the `node` process running, and as which user? |
+| `netstat -lntp` | Which ports are open. Look for `8080` |
+| `curl http://localhost:8080/health` | Does the app answer? `"status":"ok"` means the app is running |
+| `journalctl -u backend -f` | App logs, for errors |
 
 ✅ Backend is ready.
 

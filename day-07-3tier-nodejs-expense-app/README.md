@@ -614,6 +614,13 @@ Now the table is ready, and the backend can read and write expenses.
 
 ### 7. Start the Backend
 
+> **Don't jump to `systemctl start backend` right after writing the service file.** First:
+>
+> 1. **Load the DB schema** ([Step 6](#6-load-the-database-schema)) - the service file uses `DB_USER=expense` and `DB_DATABASE=transactions`, which don't exist until `backend.sql` is loaded. Otherwise the app can't log in to the DB (`"db":"down"`).
+> 2. **Run `systemctl daemon-reload`** - systemd only knows service files it has already loaded. Without it you get `Unit backend.service not found`. Run it again **every time you edit** the file.
+>
+> **Order:** write service file → load schema → `daemon-reload` → `enable` → `start` → `status`
+
 ```bash
 systemctl daemon-reload      # needed after creating/editing a service file
 systemctl enable backend
@@ -629,6 +636,8 @@ systemctl status backend
 | `systemctl status backend` | Shows if the app is running |
 
 Flow of `systemctl start backend` → [Step 5](#5-create-the-service-file).
+
+If it fails, `journalctl -u backend -f` shows the error (e.g. wrong DB IP, port 3306 blocked).
 
 ### 8. Verify
 

@@ -40,7 +40,7 @@ The packaged, ready-to-deploy output of a build - `.jar`, `.war`, `.zip`, `.tar.
 
 **10. `package.json` vs `package-lock.json` vs `node_modules`?**
 
-`package.json` lists dependencies and app info. `package-lock.json` lists every dependency, including the dependencies of dependencies, with exact versions. `node_modules/` holds the downloaded dependencies.
+`package.json` is the build file - app name, version, description, start scripts and dependencies. `npm install` reads it. `package-lock.json` lists every dependency, including the dependencies of dependencies, with exact versions. `node_modules/` holds the downloaded dependencies.
 
 **11. What is a reverse proxy? Why use Nginx for it?**
 
@@ -93,3 +93,11 @@ An `upstream` block lists a group of servers and `proxy_pass` sends traffic to t
 **23. Explain REST API methods and these status codes: 201, 204, 401 vs 403, 405, 502, 503, 504.**
 
 GET reads, POST creates, PUT updates, DELETE deletes. 201 = created, 204 = success with no content (e.g. delete), 401 = not logged in / bad credentials, 403 = logged in but not allowed, 405 = method not allowed on that URL, 502 = proxy can't reach the backend, 503 = service unavailable (e.g. DB down), 504 = backend too slow.
+
+**24. What steps do you follow to deploy a backend application? Does it change per language?**
+
+1) Install the language/runtime, 2) create `/app`, 3) create a system user, 4) download the app `.tar.gz` into `/tmp`, 5) extract into `/app`, 6) install dependencies, 7) create the systemd service file, 8) load the DB schema, 9) start the app. The structure is the same for every language - only the runtime, build tool, build file and extension change (Node.js: npm / `package.json` / `.js`, Java: Maven / `pom.xml` / `.java`, Python: pip / `requirements.txt` / `.py`).
+
+**25. Why install the `mysql` package on the backend server?**
+
+It's the MySQL **client**, not the server. The backend uses it to connect to the DB server (`mysql -h <db-ip> -u root -p`) and load the schema file, which creates the database, table and app DB user on the DB server.

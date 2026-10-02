@@ -57,7 +57,7 @@ A complete 3-tier app on 3 Linux servers, set up step by step.
 | [hands-on/](hands-on/README.md) | My actual run with screenshots, mistakes and fixes |
 | [troubleshooting/](troubleshooting/README.md) | Debug steps, common mistakes, what each error means |
 | [concepts/](concepts/README.md) | System user, build tools, service files, IPs, reverse proxy, Nginx, load balancer, REST API, status codes |
-| [interview-questions/](interview-questions/README.md) | 23 questions with short answers |
+| [interview-questions/](interview-questions/README.md) | 25 questions with short answers |
 | [01-mysql.md](01-mysql.md), [02-backend.md](02-backend.md), [03-frontend.md](03-frontend.md) | Quick setup commands per server |
 
 ---
@@ -873,4 +873,4 @@ System user, build tools, service files, package vs service, server vs client, p
 
 ## Interview Questions
 
-23 questions with short answers → [interview-questions/](interview-questions/README.md)
+25 questions with short answers → [interview-questions/](interview-questions/README.md)

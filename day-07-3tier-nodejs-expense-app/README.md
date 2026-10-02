@@ -16,11 +16,15 @@ A complete 3-tier app on 3 Linux servers, set up step by step.
 10. [Summary](#summary)
 11. [Interview Questions](#interview-questions)
 
-**Quick setup docs (commands only, per server):**
+**More in this folder:**
 
-- [01 - MySQL](01-mysql.md)
-- [02 - Backend](02-backend.md)
-- [03 - Frontend](03-frontend.md)
+| Folder / File | What's Inside |
+|---------------|---------------|
+| [hands-on/](hands-on/README.md) | My actual run with screenshots, mistakes and fixes |
+| [troubleshooting/](troubleshooting/README.md) | Debug steps, common mistakes, what each error means |
+| [concepts/](concepts/README.md) | System user, build tools, service files, IPs, reverse proxy |
+| [interview-questions/](interview-questions/README.md) | 19 questions with short answers |
+| [01-mysql.md](01-mysql.md), [02-backend.md](02-backend.md), [03-frontend.md](03-frontend.md) | Quick setup commands per server |
 
 ---
 
@@ -536,7 +540,7 @@ WantedBy=multi-user.target
 4. It passes the `Environment=` values (DB details) into the app.
 5. It runs the `ExecStart=` command → `/bin/node /app/index.js`, and the app starts.
 
-> **Note:** The backend needs to know where the database is, so we give the DB server's IP in `Environment=DB_HOST=`. Use the DB server's **private IP**: it doesn't change on stop/start and the traffic stays inside AWS. More → [Public IP vs Private IP](#5-public-ip-vs-private-ip).
+> **Note:** The backend needs to know where the database is, so we give the DB server's IP in `Environment=DB_HOST=`. Use the DB server's **private IP**: it doesn't change on stop/start and the traffic stays inside AWS. More → [Public IP vs Private IP](concepts/README.md#5-public-ip-vs-private-ip).
 
 ### 6. Load the Database Schema
 
@@ -786,51 +790,7 @@ SELECT * FROM transactions;
 
 ## Troubleshooting
 
-Check from **frontend to database**, one tier at a time.
-
-| # | Check | Command |
-|---|-------|---------|
-| 1 | Service running? | `systemctl status nginx` / `backend` / `mysqld` |
-| 2 | Port listening? | `netstat -lntp` |
-| 3 | Process running? | `ps -ef \| grep node` |
-| 4 | Logs | `journalctl -u backend -f` / `/var/log/nginx/error.log` |
-| 5 | Can backend reach DB? | `mysql -h <mysql-private-ip> -u root -p` |
-| 6 | Can frontend reach backend? | `curl http://<backend-private-ip>:8080/health` |
-| 7 | Security group allows the port? | AWS console |
-
-### Common Mistakes
-
-| Problem | Fix |
-|---------|-----|
-| Backend fails to start after editing the service file | `systemctl daemon-reload` |
-| Backend can't connect to DB | Wrong `DB_HOST` IP, or DB security group missing 3306 |
-| Page loads but no data | Wrong backend IP in `expense.conf`, or backend SG missing 8080 |
-| Nginx won't restart | Run `nginx -t` to find the config error |
-| Used public IP between servers | Use **private** IPs |
-| `nginx -t` → `host not found in upstream "<backend-private-ip>"` | Placeholder not replaced. Put the real backend private IP in `proxy_pass` |
-| `curl localhost/api/health` → **404** even though `expense.conf` is correct | Nginx wasn't restarted. `systemctl restart nginx` and check again |
-
-### The Error Tells You the Layer
-
-Run `curl http://localhost/api/health` on the frontend and read the result:
-
-| You See | Problem Is At | Fix |
-|---------|---------------|-----|
-| **404 Not Found** (HTML page) | **Nginx** - no `/api/` rule loaded, so Nginx looks for a file `api/health` and doesn't find it | Check `/etc/nginx/default.d/expense.conf`, `nginx -t`, **restart nginx** |
-| **502 Bad Gateway** | Backend app not running on 8080 | `systemctl status backend` on the backend |
-| **504 Gateway Timeout** (after a delay) | Frontend → backend blocked, or wrong backend IP | `backend-sg` must allow 8080 from `frontend-sg` |
-| `"db":"down"` | Backend → DB blocked, or wrong DB details | `mysql-sg` must allow 3306 from backend, check `DB_HOST` |
-| `{"status":"ok"}` | Nothing - all working ✅ | |
-
-> **Always restart after changing config.** Nginx reads its config only when it starts. Even if everything in `expense.conf` is written correctly, if you don't restart Nginx you'll still get **404 Page Not Found**. Restart and check again - the page works.
->
-> ```bash
-> nginx -t                  # check syntax first
-> systemctl restart nginx   # load the new config
-> curl http://localhost/api/health
-> ```
->
-> Same idea for the backend: after editing `backend.service` → `systemctl daemon-reload` + `systemctl restart backend`.
+How to debug each tier, common mistakes, and what each error (404 / 502 / 504 / db down) means → [troubleshooting/](troubleshooting/README.md)
 
 ---
 
@@ -842,102 +802,7 @@ My actual run with screenshots, including the mistakes I hit and how I fixed the
 
 ## Concepts Learned
 
-### 1. System User
-
-- **Human user** → for people, logs in with username/password or key, has a shell.
-- **System user** → for apps/services, no login, no credentials, no shell.
-- Running apps as a human/root user means more privileges, bigger blast radius, files under a person's name, breaks when the person resigns, and poor auditing.
-- So we run apps as a system user → smaller blast radius and least privilege.
-
-Full explanation → [Part 2, Step 2](#2-create-a-system-user).
-
-### 2. Build Tools
-
-Developers write a lot of files. Before the app can run, the same steps have to be repeated every time. A **build tool** automates them.
-
-**What a build tool does:**
-
-1. **Installs dependencies** (libraries the code needs).
-2. **Automates repeating steps**: clean old output → download new code → compile the code → install dependencies → create the application.
-3. **Gives a standard project structure**, so every project is organised the same way.
-4. **Runs test cases** automatically and **creates the artifact**, the packaged app (`.zip`, `.tar.gz`, `.jar`, `.war`, `.ear`).
-
-A **build file** holds info about the application: name, description, version, dependencies, and how to start it.
-
-| Language | Build Tool | Build File | Code Extension |
-|----------|------------|------------|----------------|
-| Java | Maven | `pom.xml` | `.java` |
-| Node.js | npm | `package.json` | `.js` |
-| Python | pip | `requirements.txt` | `.py` |
-
-In this project: Node.js 24, `npm`, `package.json`, dependencies in `node_modules/`, exact versions in `package-lock.json`.
-
-### 3. Systemd Service Files
-
-#### Package vs Service
-
-- **Package** → the app's compiled code that we download and store on the server. It just sits on disk. Example: `dnf install nginx -y` downloads the Nginx package.
-- **Service** → when that package is **running** in the background, it's called a service. Example: `systemctl start nginx` → Nginx is now a running service.
-
-| | Package | Service |
-|---|---------|---------|
-| What it is | Code/files stored on disk | The app running in the background |
-| How we get it | `dnf install nginx -y` | `systemctl start nginx` |
-| Doing work? | No, just stored | Yes, serving requests |
-| Our backend | Code in `/app` | Running via `backend.service` |
-
-Nginx and MySQL come with service files, so `systemctl start nginx` just works. Our backend is **custom code** - we write `/etc/systemd/system/backend.service` to tell Linux:
-- **Who** runs it (`User=`)
-- **How** to run it (`ExecStart=`)
-- **What settings** it needs (`Environment=`)
-
-A service file answers 3 questions:
-1. **Who** has to run this application?
-2. **How** to run the application?
-3. Does the application need any **environment** (DB URL, credentials, etc.)?
-
-What happens on `systemctl start backend`:
-1. Goes to `/etc/systemd/system`
-2. Searches for `backend.service`
-3. Runs the start command (`ExecStart`) and injects the environment
-4. Uses the `User` info to decide who runs the service
-
-#### systemctl Commands
-
-Works the same for packages (`nginx`) and our custom service (`backend`):
-
-```bash
-systemctl start backend      # start now
-systemctl stop backend       # stop
-systemctl restart backend    # stop + start
-systemctl status backend     # is it running?
-systemctl enable backend     # start automatically on boot
-systemctl disable backend    # don't start on boot
-```
-
-Example with a package: `dnf install nginx -y` → `systemctl start nginx` works straight away, because the package brings its own service file. Our backend is a customised application developed by us, so it can't start through systemctl until we write its service file.
-
-### 4. Server vs Client Packages
-
-| | Server | Client |
-|---|--------|--------|
-| Web | facebook.com | Chrome |
-| MySQL | `mysql-server` (DB server) | `mysql` (backend server) |
-
-### 5. Public IP vs Private IP
-
-| | Public IP | Private IP |
-|---|-----------|------------|
-| Reachable from | Internet | Only inside the network |
-| Example | `106.205.31.68` | `192.168.1.13`, `172.31.x.x` |
-| Changes on EC2 stop/start | Yes | No |
-| Use for | Users, SSH from laptop | Server-to-server |
-
-**IPv4** = 2^32 ≈ 4 billion addresses - not enough for every device, so private IPs are reused inside networks.
-
-### 6. Reverse Proxy
-
-Nginx on the frontend forwards `/api/` requests to the backend. The user never talks to the backend directly, so the backend stays private.
+System user, build tools, systemd service files, package vs service, server vs client, public vs private IP, reverse proxy → [concepts/](concepts/README.md)
 
 ---
 

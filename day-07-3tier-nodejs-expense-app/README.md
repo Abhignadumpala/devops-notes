@@ -400,6 +400,14 @@ WantedBy=multi-user.target
 | `RestartSec=5` | Wait 5 seconds before restarting |
 | `WantedBy=multi-user.target` | Allows `enable` (start on boot) |
 
+**What happens when we run `systemctl start backend`:**
+
+1. systemd looks in `/etc/systemd/system/`.
+2. It finds `backend.service`.
+3. It reads `User=expense` and runs the app as that user.
+4. It passes the `Environment=` values (DB details) into the app.
+5. It runs the `ExecStart=` command → `/bin/node /app/index.js`, and the app starts.
+
 ### 6. Load the Database Schema
 
 Install the MySQL **client** (the server is on the other machine):
@@ -434,13 +442,7 @@ systemctl status backend
 | `systemctl start backend` | Starts the app now |
 | `systemctl status backend` | Shows if the app is running |
 
-**What happens when we run `systemctl start backend`:**
-
-1. systemd looks in `/etc/systemd/system/`.
-2. It finds `backend.service`.
-3. It reads `User=expense` and runs the app as that user.
-4. It passes the `Environment=` values (DB details) into the app.
-5. It runs the `ExecStart=` command → `/bin/node /app/index.js`, and the app starts.
+Flow of `systemctl start backend` → [Step 5](#5-create-the-service-file).
 
 ### 8. Verify
 

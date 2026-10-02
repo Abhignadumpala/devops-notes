@@ -674,6 +674,18 @@ In this project: Node.js 24, `npm`, `package.json`, dependencies in `node_module
 
 ### 3. Systemd Service Files
 
+#### Package vs Service
+
+- **Package** → the app's compiled code that we download and store on the server. It just sits on disk. Example: `dnf install nginx -y` downloads the Nginx package.
+- **Service** → when that package is **running** in the background, it's called a service. Example: `systemctl start nginx` → Nginx is now a running service.
+
+| | Package | Service |
+|---|---------|---------|
+| What it is | Code/files stored on disk | The app running in the background |
+| How we get it | `dnf install nginx -y` | `systemctl start nginx` |
+| Doing work? | No, just stored | Yes, serving requests |
+| Our backend | Code in `/app` | Running via `backend.service` |
+
 Nginx and MySQL come with service files, so `systemctl start nginx` just works. Our backend is **custom code** - we write `/etc/systemd/system/backend.service` to tell Linux:
 - **Who** runs it (`User=`)
 - **How** to run it (`ExecStart=`)

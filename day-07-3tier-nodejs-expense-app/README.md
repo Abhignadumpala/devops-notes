@@ -333,6 +333,54 @@ id expense
 | `--shell /sbin/nologin` | Nobody can log in as this user |
 | `--comment` | Description |
 
+#### Check the User Was Created
+
+**1. `id expense`**
+
+```bash
+id expense
+```
+
+```
+uid=991(expense) gid=991(expense) groups=991(expense)
+```
+
+UID below 1000 → it's a **system user** (the number may be different on your server). If the user doesn't exist: `id: 'expense': no such user`.
+
+**2. Look in `/etc/passwd`** (where Linux stores all users)
+
+```bash
+grep expense /etc/passwd
+```
+
+```
+expense:x:991:991:expense system user:/app:/sbin/nologin
+```
+
+| Field | Value | Meaning |
+|-------|-------|---------|
+| 1 | `expense` | Username |
+| 2 | `x` | Password placeholder (stored elsewhere) |
+| 3 | `991` | UID (below 1000 = system user) |
+| 4 | `991` | GID |
+| 5 | `expense system user` | Our `--comment` |
+| 6 | `/app` | Our `--home` |
+| 7 | `/sbin/nologin` | Our `--shell` (no login) |
+
+This one line confirms all our `useradd` options.
+
+**3. Try to log in as the user** (should fail)
+
+```bash
+su - expense
+```
+
+```
+This account is currently not available.
+```
+
+This proves `/sbin/nologin` is working.
+
 ### 3. Download the Code
 
 ```bash

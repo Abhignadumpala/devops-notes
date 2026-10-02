@@ -15,6 +15,12 @@ A complete 3-tier app on 3 Linux servers, set up step by step.
 9. [Summary](#summary)
 10. [Interview Questions](#interview-questions)
 
+**Quick setup docs (commands only, per server):**
+
+- [01 - MySQL](01-mysql.md)
+- [02 - Backend](02-backend.md)
+- [03 - Frontend](03-frontend.md)
+
 ---
 
 ## What We Are Building

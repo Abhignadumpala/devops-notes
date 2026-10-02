@@ -491,6 +491,32 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
+**Example - filled in on my backend server:**
+
+```ini
+[Unit]
+Description=Expense Backend Service
+After=network.target
+
+[Service]
+User=expense
+Environment=DB_HOST=172.31.4.135
+Environment=DB_USER=expense
+Environment=DB_PWD=<db-app-password>
+Environment=DB_DATABASE=transactions
+ExecStart=/bin/node /app/index.js
+SyslogIdentifier=backend
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- `DB_HOST` → the **private IP of the MySQL server** (EC2 console → mysql instance → *Private IPv4 address*). Yours will be different.
+- `DB_PWD` → the password of the `expense` DB user, the same one set in `/app/schema/backend.sql`.
+- Save and exit vim: `Esc` → `:wq` → `Enter`.
+
 | Line | Meaning |
 |------|---------|
 | `After=network.target` | Start after network is ready |

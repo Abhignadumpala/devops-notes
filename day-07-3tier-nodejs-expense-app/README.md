@@ -410,6 +410,42 @@ ls /app
 
 `--strip-components=1` extracts the files directly into `/app` instead of a subfolder.
 
+#### What `mkdir -p /app` Means
+
+| Part | Meaning |
+|------|---------|
+| `mkdir` | **m**a**k**e **dir**ectory - creates a folder |
+| `-p` | **p**arents - creates missing parent folders, and **no error if the folder already exists** |
+| `/app` | The leading `/` means start from the top of the filesystem → folder is `/app` |
+
+```bash
+mkdir /app         # run twice → error: File exists
+mkdir -p /app      # run twice → no error, does nothing
+mkdir -p /a/b/c    # creates /a, /a/b and /a/b/c in one go
+```
+
+We use `-p` so the command is **safe to run again** (`useradd --home /app` may have already created it).
+
+#### Where Is `/app`?
+
+`/app` is at the **top** of the filesystem, not in root's home folder. If the prompt shows `[ root@backend ~ ]#`, the `~` means you are in `/root`, so plain `ls` won't show `app`.
+
+```
+/             ← top of the filesystem
+├── app       ← our folder
+├── etc
+├── root      ← root's home (~)
+└── ...
+```
+
+```bash
+ls -ld /app    # check the folder exists → drwxr-xr-x ... root root ... /app
+cd /app        # go into it
+pwd            # prints /app
+```
+
+A path starting with `/` (like `/app`) is the same from anywhere. `mkdir app` (no `/`) would create `/root/app` instead.
+
 ### 4. Install Dependencies
 
 ```bash

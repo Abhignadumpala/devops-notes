@@ -15,6 +15,10 @@
 11. [Command Cheat Sheet](#command-cheat-sheet)
 12. [Interview Questions](#interview-questions)
 
+**Topic notes (detailed):**
+
+- [Linux Administration and Operations (users, permissions, sudo)](../day-05-users-packages-services-processes/linux-administration.md)
+
 ---
 
 ## Vim Editor

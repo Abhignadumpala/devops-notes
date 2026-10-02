@@ -19,6 +19,10 @@
 15. [Command Cheat Sheet](#command-cheat-sheet)
 16. [Interview Questions](#interview-questions)
 
+**Topic notes (detailed):**
+
+- [Linux Commands Reference](linux-commands-reference.md)
+
 ---
 
 ## Connecting to EC2

@@ -14,6 +14,10 @@
 10. [Command Cheat Sheet](#command-cheat-sheet)
 11. [Interview Questions](#interview-questions)
 
+**Topic notes (detailed):**
+
+- [Linux Administration and Operations](linux-administration.md)
+
 ---
 
 ## Quick Recap - Vim & Users

@@ -268,12 +268,17 @@ SSH into the **backend** server and switch to root (`sudo su -`). All the steps 
 
 **Backend setup steps:**
 
-1. Install the programming runtime (Node.js)
-2. Create a system user
-3. Create one directory for the code (`/app`)
-4. Download the code
-5. Install dependencies/libraries
-6. Create a systemctl service file
+1. Install the programming language - Node.js 24
+2. Create one directory for the application - `/app`
+3. Create one system user to run the application - `expense`
+4. Download the application as `.tar.gz` into `/tmp`
+5. Extract it into `/app`
+6. Install dependencies (`npm install`)
+7. Create the systemctl service file
+8. Load the schema into the DB
+9. Start the application
+
+All 3 servers use the AMI **`Redhat-9-DevOps-Practice`** (`ami-0220d79f3f480ecf5`) - see [Step 2](#step-2-launch-3-ec2-instances).
 
 > **Note - Before building any Node.js application, check these first:**
 >

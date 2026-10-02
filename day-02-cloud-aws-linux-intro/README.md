@@ -16,6 +16,12 @@
 12. [Summary](#summary)
 13. [Interview Questions](#interview-questions)
 
+**Topic notes (detailed):**
+
+- [Why Cloud Migration Is Happening Now](cloud-migration.md)
+- [What Is a Computer?](what-is-a-computer.md)
+- [Operating Systems, Linux History, and Windows vs Linux](os-linux-and-windows-vs-linux.md)
+
 ---
 
 ## Why Is Everyone Moving to Cloud?

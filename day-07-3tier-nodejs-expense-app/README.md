@@ -663,54 +663,58 @@ I built an expense app on 3 EC2 servers. **DB**: installed MySQL, set the root p
 
 Instead of running applications on servers with human credentials, we use a system user to limit the blast radius and follow least privilege. It has no password, no login and no shell (`/sbin/nologin`), the app doesn't break when an employee leaves, and audit logs clearly show what the app did.
 
-**3. What is a systemd service file? Where is it stored?**
+**3. If a system user can't log in, how does the app run?**
+
+systemd starts it. The service file has `User=expense`, so `systemctl start backend` runs the app as the `expense` user. Nobody needs to log in, and the app gets only that user's permissions.
+
+**4. What is a systemd service file? Where is it stored?**
 
 A config file that tells Linux how to run an app as a service - who runs it (`User`), how (`ExecStart`), settings (`Environment`), and restart behaviour. Custom ones go in `/etc/systemd/system/<name>.service`.
 
-**4. Why run `systemctl daemon-reload`?**
+**5. Why run `systemctl daemon-reload`?**
 
 systemd caches service files. After creating or editing one, `daemon-reload` makes it read the changes.
 
-**5. What does `Restart=on-failure` do?**
+**6. What does `Restart=on-failure` do?**
 
 Automatically restarts the app if it crashes (after `RestartSec` seconds).
 
-**6. What is a build tool? Give examples.**
+**7. What is a build tool? Give examples.**
 
 Automates downloading dependencies, compiling, testing and packaging into an artifact. Java → Maven (`pom.xml`), Node.js → npm (`package.json`), Python → pip (`requirements.txt`).
 
-**7. What is an artifact?**
+**8. What is an artifact?**
 
 The packaged, ready-to-deploy output of a build - `.jar`, `.war`, `.zip`, `.tar.gz`.
 
-**8. `package.json` vs `package-lock.json` vs `node_modules`?**
+**9. `package.json` vs `package-lock.json` vs `node_modules`?**
 
 `package.json` lists dependencies and app info. `package-lock.json` lists every dependency, including the dependencies of dependencies, with exact versions. `node_modules/` holds the downloaded dependencies.
 
-**9. What is a reverse proxy? Why use Nginx for it?**
+**10. What is a reverse proxy? Why use Nginx for it?**
 
 A server that receives client requests and forwards them to backend servers. Nginx serves the frontend and forwards `/api/` to the backend, so the backend is never exposed to the internet.
 
-**10. Public IP vs private IP? Why use private IP between servers?**
+**11. Public IP vs private IP? Why use private IP between servers?**
 
 Public IP is reachable from the internet and changes on stop/start. Private IP works only inside the VPC and doesn't change. Server-to-server traffic uses private IPs - more secure, faster, no data charges.
 
-**11. How do you secure a 3-tier app with security groups?**
+**12. How do you secure a 3-tier app with security groups?**
 
 Frontend: 80/443 from `0.0.0.0/0`. Backend: 8080 only from frontend SG. DB: 3306 only from backend SG. SSH 22 only from my IP.
 
-**12. `mysql-server` vs `mysql` package?**
+**13. `mysql-server` vs `mysql` package?**
 
 `mysql-server` is the database server (on the DB machine). `mysql` is the client used to connect to it (on the backend machine).
 
-**13. Why use `dnf module`?**
+**14. Why use `dnf module`?**
 
 RHEL offers several versions of software like Node.js as modules. `dnf module disable` / `enable nodejs:24` installs the exact version the app needs.
 
-**14. The page loads but shows no data. How do you debug?**
+**15. The page loads but shows no data. How do you debug?**
 
 Check backend status and logs (`systemctl status backend`, `journalctl -u backend`), test `curl http://localhost:8080/health`, check backend IP in Nginx config, check DB connectivity from backend (`mysql -h <db-ip>`), and check SG ports 8080 and 3306.
 
-**15. How do you validate Nginx config before restarting?**
+**16. How do you validate Nginx config before restarting?**
 
 `nginx -t`.

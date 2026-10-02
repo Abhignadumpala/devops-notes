@@ -452,7 +452,7 @@ tar -xzf /tmp/backend.tar.gz --strip-components=1
 ls /app
 ```
 
-`--strip-components=1` extracts the files directly into `/app` instead of a subfolder.
+`--strip-components=1` removes the first folder level from each path in the archive. This package stores files as `./index.js`, `./package.json`..., so it only strips the leading `./` - plain `tar -xzf` gives the same result here. It matters when a package has everything inside a top folder (e.g. `backend/index.js`); then it puts the files straight into `/app` instead of `/app/backend/`.
 
 #### What `mkdir -p /app` Means
 

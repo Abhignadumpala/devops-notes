@@ -101,7 +101,7 @@ tar -xzf /tmp/backend.tar.gz
 | `cd /app` | Go into `/app`, so the files are extracted here |
 | `tar -xzf /tmp/backend.tar.gz` | `x` = extract, `z` = it's gzip-compressed (`.gz`), `f` = file name follows |
 
-After this, `/app` has the code: `index.js`, `package.json`, `schema/` etc. (The v3 package had everything inside a subfolder, which is why the main notes use `--strip-components=1`.)
+After this, `/app` has the code: `index.js`, `package.json`, `schema/` etc. The package stores its files at the top level (`./index.js`, `./package.json`...), so they land directly in `/app` - no subfolder.
 
 ---
 

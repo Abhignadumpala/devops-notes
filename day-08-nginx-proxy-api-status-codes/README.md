@@ -88,7 +88,7 @@ The frontend is just **HTML, CSS and JS** files. They don't run on the server - 
 
 | URL typed | What actually happens |
 |-----------|-----------------------|
-| `http://<public-ip>/` | Linux server, HTTP on port **80** |
+| `http://<public-ip>/` | Connects to the Linux server on HTTP port **80** - no port typed, so the browser uses 80 by default (same as `http://<public-ip>:80/`) |
 | `http://mydomain.com` | Same as `http://<public-ip>/` - the domain is just a name for the IP |
 | `http://mydomain.com:81` | Any port other than 80/443 must be typed |
 | `https://mydomain.com` | Same as `https://mydomain.com:443` |

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 28px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .col { font-size: 18px; font-weight: 700; fill: #ffffff; }
+    .code { font-family: Consolas, Menlo, monospace; font-size: 18px; font-weight: 800; }
+    .name { font-size: 15px; font-weight: 700; fill: #0f172a; }
+    .why { font-size: 13.5px; fill: #475569; }
+  </style>
+  <rect width="1200" height="640" rx="16" fill="#ffffff"/>
+  <text x="600" y="40" text-anchor="middle" class="title">What Causes Each Status Code - Testing Our App</text>
+  <text x="600" y="66" text-anchor="middle" class="sub">first digit: 2 = success · 3 = redirect · 4 = our mistake · 5 = server/app problem</text>
+
+  <!-- 2XX / 3XX column -->
+  <rect x="30" y="90" width="270" height="44" rx="10" fill="#16a34a"/>
+  <text x="165" y="119" text-anchor="middle" class="col">2XX Success</text>
+  <g>
+    <rect x="30" y="144" width="270" height="70" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="46" y="172" class="code" fill="#15803d">200</text><text x="96" y="172" class="name">OK</text>
+    <text x="46" y="198" class="why">GET all / GET one transaction</text>
+    <rect x="30" y="224" width="270" height="70" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="46" y="252" class="code" fill="#15803d">201</text><text x="96" y="252" class="name">Created</text>
+    <text x="46" y="278" class="why">POST a new transaction</text>
+  </g>
+  <rect x="30" y="314" width="270" height="44" rx="10" fill="#2563eb"/>
+  <text x="165" y="343" text-anchor="middle" class="col">3XX Redirect</text>
+  <g>
+    <rect x="30" y="368" width="270" height="70" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="46" y="396" class="code" fill="#1d4ed8">301</text><text x="96" y="396" class="name">Moved permanently</text>
+    <text x="46" y="422" class="why">new location sent, browser follows it</text>
+    <rect x="30" y="448" width="270" height="70" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="46" y="476" class="code" fill="#1d4ed8">304</text><text x="96" y="476" class="name">Not modified</text>
+    <text x="46" y="502" class="why">nothing changed, use your old copy</text>
+  </g>
+
+  <!-- 4XX column -->
+  <rect x="320" y="90" width="420" height="44" rx="10" fill="#ea580c"/>
+  <text x="530" y="119" text-anchor="middle" class="col">4XX Client error - our mistake</text>
+  <g>
+    <rect x="320" y="144" width="420" height="70" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="336" y="172" class="code" fill="#c2410c">400</text><text x="386" y="172" class="name">Bad request</text>
+    <text x="336" y="198" class="why">input not correct - broken JSON ("malformed JSON body")</text>
+    <rect x="320" y="224" width="420" height="70" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="336" y="252" class="code" fill="#c2410c">401</text><text x="386" y="252" class="name">Unauthorized</text>
+    <text x="336" y="278" class="why">no credentials sent - DELETE all without admin token</text>
+    <rect x="320" y="304" width="420" height="70" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="336" y="332" class="code" fill="#c2410c">403</text><text x="386" y="332" class="name">Forbidden</text>
+    <text x="336" y="358" class="why">credentials sent, but wrong / not allowed</text>
+    <rect x="320" y="384" width="420" height="70" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="336" y="412" class="code" fill="#c2410c">404</text><text x="386" y="412" class="name">Not found</text>
+    <text x="336" y="438" class="why">asking for something that isn't there</text>
+    <rect x="320" y="464" width="420" height="70" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="336" y="492" class="code" fill="#c2410c">405</text><text x="386" y="492" class="name">Method not allowed</text>
+    <text x="336" y="518" class="why">URL exists but not for that method (e.g. PUT)</text>
+  </g>
+
+  <!-- 5XX column -->
+  <rect x="760" y="90" width="410" height="44" rx="10" fill="#dc2626"/>
+  <text x="965" y="119" text-anchor="middle" class="col">5XX Server error - app side</text>
+  <g>
+    <rect x="760" y="144" width="410" height="70" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="776" y="172" class="code" fill="#b91c1c">500</text><text x="826" y="172" class="name">Internal server error</text>
+    <text x="776" y="198" class="why">something broke inside the app - check backend logs</text>
+    <rect x="760" y="224" width="410" height="70" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="776" y="252" class="code" fill="#b91c1c">502</text><text x="826" y="252" class="name">Bad gateway</text>
+    <text x="776" y="278" class="why">backend down - Nginx can't connect to it</text>
+    <rect x="760" y="304" width="410" height="70" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="776" y="332" class="code" fill="#b91c1c">503</text><text x="826" y="332" class="name">Service unavailable</text>
+    <text x="776" y="358" class="why">DB down - test: systemctl stop mysqld</text>
+    <rect x="760" y="384" width="410" height="70" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="776" y="412" class="code" fill="#b91c1c">504</text><text x="826" y="412" class="name">Gateway timeout</text>
+    <text x="776" y="438" class="why">backend up, but too slow to answer</text>
+  </g>
+
+  <rect x="30" y="560" width="1140" height="56" rx="12" fill="#0f172a"/>
+  <text x="600" y="594" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">Browser address bar = GET only.  To test POST / PUT / DELETE use <tspan fill="#86efac">Postman</tspan>, <tspan fill="#86efac">HTTPie</tspan> or <tspan fill="#86efac">curl</tspan>.</text>
+</svg>

@@ -14,5 +14,5 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 6 - 3-Tier Architecture & Databases](day-06-3-tier-architecture-databases/README.md)
 - [Day 7 - Expense Project: Database, Backend & Frontend](day-07-3tier-nodejs-expense-app/README.md)
 - [Day 8 - Nginx, Forward & Reverse Proxy, REST API & HTTP Status Codes](day-08-nginx-proxy-api-status-codes/README.md)
-- [Day 9 - Nginx Important Directories](day-09-nginx-important-directories/README.md)
+- [Day 9 - Nginx Directories, API Testing & Status Codes](day-09-nginx-api-testing-status-codes/README.md)
 - [Day 10 - DNS: Domains, Registrars & Route 53](day-10-dns-domains/README.md)

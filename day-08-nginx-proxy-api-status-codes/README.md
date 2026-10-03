@@ -482,17 +482,43 @@ systemctl restart nginx     # apply the change
 
 An **HTTP method** tells the server **what action** you want on the data. Almost every app only does four things with data - **CRUD** = Create, Read, Update, Delete - and each maps to a method.
 
-**Examples:**
+The **URLs** (like `/api/transaction`) and which methods they accept are **created by the developers** when they build the backend. We just call them.
 
-| CRUD | Method | URL | Body |
-|------|--------|-----|------|
-| Read all | `GET` | `http://<public-ip>/api/transaction` | - |
-| Read one | `GET` | `http://<public-ip>/api/transaction/31` | - |
-| Create | `POST` | `http://<public-ip>/api/transaction` | `{"amount": 200, "category": "Entertainment", "description": "movie"}` |
-| Update | `PUT` | `http://<public-ip>/api/transaction` | Full record **with** `id` (below) |
-| Delete | `DELETE` | `http://<public-ip>/api/transaction/32` | - (deletes transaction 32) |
+| CRUD | Method | In simple words |
+|------|--------|-----------------|
+| **C**reate | `POST` | Send new data → it gets saved in the DB |
+| **R**ead | `GET` | Get data from the DB and read it |
+| **U**pdate | `PUT` | Change data that's already in the DB |
+| **D**elete | `DELETE` | Remove data from the DB |
 
-`PUT` - updating transaction 17's category:
+### GET - read data
+
+```text
+URL:    http://<public-ip>/api/transaction        → reads ALL transactions
+URL:    http://<public-ip>/api/transaction/31     → reads ONLY transaction 31
+Method: GET
+```
+
+- With a number at the end (`/31`) → only that one record.
+- Without a number → all the records.
+- `GET` only reads - it never changes anything in the DB.
+
+### POST - create data
+
+```text
+URL:    http://<public-ip>/api/transaction
+Method: POST
+Body:   {"amount": 200, "category": "Entertainment", "description": "movie"}
+```
+
+We **post** (send) the new data in the body → the backend saves it in the DB as a new transaction. No `id` in the body - the DB gives it a new `id`.
+
+### PUT - update data
+
+```text
+URL:    http://<public-ip>/api/transaction
+Method: PUT
+```
 
 ```json
 {
@@ -503,58 +529,67 @@ An **HTTP method** tells the server **what action** you want on the data. Almost
 }
 ```
 
-Try them with `curl`:
+The `id` tells **which** record to change (transaction 17) → its details are replaced with what we sent (here the category becomes `Entertainment`).
+
+### DELETE - delete data
+
+```text
+URL:    http://<public-ip>/api/transaction/32
+Method: DELETE
+```
+
+Deletes transaction number **32** from the DB.
+
+### Try them with `curl`
 
 ```bash
-curl http://<public-ip>/api/transaction                         # GET
+curl http://<public-ip>/api/transaction                          # GET all
+curl http://<public-ip>/api/transaction/31                       # GET one
 curl -X POST http://<public-ip>/api/transaction \
      -H "Content-Type: application/json" \
      -d '{"amount": 200, "category": "Entertainment", "description": "movie"}'
-curl -X DELETE http://<public-ip>/api/transaction/32             # DELETE
+curl -X DELETE http://<public-ip>/api/transaction/32              # DELETE
 ```
 
 ## HTTP Status Codes
 
 ![HTTP status codes](images/04-http-status-codes.svg)
 
-A **status code** is a 3-digit number the server sends back with every response to say **what happened** - success, moved, your mistake, or the server's mistake. Computers only care about numbers, humans can't remember them all - so we just learn the ranges.
+A **status code** is a 3-digit number the server sends back with every response to say **what happened**. Computers only care about numbers, humans can't remember them all - so we just learn the ranges.
 
-| Range | Meaning |
-|-------|---------|
-| **1XX** | Information |
-| **2XX** | Success |
-| **3XX** | Redirection |
-| **4XX** | Client-side error |
-| **5XX** | Server-side error |
+- The codes themselves are **standard** (same meaning everywhere). The **developers** decide which code their app sends back in each situation.
+- By looking at the code, we can tell if our request **succeeded or failed** - and if it failed, **whose side** the problem is on.
 
-**2XX - Success**
+| Starts with | Meaning | Whose side |
+|-------------|---------|------------|
+| **1XX** | Information | - |
+| **2XX** | Success | Everything worked |
+| **3XX** | Redirection | Go to another URL |
+| **4XX** | Client-side error | **Our** mistake (the request) |
+| **5XX** | Server-side error | The **application/server's** problem |
 
-| Code | Meaning |
-|------|---------|
-| `200` | OK - you got the response |
-| `201` | Created (after `POST`) |
-| `204` | No content - info deleted (after `DELETE`) |
+### 2XX - Success
 
-**4XX - Client-side error** (the request is wrong)
+If the code starts with **2**, the request worked.
 
-| Code | Meaning |
-|------|---------|
-| `400` | Bad request |
-| `401` | Wrong credentials (not logged in) |
-| `403` | No authorization (logged in, but not allowed) |
-| `404` | Not found |
+| Code | Meaning | When |
+|------|---------|------|
+| `200` | OK - you got the response | `GET` worked |
+| `201` | Created | `POST` saved new data |
+| `204` | No content | `DELETE` worked - info deleted, nothing to send back |
 
-**5XX - Server-side error** (the request is fine, the server failed)
+### 4XX - Client-side error
 
-| Code | Meaning |
-|------|---------|
-| `500` | Internal server error |
-| `501` | Not implemented |
-| `502` | Bad gateway - frontend (Nginx) is not able to connect to the backend |
-| `503` | Service unavailable |
-| `504` | Gateway timeout - backend is not responding on time |
+If the code starts with **4**, it's **our mistake** - we asked for something wrong, something that isn't there, or something we're not allowed to see.
 
-**Client mistake example** - a typo in the key (`descrition` instead of `description`):
+| Code | Meaning | In simple words |
+|------|---------|-----------------|
+| `400` | Bad request | The request itself is wrong (bad/missing data) |
+| `401` | Unauthorized | Wrong credentials / not logged in |
+| `403` | Forbidden | Logged in, but **no access** - not authorised for this |
+| `404` | Not found | Asking for data/page that isn't there (e.g. `/api/transaction/9999`) |
+
+**Example** - a typo in the key (`descrition` instead of `description`):
 
 ```json
 {
@@ -565,9 +600,21 @@ A **status code** is a 3-digit number the server sends back with every response 
 }
 ```
 
-The backend doesn't get the `description` field it expects. That's the **client's** fault, so the answer is in the **4XX** range (e.g. `400 Bad Request`), not 5XX.
+The backend doesn't get the `description` field it expects. That's **our** mistake, so the answer is a **4XX** (e.g. `400 Bad Request`), not 5XX.
 
-> **Quick rule:** 4XX → check what you sent. 5XX → check the server (502/504 → is the backend up and reachable?).
+### 5XX - Server-side error
+
+If the code starts with **5**, our request was fine - the problem is on the **application/server side**.
+
+| Code | Meaning | In simple words |
+|------|---------|-----------------|
+| `500` | Internal server error | Something broke inside the application - the code doesn't say what. Check the backend logs |
+| `501` | Not implemented | The server doesn't support this feature yet - rarely seen |
+| `502` | Bad gateway | The frontend (Nginx) can't connect to the backend / didn't get a proper response from it |
+| `503` | Service unavailable | The service is down or too busy right now |
+| `504` | Gateway timeout | The backend is up but didn't answer in time |
+
+> **Quick rule:** 2XX → success. 4XX → check what **you** sent. 5XX → check the **server** (502/504 → is the backend up and reachable?).
 
 ## Summary
 

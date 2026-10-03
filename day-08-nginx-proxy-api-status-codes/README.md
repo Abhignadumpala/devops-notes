@@ -17,7 +17,7 @@
    - [Ports and Domains](#ports-and-domains)
    - [Nginx Logs](#nginx-logs)
 4. [Forward Proxy vs Reverse Proxy](#forward-proxy-vs-reverse-proxy)
-5. [Load Balancing - The Team Lead Analogy](#load-balancing---the-team-lead-analogy)
+5. [Load Balancing](#load-balancing)
 6. [Nginx Reverse Proxy Config](#nginx-reverse-proxy-config)
 7. [Side Note: sudoers](#side-note-sudoers)
 8. [API](#api)
@@ -32,7 +32,9 @@
 
 ## Quick Recap - Deploying the Backend
 
-Any application deployment follows the same 9 steps:
+Deploying an app means getting its code onto a server and keeping it running. Whatever the language, the steps are the same - only the commands change.
+
+**The 9 steps (Node.js example):**
 
 1. Install the programming language - `nodejs:24`
 2. Create a directory for the application - `/app`
@@ -63,9 +65,13 @@ The frontend is just **HTML, CSS and JS** files. They don't run on the server - 
 
 ## Nginx
 
+**Nginx** (pronounced "engine-x") is a web server - software that listens on a port (80/443), receives requests from browsers and sends back a response. It's light, fast and can handle thousands of connections at once.
+
 ![Why Nginx is popular](images/01-why-nginx-is-popular.svg)
 
 ### Why Nginx Is Popular
+
+Most tools do one job. Nginx can do five, so one install covers many needs:
 
 | Role | What it does |
 |------|--------------|
@@ -76,6 +82,8 @@ The frontend is just **HTML, CSS and JS** files. They don't run on the server - 
 | **Caching server** | Keeps copies of responses to answer faster |
 
 ### Important Paths
+
+On Linux, every package puts its files in fixed places. Knowing these 4 paths is enough to deploy, configure and debug Nginx.
 
 | Path | What |
 |------|------|
@@ -88,6 +96,10 @@ The frontend is just **HTML, CSS and JS** files. They don't run on the server - 
 > In `/etc/nginx/nginx.conf` - change the `listen 80;` line in the `server` block, then `nginx -t` and `systemctl restart nginx`.
 
 ### Ports and Domains
+
+A **port** is like a door number on the server - one IP can run many apps, each listening on its own port. A **domain** is just an easy name that DNS turns into the IP.
+
+**Examples:**
 
 | URL typed | What actually happens |
 |-----------|-----------------------|
@@ -105,6 +117,8 @@ The frontend is just **HTML, CSS and JS** files. They don't run on the server - 
 - If the server uses a non-default port (like 81), the browser still tries 80 unless you type `:81` - that's why we stick to the defaults.
 
 ### Nginx Logs
+
+A **log** is a file where Nginx writes down everything that happens - like a register at a building entrance. When something breaks, logs are the first place to look.
 
 Both logs are in `/var/log/nginx/`:
 
@@ -138,7 +152,17 @@ tail -f /var/log/nginx/error.log     # watch errors live (-f = follow, shows new
 
 ![Forward proxy vs reverse proxy and the team lead analogy](images/02-forward-vs-reverse-proxy.svg)
 
-**Proxy** = someone acting **on behalf of** someone else.
+**Proxy** = someone acting **on behalf of** someone else - a middleman between the client and the server.
+
+- **Forward proxy** sits on the **client's side**. The client sends its request to the proxy, and the proxy goes to the internet for it. The website sees the proxy, not the real client.
+- **Reverse proxy** sits on the **server's side**. The client thinks it's talking to the website, but the proxy receives the request and passes it to the real server behind it. The client never sees the real server.
+
+**Analogies:**
+
+- Forward proxy = asking a friend to buy something for you - the shop only sees your friend.
+- Reverse proxy = a hotel reception - guests talk to reception, which sends the request to housekeeping, kitchen, etc. Guests never deal with the staff behind it directly.
+
+**Comparison:**
 
 | | Forward Proxy | Reverse Proxy |
 |---|---------------|---------------|
@@ -152,9 +176,32 @@ Forward:  Client → [Forward Proxy] → Internet → Server
 Reverse:  Client → Internet → [Reverse Proxy] → Server(s)
 ```
 
-## Load Balancing - The Team Lead Analogy
+## Load Balancing
 
-When there are many servers, someone has to **queue and spread** the requests - that's the load balancer.
+One server can handle only so many requests. When traffic grows, we run **many copies of the same app on many servers**. Now someone has to decide which server gets each request - that's the **load balancer**.
+
+A load balancer:
+
+- Is the **single entry point** - users hit the load balancer, not the servers
+- **Spreads requests** across servers so no single server is overloaded
+- **Checks health** - if a server is down, it stops sending requests to it
+- Makes adding/removing servers easy - users don't notice
+
+```text
+              Users
+                │
+                ▼
+        ┌───────────────┐
+        │ Load Balancer │   (e.g. Nginx)
+        └───────────────┘
+         │      │      │
+         ▼      ▼      ▼
+     Server1 Server2 Server3   ← same app on all
+```
+
+The simplest method is **round-robin** - request 1 → server 1, request 2 → server 2, request 3 → server 3, then back to server 1.
+
+### Analogy - The Team Lead
 
 Think of a team lead (TL):
 
@@ -176,6 +223,8 @@ A delivery manager works the same way one level up - they don't do the work, the
 The load balancer = TL: it checks which servers are healthy and how busy they are, and sends each request to one of them.
 
 ## Nginx Reverse Proxy Config
+
+This is how we make our frontend Nginx act as a reverse proxy: any request starting with `/api/` is passed to the backend server, everything else is served from the HTML folder. The extra headers make sure the backend still knows who the real user is.
 
 `/etc/nginx/default.d/expense.conf`:
 
@@ -217,6 +266,8 @@ systemctl restart nginx
 
 ## Side Note: sudoers
 
+`sudo` lets a normal user run commands as root. Who is allowed to use sudo is decided by the **sudoers** config.
+
 Two ways to give a user sudo access:
 
 1. `/etc/sudoers` → direct changes in the main file (edit with `visudo`)
@@ -228,7 +279,9 @@ Two ways to give a user sudo access:
 
 **API = Application Programming Interface** - the way one program talks to another. Here the frontend (browser) talks to the backend through the API, and the data comes back as **JSON**.
 
-`GET http://<public-ip>/api/transaction`:
+**Analogy:** a waiter in a restaurant - you (frontend) don't go into the kitchen (backend); you give your order to the waiter (API), and the waiter brings back the food (JSON response).
+
+**Example:** `GET http://<public-ip>/api/transaction`:
 
 ```json
 {
@@ -243,7 +296,9 @@ Two ways to give a user sudo access:
 
 ## HTTP Methods (CRUD)
 
-**CRUD** = Create, Read, Update, Delete - every app does these four things, and each maps to an HTTP method:
+An **HTTP method** tells the server **what action** you want on the data. Almost every app only does four things with data - **CRUD** = Create, Read, Update, Delete - and each maps to a method.
+
+**Examples:**
 
 | CRUD | Method | URL | Body |
 |------|--------|-----|------|
@@ -278,7 +333,7 @@ curl -X DELETE http://<public-ip>/api/transaction/32             # DELETE
 
 ![HTTP status codes](images/04-http-status-codes.svg)
 
-Computers only care about numbers, humans can't remember numbers - so every response carries a **status code** and we just need to know the ranges.
+A **status code** is a 3-digit number the server sends back with every response to say **what happened** - success, moved, your mistake, or the server's mistake. Computers only care about numbers, humans can't remember them all - so we just learn the ranges.
 
 | Range | Meaning |
 |-------|---------|

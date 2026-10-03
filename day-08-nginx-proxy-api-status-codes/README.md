@@ -24,12 +24,13 @@
    - [Public LB vs Private (Internal) LB](#public-lb-vs-private-internal-lb)
    - [Forward Proxy vs Reverse Proxy vs Load Balancer](#forward-proxy-vs-reverse-proxy-vs-load-balancer)
 6. [Nginx Reverse Proxy Config](#nginx-reverse-proxy-config)
-7. [Side Note: sudoers](#side-note-sudoers)
-8. [API](#api)
-9. [HTTP Methods (CRUD)](#http-methods-crud)
-10. [HTTP Status Codes](#http-status-codes)
-11. [Summary](#summary)
-12. [Interview Questions](#interview-questions)
+   - [Never Edit the Main File - Use a Separate File](#never-edit-the-main-file---use-a-separate-file)
+   - [The Main Part - Sending /api/ to the Backend](#the-main-part---sending-api-to-the-backend)
+7. [API](#api)
+8. [HTTP Methods (CRUD)](#http-methods-crud)
+9. [HTTP Status Codes](#http-status-codes)
+10. [Summary](#summary)
+11. [Interview Questions](#interview-questions)
 
 **Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg) · [User → LB → Frontend → Backend → DB](images/05-user-lb-frontend-backend-db.svg)
 
@@ -377,6 +378,26 @@ In a real setup there's a load balancer in front of **each tier**:
 
 This is how we make our frontend Nginx act as a reverse proxy: any request starting with `/api/` is passed to the backend server, everything else is served from the HTML folder. The extra headers make sure the backend still knows who the real user is.
 
+### Never Edit the Main File - Use a Separate File
+
+Remember how we gave sudo access: instead of editing the main `/etc/sudoers` file, we created a **separate file** in `/etc/sudoers.d/`. We do the **same thing** with Nginx:
+
+| | Main file (don't touch) | Our separate file (edit here) |
+|---|-------------------------|-------------------------------|
+| sudo | `/etc/sudoers` | `/etc/sudoers.d/<user>` |
+| Nginx | `/etc/nginx/nginx.conf` | `/etc/nginx/default.d/expense.conf` |
+
+The main `nginx.conf` already loads every `.conf` file from `/etc/nginx/default.d/` (`include /etc/nginx/default.d/*.conf;`), so our file is picked up automatically.
+
+**Why this is the best approach:**
+
+- The main file's code is **not disturbed** - the default setup keeps working.
+- If our config has a mistake, we only fix or delete **our own small file**.
+- Everything we added is in one place - easy to see, copy or remove.
+- Package updates can replace the main file, but our file stays.
+
+> **Rule:** never edit the default main config files. Always put your changes in a **separate file**.
+
 `/etc/nginx/default.d/expense.conf`:
 
 ```nginx
@@ -408,21 +429,33 @@ location /health {
 | `location /health` + `stub_status on` | Shows Nginx's own stats (active connections, requests) at `http://<public-ip>/health` |
 | `access_log off` | Don't fill the log with health-check hits |
 
+### The Main Part - Sending /api/ to the Backend
+
+```nginx
+location /api/ {
+    proxy_pass http://<backend-private-ip>:8080/;
+}
+```
+
+In simple words: **anyone requesting a URL that starts with `/api` → Nginx sends that request to the backend server's IP on port 8080.**
+
+```text
+User:  http://<public-ip>/api/transaction
+         │
+         ▼
+Nginx sees "/api/" → forwards to → http://<backend-private-ip>:8080/transaction → Backend
+```
+
+- `location /api/` → "match every request whose path starts with `/api/`".
+- `proxy_pass http://<backend-private-ip>:8080/` → "send it to this server". We use the backend's **private IP**, because the backend is not open to the internet - only Nginx can reach it.
+- Any other request (`/`, `/index.html`, css, js) does **not** match, so Nginx serves it from `/usr/share/nginx/html/` as usual.
+
 After editing, always:
 
 ```bash
 nginx -t                    # check config syntax
-systemctl restart nginx
+systemctl restart nginx     # apply the change
 ```
-
-## Side Note: sudoers
-
-`sudo` lets a normal user run commands as root. Who is allowed to use sudo is decided by the **sudoers** config.
-
-Two ways to give a user sudo access:
-
-1. `/etc/sudoers` → direct changes in the main file (edit with `visudo`)
-2. `/etc/sudoers.d/` → individual config files, one per user/group (cleaner, easy to add/remove)
 
 ## API
 

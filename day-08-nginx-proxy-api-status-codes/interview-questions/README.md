@@ -50,9 +50,9 @@ Create → `POST`, Read → `GET`, Update → `PUT`, Delete → `DELETE`.
 
 4XX (e.g. `400 Bad Request`) - the mistake is in what the client sent, not on the server.
 
-**13. Two ways to give a user sudo access?**
+**13. Why put Nginx config in `/etc/nginx/default.d/expense.conf` instead of editing `nginx.conf`?**
 
-Edit `/etc/sudoers` directly (with `visudo`), or drop an individual file into `/etc/sudoers.d/` - the second is cleaner to add/remove.
+Same idea as `/etc/sudoers.d/` vs `/etc/sudoers`: never edit the main default file. A separate file keeps the main config untouched, keeps mistakes isolated to our own file, keeps all our changes in one place, and survives package updates. `nginx.conf` loads it automatically with `include /etc/nginx/default.d/*.conf;`.
 
 **14. Where do you change Nginx's default port number?**
 

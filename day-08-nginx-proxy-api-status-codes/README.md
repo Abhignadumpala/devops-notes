@@ -25,6 +25,7 @@
    - [Forward Proxy vs Reverse Proxy vs Load Balancer](#forward-proxy-vs-reverse-proxy-vs-load-balancer)
 6. [Nginx Reverse Proxy Config](#nginx-reverse-proxy-config)
    - [Never Edit the Main File - Use a Separate File](#never-edit-the-main-file---use-a-separate-file)
+   - [Our Config File - expense.conf](#our-config-file---expenseconf)
    - [The Main Part - Sending /api/ to the Backend](#the-main-part---sending-api-to-the-backend)
 7. [API](#api)
    - [How an API Request Travels](#how-an-api-request-travels)
@@ -53,7 +54,7 @@
 
 ## Quick Recap - Deploying the Backend
 
-Deploying an app means getting its code onto a server and keeping it running. Whatever the language, the steps are the same - only the commands change.
+*Recap from Day 7.* Deploying an app means getting its code onto a server and keeping it running. Whatever the language, the steps are the same - only the commands change.
 
 **The 9 steps (Node.js example):**
 
@@ -101,10 +102,10 @@ We write the website as HTML/CSS/JS files and keep them in Nginx's folder (`/usr
 **In short:** we keep the files → Nginx serves them → the user sees the webpage.
 
 ```text
-/usr/share/nginx/html/index.html   →   http://<public-ip>/   →   webpage in the browser
+/usr/share/nginx/html/index.html   →   http://<frontend-ip>/   →   webpage in the browser
 ```
 
-**Example:** in our expense app, the frontend files are extracted into `/usr/share/nginx/html`, and opening `http://<public-ip>/` shows the expense app UI.
+**Example:** in our expense app, the frontend files are extracted into `/usr/share/nginx/html`, and opening `http://<frontend-ip>/` shows the expense app UI.
 
 #### 2. Load Balancer
 
@@ -116,7 +117,7 @@ When the same app runs on many servers, Nginx receives every request and shares 
 
 Nginx receives the user's request and **forwards it to another server** behind it (like our backend), then sends the answer back to the user. The user only talks to Nginx and never sees the backend.
 
-**Example:** `http://<public-ip>/api/transaction` → Nginx forwards it to `http://<backend-private-ip>:8080/transaction`. More in [Forward Proxy vs Reverse Proxy](#forward-proxy-vs-reverse-proxy).
+**Example:** `http://<frontend-ip>/api/transaction` → Nginx forwards it to `http://<backend-private-ip>:8080/transaction`. More in [Forward Proxy vs Reverse Proxy](#forward-proxy-vs-reverse-proxy).
 
 ![User → Load Balancer → Frontend → Backend → Database](images/05-user-lb-frontend-backend-db.svg)
 
@@ -151,7 +152,7 @@ On Linux, every package puts its files in fixed places. Everything we do with Ng
 |------|------|
 | `/etc/nginx/nginx.conf` | Main (default) Nginx configuration - we read it, we don't edit it |
 | `/usr/share/nginx/html/` | Nginx default HTML directory - our website files go here |
-| `/usr/share/nginx/html/index.html` | Default HTML page. If you open `http://<public-ip>/` and see the Nginx welcome page, **Nginx is installed and running** |
+| `/usr/share/nginx/html/index.html` | Default HTML page. If you open `http://<frontend-ip>/` and see the Nginx welcome page, **Nginx is installed and running** |
 | `/var/log/nginx/` | Nginx logs - `access.log` and `error.log` |
 | `/etc/nginx/default.d/expense.conf` | **Our** custom config - the expense reverse proxy (`/api/` → backend). Extra configs go here so the main config isn't disturbed |
 
@@ -175,8 +176,7 @@ What's inside the main `nginx.conf`:
 - `log_format` / `access_log` → how and where requests are logged
 - `include /etc/nginx/default.d/*.conf;` → loads our extra config files automatically
 
-> **Interview Q:** Where do you change Nginx's default port number?
-> In `/etc/nginx/nginx.conf` - change the `listen 80;` line in the `server` block, then `nginx -t` and `systemctl restart nginx`.
+**Changing the port:** the default port comes from `listen 80;` in the `server` block of `nginx.conf` - that's where you'd look in an interview answer. In practice, following the "don't edit the main file" rule, we'd add our own `server { listen 81; ... }` in a new file under `/etc/nginx/conf.d/` instead of changing `nginx.conf`. Then `nginx -t` and `systemctl restart nginx`.
 
 ### Ports and Domains
 
@@ -186,8 +186,8 @@ A **port** is like a door number on the server - one IP can run many apps, each 
 
 | URL typed | What actually happens |
 |-----------|-----------------------|
-| `http://<public-ip>/` | Connects to the Linux server on HTTP port **80** - no port typed, so the browser uses 80 by default (same as `http://<public-ip>:80/`) |
-| `http://mydomain.com` | After the domain is mapped in DNS, the name is converted to the IP → same as `http://<public-ip>/` |
+| `http://<frontend-ip>/` | Connects to the Linux server on HTTP port **80** - no port typed, so the browser uses 80 by default (same as `http://<frontend-ip>:80/`) |
+| `http://mydomain.com` | After the domain is mapped in DNS, the name is converted to the IP → same as `http://<frontend-ip>/` |
 | `http://mydomain.com:81` | Connects on port **81**. Works only if Nginx is set to `listen 81;` - and the port **must be typed** in the URL |
 | `https://mydomain.com` | Same as `https://mydomain.com:443` - HTTPS default port is **443** |
 | backend | Our backend app is reached on port **8080** (only Nginx talks to it, not the internet) |
@@ -356,8 +356,8 @@ A **delivery manager** works the same way one level up - they don't do the work 
 
 Nginx does the same with requests: it looks at the request and sends it to the right group of servers. In our app:
 
-- `http://<public-ip>/` (UI) → served by the frontend (HTML files)
-- `http://<public-ip>/api/...` (backend work) → sent to the backend servers
+- `http://<frontend-ip>/` (UI) → served by the frontend (HTML files)
+- `http://<frontend-ip>/api/...` (backend work) → sent to the backend servers
 - Only the backend talks to the DB
 
 Because each type of work goes straight to the team that handles it, the traffic is distributed and responses are fast.
@@ -434,6 +434,8 @@ The main `nginx.conf` already loads every `.conf` file from `/etc/nginx/default.
 
 > **Rule:** never edit the default main config files. Always put your changes in a **separate file**.
 
+### Our Config File - `expense.conf`
+
 `/etc/nginx/default.d/expense.conf`:
 
 ```nginx
@@ -442,7 +444,10 @@ proxy_set_header Host              $host;
 proxy_set_header X-Real-IP         $remote_addr;
 proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
+proxy_connect_timeout 5s;
+proxy_read_timeout    30s;   # 504 if the backend takes longer than this
 
+# Browser calls /api/transaction → nginx strips /api → backend gets /transaction
 location /api/ {
     proxy_pass http://<backend-private-ip>:8080/;
 }
@@ -450,6 +455,19 @@ location /api/ {
 location /health {
     stub_status on;
     access_log off;
+}
+
+# Status code demos
+location = /home {
+    return 301 /;            # 301 - moved permanently
+}
+
+location = /docs {
+    return 302 https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status;   # 302 - temporary redirect
+}
+
+location /admin {
+    deny all;                # 403 - nobody is allowed here
 }
 ```
 
@@ -460,23 +478,19 @@ location /health {
 | `X-Real-IP $remote_addr` | Pass the real client IP - otherwise the backend only sees Nginx's IP |
 | `X-Forwarded-For` | Client IP + every proxy the request passed through |
 | `X-Forwarded-Proto $scheme` | Whether the user came on `http` or `https` |
-| `location /api/` | Any URL starting with `/api/` goes to the backend |
-| `proxy_pass http://...:8080/` | The trailing `/` strips `/api` → `/api/transaction` reaches the backend as `/transaction` |
-| `location /health` + `stub_status on` | Shows Nginx's own stats (active connections, requests) at `http://<public-ip>/health` |
+| `proxy_connect_timeout 5s` | Give up if the backend can't be connected within 5s |
+| `proxy_read_timeout 30s` | Wait max 30s for the backend's reply, then **504** (see [504 Gateway Timeout](#504-gateway-timeout---how-long-nginx-waits)) |
+| `location /api/ { proxy_pass ... }` | **The main part** - see below |
+| `location /health` + `stub_status on` | Shows Nginx's own stats (active connections, requests) at `http://<frontend-ip>/health` |
 | `access_log off` | Don't fill the log with health-check hits |
+| `/home`, `/docs`, `/admin` | Only demos for `301`, `302` and `403` - not needed for the app |
 
 ### The Main Part - Sending /api/ to the Backend
-
-```nginx
-location /api/ {
-    proxy_pass http://<backend-private-ip>:8080/;
-}
-```
 
 In simple words: **anyone requesting a URL that starts with `/api` → Nginx sends that request to the backend server's IP on port 8080.**
 
 ```text
-User:  http://<public-ip>/api/transaction
+User:  http://<frontend-ip>/api/transaction
          │
          ▼
 Nginx sees "/api/" → forwards to → http://<backend-private-ip>:8080/transaction → Backend
@@ -484,6 +498,7 @@ Nginx sees "/api/" → forwards to → http://<backend-private-ip>:8080/transact
 
 - `location /api/` → "match every request whose path starts with `/api/`".
 - `proxy_pass http://<backend-private-ip>:8080/` → "send it to this server". We use the backend's **private IP**, because the backend is not open to the internet - only Nginx can reach it.
+- The trailing `/` in `proxy_pass` strips `/api` → `/api/transaction` reaches the backend as `/transaction`.
 - Any other request (`/`, `/index.html`, css, js) does **not** match, so Nginx serves it from `/usr/share/nginx/html/` as usual.
 
 After editing, always:
@@ -495,13 +510,11 @@ systemctl restart nginx     # apply the change
 
 ## API
 
-![Request flow in the 3-tier app and REST API methods](images/03-request-flow-and-rest-api.svg)
-
 **API = Application Programming Interface** - the way one program talks to another. Here the frontend (browser) talks to the backend through the API, and the data comes back as **JSON**.
 
 **Analogy:** a waiter in a restaurant - you (frontend) don't go into the kitchen (backend); you give your order to the waiter (API), and the waiter brings back the food (JSON response).
 
-**Example:** `GET http://<public-ip>/api/transaction`:
+**Example:** `GET http://<frontend-ip>/api/transaction`:
 
 ```json
 {
@@ -521,7 +534,7 @@ systemctl restart nginx     # apply the change
 When we add an expense in the app, the browser sends the request to the **frontend** - never directly to the backend:
 
 ```text
-Browser → http://<frontend-public-ip>/api/transaction
+Browser → http://<frontend-ip>/api/transaction
 Method: POST
 Body:   {"amount": 100, "category": "Food", "description": "dosa"}
 Response → 201 Created
@@ -556,11 +569,13 @@ The **URLs** (like `/api/transaction`) and which methods they accept are **creat
 | **U**pdate | `PUT` | Change data that's already in the DB |
 | **D**elete | `DELETE` | Remove data from the DB |
 
+![Request flow in the 3-tier app and REST API methods](images/03-request-flow-and-rest-api.svg)
+
 ### GET - read data
 
 ```text
-URL:    http://<public-ip>/api/transaction        → reads ALL transactions
-URL:    http://<public-ip>/api/transaction/31     → reads ONLY transaction 31
+URL:    http://<frontend-ip>/api/transaction        → reads ALL transactions
+URL:    http://<frontend-ip>/api/transaction/31     → reads ONLY transaction 31
 Method: GET
 ```
 
@@ -571,7 +586,7 @@ Method: GET
 ### POST - create data
 
 ```text
-URL:    http://<public-ip>/api/transaction
+URL:    http://<frontend-ip>/api/transaction
 Method: POST
 Body:   {"amount": 200, "category": "Entertainment", "description": "movie"}
 ```
@@ -581,7 +596,7 @@ We **post** (send) the new data in the body → the backend saves it in the DB a
 ### PUT - update data
 
 ```text
-URL:    http://<public-ip>/api/transaction
+URL:    http://<frontend-ip>/api/transaction
 Method: PUT
 ```
 
@@ -599,7 +614,7 @@ The `id` tells **which** record to change (transaction 17) → its details are r
 ### DELETE - delete data
 
 ```text
-URL:    http://<public-ip>/api/transaction/32
+URL:    http://<frontend-ip>/api/transaction/32
 Method: DELETE
 ```
 
@@ -607,13 +622,15 @@ Deletes transaction number **32** from the DB.
 
 ### Try them with `curl`
 
+Through the **frontend** (the normal way - with `/api`, no port):
+
 ```bash
-curl http://<public-ip>/api/transaction                          # GET all
-curl http://<public-ip>/api/transaction/31                       # GET one
-curl -X POST http://<public-ip>/api/transaction \
+curl http://<frontend-ip>/api/transaction                          # GET all
+curl http://<frontend-ip>/api/transaction/31                       # GET one
+curl -X POST http://<frontend-ip>/api/transaction \
      -H "Content-Type: application/json" \
      -d '{"amount": 200, "category": "Entertainment", "description": "movie"}'
-curl -X DELETE http://<public-ip>/api/transaction/32              # DELETE
+curl -X DELETE http://<frontend-ip>/api/transaction/32              # DELETE
 ```
 
 ## Testing the Backend API
@@ -654,8 +671,8 @@ In these tools we choose the **method**, type the **URL**, add the **JSON body**
 
 | Sending the request to | URL |
 |------------------------|-----|
-| **Frontend** (normal way, through Nginx) | `http://<FRONTEND_IP>/api/transaction` |
-| **Backend** directly (testing) | `http://<BACKEND_IP>:8080/transaction` |
+| **Frontend** (normal way, through Nginx) | `http://<frontend-ip>/api/transaction` |
+| **Backend** directly (testing) | `http://<backend-ip>:8080/transaction` |
 
 Frontend → add `/api`, no port (80 by default). Backend → no `/api`, add port `:8080`.
 
@@ -680,7 +697,7 @@ Calling the backend directly:
 }
 ```
 
-Same with `curl`:
+Same with `curl`, straight to the **backend** (no `/api`, port `8080`):
 
 ```bash
 curl http://<backend-ip>:8080/transaction                     # GET all
@@ -743,6 +760,7 @@ If the code starts with **2**, the request worked.
 | Code | Meaning | In simple words |
 |------|---------|-----------------|
 | `301` | Moved permanently | The page has a new location - it's sent in the response and the browser goes there automatically |
+| `302` | Found (temporary redirect) | Go to another page **for now** - e.g. our `/docs` → MDN status codes page |
 | `304` | Not modified | Nothing changed since last time - use your old (cached) response |
 
 A 3XX code is **not an error**. It means "**something has changed**, go here instead". The server sends the new location, and the browser (or tool) goes there automatically.
@@ -879,7 +897,7 @@ When you get errors, **check the logs first**, step by step: Nginx `access.log` 
 - `location /api/` + `proxy_pass` sends API calls to the backend on 8080; `X-Forwarded-*` headers keep the real client details.
 - REST API: `GET` read, `POST` create, `PUT` update, `DELETE` delete; data travels as JSON.
 - API flow: browser → frontend `/api/transaction` → Nginx forwards to `backend:8080/transaction` → DB, and the response comes back the same way.
-- Browser address bar = GET only. Use Postman / HTTPie / curl to test POST, PUT and DELETE. Frontend URL: `<FRONTEND_IP>/api/transaction`; backend URL: `<BACKEND_IP>:8080/transaction`; `/health` → `{"status":"ok","db":"up"}`.
+- Browser address bar = GET only. Use Postman / HTTPie / curl to test POST, PUT and DELETE. Frontend URL: `<frontend-ip>/api/transaction`; backend URL: `<backend-ip>:8080/transaction`; `/health` → `{"status":"ok","db":"up"}`.
 - Status codes: 2XX success, 3XX redirect (not an error - 301 new location, 304 use cache), 4XX our mistake (400, 401, 403, 404, 405), 5XX server side (500, 502 backend down, 503 DB down, 504 too slow - Nginx waits 60s by default, 30s in our config).
 - Troubleshoot from the logs: Nginx `access.log` → `journalctl -u backend` → status/ps/netstat → `/health`.
 

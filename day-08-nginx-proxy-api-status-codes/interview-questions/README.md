@@ -56,11 +56,11 @@ Same idea as `/etc/sudoers.d/` vs `/etc/sudoers`: never edit the main default fi
 
 **14. Where do you change Nginx's default port number?**
 
-In `/etc/nginx/nginx.conf` - change `listen 80;` in the `server` block, then run `nginx -t` and `systemctl restart nginx`.
+The default comes from `listen 80;` in the `server` block of `/etc/nginx/nginx.conf`. The safe way is not to edit the main file: add your own `server { listen <port>; ... }` in a new file under `/etc/nginx/conf.d/`, then `nginx -t` and `systemctl restart nginx`.
 
 **15. How can you quickly check Nginx is running?**
 
-Open `http://<public-ip>/` - if the default page (`/usr/share/nginx/html/index.html`) loads, Nginx is up. On the server: `systemctl status nginx`.
+Open `http://<frontend-ip>/` - if the default page (`/usr/share/nginx/html/index.html`) loads, Nginx is up. On the server: `systemctl status nginx`.
 
 **16. Why don't users type port numbers in URLs?**
 

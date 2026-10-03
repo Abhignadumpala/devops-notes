@@ -18,9 +18,13 @@
 6. [HTTP Status Codes](#http-status-codes)
    - [Status Codes We Saw While Testing](#status-codes-we-saw-while-testing)
    - [Test It Yourself: Stop the DB → 503](#test-it-yourself-stop-the-db--503)
+   - [3XX Redirects - Not Errors](#3xx-redirects---not-errors)
    - [504 Gateway Timeout - How Long Nginx Waits](#504-gateway-timeout---how-long-nginx-waits)
-7. [Summary](#summary)
-8. [Interview Questions](#interview-questions)
+7. [Troubleshooting](#troubleshooting)
+8. [Summary](#summary)
+9. [Interview Questions](#interview-questions)
+
+**More in this folder:** [Troubleshooting step by step](troubleshooting/README.md) · [Interview questions](interview-questions/README.md)
 
 **Diagrams:** [API Request Flow](images/01-api-request-flow.svg) · [What Causes Each Status Code](images/02-what-causes-each-status-code.svg)
 
@@ -180,7 +184,16 @@ In these tools we choose the **method**, type the **URL**, add the **JSON body**
 
 ### Backend API Endpoints
 
-Calling the backend directly on port 8080 (no `/api` here - that's only on the frontend):
+**Which URL to use:**
+
+| Sending the request to | URL |
+|------------------------|-----|
+| **Frontend** (normal way, through Nginx) | `http://<FRONTEND_IP>/api/transaction` |
+| **Backend** directly (testing) | `http://<BACKEND_IP>:8080/transaction` |
+
+Frontend → add `/api`, no port (80 by default). Backend → no `/api`, add port `:8080`.
+
+Calling the backend directly:
 
 | Method | URL | What it does |
 |--------|-----|--------------|
@@ -285,6 +298,35 @@ systemctl start mysqld
 
 Same idea for 502: stop the **backend** (`systemctl stop backend`) and open the app → Nginx can't reach the backend → **`502 Bad Gateway`**.
 
+### 3XX Redirects - Not Errors
+
+A 3XX code is **not an error**. It means "**something has changed**, go here instead". The server sends the new location, and the browser (or tool) goes there automatically.
+
+**Example 1 - developers renamed the API (`301`):**
+
+```text
+Old: GET /transactions   (with "s")
+New: GET /transaction
+```
+
+The developers changed the name recently. If someone still calls the old `/transactions`, they get **`301 Moved Permanently`** with the new location, and land on `/transaction`. Old links keep working.
+
+**Example 2 - a page that moved (`301`):**
+
+```text
+http://mydomain.com/home  →  301  →  http://mydomain.com/
+```
+
+Users don't need to remember the exact page. Even if they type `/home`, they're redirected to the correct page. We set this up in `expense.conf`:
+
+```nginx
+location = /home {
+    return 301 /;
+}
+```
+
+**`304 Not Modified`** - also a 3XX, but no new location. The browser asks "has this changed since I last downloaded it?" The server says "no, **not modified**", so the browser shows its **cached** copy. It's faster, and nothing is downloaded again.
+
 ### 504 Gateway Timeout - How Long Nginx Waits
 
 ```text
@@ -315,6 +357,10 @@ So in our setup:
 
 > **502 vs 504:** 502 = Nginx **can't connect** to the backend at all (backend down / port closed). 504 = Nginx **connected**, but the backend **didn't answer in time**.
 
+## Troubleshooting
+
+When you get errors, **check the logs first**, step by step: Nginx `access.log` → `journalctl -u backend` → `systemctl status` / `ps -ef` / `netstat -lntp` → `curl http://localhost:8080/health`. Full approach and a real example (500 → `Access denied for user 'expense'` → fix DB credentials → `daemon-reload` + `restart`) in [troubleshooting/README.md](troubleshooting/README.md).
+
 ## Summary
 
 - `/etc/nginx/nginx.conf` → main Nginx config (read it, don't edit it).
@@ -324,6 +370,8 @@ So in our setup:
 - Custom configs always go in a separate file, so the main config is never disturbed. Then `nginx -t` and `systemctl restart nginx`.
 - API flow: browser → frontend `/api/transaction` → Nginx forwards to `backend:8080/transaction` → DB, and the response comes back the same way.
 - Browser address bar = GET only. Use Postman / HTTPie / curl to test POST, PUT and DELETE. `/health` → `{"status":"ok","db":"up"}`.
+- 3XX are redirects, not errors (301 → new location, 304 → use cached copy). Frontend URL: `<FRONTEND_IP>/api/transaction`; backend URL: `<BACKEND_IP>:8080/transaction`.
+- Troubleshoot from the logs: Nginx `access.log` → `journalctl -u backend` → status/ps/netstat → `/health`.
 - Status codes: 2XX success, 3XX redirect, 4XX our mistake (400, 401, 403, 404, 405), 5XX server side (500, 502 backend down, 503 DB down, 504 too slow).
 
 ## Interview Questions

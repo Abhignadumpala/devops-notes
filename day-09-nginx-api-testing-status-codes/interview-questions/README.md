@@ -57,3 +57,19 @@ The address bar only sends GET requests. Use an API testing tool such as Postman
 **14. When does Nginx return 504 Gateway Timeout? What's the default wait time?**
 
 When the backend doesn't reply within `proxy_read_timeout`. The default is 60 seconds; our `expense.conf` sets it to `30s`. `proxy_connect_timeout` limits how long Nginx tries to connect (default 60s, ours `5s`).
+
+**15. The app shows an error. How do you troubleshoot?**
+
+Check the logs first, step by step. Nginx `access.log` shows the status code. `journalctl -u backend` shows the real error. `systemctl status backend`, `ps -ef | grep node` and `netstat -lntp` confirm the backend is running and listening. `curl http://localhost:8080/health` confirms the backend can reach the DB.
+
+**16. Backend logs show `Access denied for user 'expense'`. What's wrong and how do you fix it?**
+
+The backend can't log in to MySQL because the DB credentials are wrong. Correct `DB_USER` / `DB_PWD` / `DB_HOST` in `/etc/systemd/system/backend.service`, then run `systemctl daemon-reload` and `systemctl restart backend`.
+
+**17. Why `systemctl daemon-reload` before restarting?**
+
+The service file changed. `daemon-reload` makes systemd re-read the unit files, otherwise the restart would use the old settings.
+
+**18. Is a 3XX code an error?**
+
+No, it's a redirect: something changed, so go to the new location. For example, `/transactions` → `/transaction` or `/home` → `/` with 301. 304 means the content hasn't changed, so the browser uses its cached copy.

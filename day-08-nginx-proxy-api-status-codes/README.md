@@ -71,15 +71,43 @@ The frontend is just **HTML, CSS and JS** files. They don't run on the server - 
 
 ### Why Nginx Is Popular
 
-Most tools do one job. Nginx can do five, so one install covers many needs:
+Most tools do one job. Nginx can do five, so one install covers many needs - HTTP server, load balancer, reverse proxy, SSL termination and caching server.
 
-| Role | What it does |
-|------|--------------|
-| **HTTP server** | Serves HTML/CSS/JS files to the browser |
-| **Load balancer** | Spreads requests across many servers |
-| **Reverse proxy** | Takes the request and forwards it to the backend |
-| **SSL termination** | Handles HTTPS so the servers behind it don't have to |
-| **Caching server** | Keeps copies of responses to answer faster |
+#### 1. HTTP Server
+
+We write the website as HTML/CSS/JS files and keep them in Nginx's folder (`/usr/share/nginx/html`). When someone opens our IP or domain in the browser, Nginx (the HTTP server) picks up those files and sends them back - and the browser shows them as the webpage we designed.
+
+**In short:** we keep the files → Nginx serves them → the user sees the webpage.
+
+```text
+/usr/share/nginx/html/index.html   →   http://<public-ip>/   →   webpage in the browser
+```
+
+**Example:** in our expense app, the frontend files are extracted into `/usr/share/nginx/html`, and opening `http://<public-ip>/` shows the expense app UI.
+
+#### 2. Load Balancer
+
+When the same app runs on many servers, Nginx receives every request and shares them across the servers, so no single server gets overloaded. If one server goes down, it sends requests to the others.
+
+**Example:** 3 frontend servers behind one Nginx - request 1 → server 1, request 2 → server 2, request 3 → server 3. More in [Load Balancing](#load-balancing).
+
+#### 3. Reverse Proxy
+
+Nginx receives the user's request and **forwards it to another server** behind it (like our backend), then sends the answer back to the user. The user only talks to Nginx and never sees the backend.
+
+**Example:** `http://<public-ip>/api/transaction` → Nginx forwards it to `http://<backend-private-ip>:8080/transaction`. More in [Forward Proxy vs Reverse Proxy](#forward-proxy-vs-reverse-proxy).
+
+#### 4. SSL Termination
+
+HTTPS traffic is encrypted. Nginx holds the SSL certificate, **decrypts** the HTTPS request, and passes it to the servers behind it as plain HTTP. So only Nginx deals with certificates - the backend servers don't have to.
+
+**Example:** user opens `https://mydomain.com` (port 443) → Nginx decrypts → backend gets a normal HTTP request on 8080.
+
+#### 5. Caching Server
+
+Nginx keeps a **copy** of responses (images, CSS, pages that don't change often). When the next user asks for the same thing, Nginx answers from its copy instead of asking the backend again - faster for the user, less load on the backend.
+
+**Example:** the logo image is requested 1000 times - the backend sends it once, Nginx serves the other 999 from its cache.
 
 ### Important Paths
 

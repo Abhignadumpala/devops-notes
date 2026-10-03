@@ -26,7 +26,7 @@
 11. [Summary](#summary)
 12. [Interview Questions](#interview-questions)
 
-**Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg)
+**Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg) · [User → LB → Frontend → Backend → DB](images/05-user-lb-frontend-backend-db.svg)
 
 ---
 
@@ -232,6 +232,8 @@ Reverse:  Client → Internet → [Reverse Proxy] → Server(s)
 ## Load Balancing
 
 One server can handle only so many requests. When traffic grows, we run **many copies of the same app on many servers**. Now someone has to decide which server gets each request - that's the **load balancer**.
+
+![User → Load Balancer → Frontend → Backend → Database](images/05-user-lb-frontend-backend-db.svg)
 
 A load balancer:
 

@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .label { font-size: 17px; font-weight: 700; fill: #1e293b; }
+    .port { font-family: Consolas, Menlo, monospace; font-size: 13px; fill: #475569; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e293b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="300" rx="16" fill="#ffffff"/>
+
+  <!-- arrows -->
+  <g stroke="#1e293b" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)">
+    <line x1="170" y1="130" x2="285" y2="130"/>
+    <line x1="420" y1="130" x2="535" y2="130"/>
+    <line x1="665" y1="130" x2="780" y2="130"/>
+    <line x1="915" y1="130" x2="1025" y2="130"/>
+  </g>
+  <text x="227" y="118" text-anchor="middle" class="port">HTTP 80</text>
+  <text x="477" y="118" text-anchor="middle" class="port">HTTP 80</text>
+  <text x="722" y="118" text-anchor="middle" class="port">/api → 8080</text>
+  <text x="970" y="118" text-anchor="middle" class="port">3306</text>
+
+  <!-- User -->
+  <rect x="55" y="70" width="110" height="120" fill="#ffffff" stroke="#1e293b" stroke-width="2"/>
+  <g fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="110" cy="115" rx="22" ry="27"/>
+    <path d="M88,108 C92,86 128,86 132,108"/>
+    <path d="M100,140 L100,152 C80,156 68,166 64,186"/>
+    <path d="M120,140 L120,152 C140,156 152,166 156,186"/>
+  </g>
+  <text x="110" y="230" text-anchor="middle" class="label">User</text>
+
+  <!-- Load balancer -->
+  <circle cx="355" cy="130" r="55" fill="#ffffff" stroke="#8b5cf6" stroke-width="4"/>
+  <g fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linejoin="round">
+    <rect x="337" y="96" width="36" height="22" rx="2"/>
+    <path d="M355,118 L355,130 M320,130 L390,130 M320,130 L320,142 M355,130 L355,142 M390,130 L390,142"/>
+    <rect x="308" y="142" width="24" height="18" rx="2"/>
+    <rect x="343" y="142" width="24" height="18" rx="2"/>
+    <rect x="378" y="142" width="24" height="18" rx="2"/>
+  </g>
+  <text x="355" y="230" text-anchor="middle" class="label">Load Balancer</text>
+
+  <!-- Frontend (HTML) -->
+  <text x="600" y="72" text-anchor="middle" font-size="22" font-weight="800" fill="#1e293b">HTML</text>
+  <path d="M560,80 L640,80 L633,168 L600,180 L567,168 Z" fill="#e34f26"/>
+  <path d="M600,87 L633,87 L627,162 L600,171 Z" fill="#f06529"/>
+  <text x="600" y="150" text-anchor="middle" font-size="58" font-weight="800" fill="#ffffff">5</text>
+  <text x="600" y="230" text-anchor="middle" class="label">Frontend</text>
+  <text x="600" y="252" text-anchor="middle" class="port">Nginx</text>
+
+  <!-- Backend -->
+  <g fill="none" stroke="#f97316" stroke-width="7" stroke-linejoin="round">
+    <polygon points="845,72 895,101 895,159 845,188 795,159 795,101"/>
+  </g>
+  <g fill="none" stroke="#f97316" stroke-width="4" stroke-linejoin="round">
+    <polygon points="845,102 871,117 871,147 845,162 819,147 819,117"/>
+    <path d="M819,117 L845,132 L871,117 M845,132 L845,162"/>
+  </g>
+  <text x="845" y="230" text-anchor="middle" class="label">Backend</text>
+  <text x="845" y="252" text-anchor="middle" class="port">Node.js</text>
+
+  <!-- Database -->
+  <g stroke="#1e293b" stroke-width="2.5">
+    <path d="M1035,92 L1035,170 A55,15 0 0 0 1145,170 L1145,92" fill="#ffffff"/>
+    <ellipse cx="1090" cy="92" rx="55" ry="15" fill="#ffffff"/>
+    <path d="M1035,104 A55,15 0 0 0 1145,104" fill="none"/>
+  </g>
+  <g transform="translate(1090,145)">
+    <path d="M0,-20 L7,-11 L3,-11 L3,-3 L11,-3 L11,-7 L20,0 L11,7 L11,3 L3,3 L3,11 L7,11 L0,20 L-7,11 L-3,11 L-3,3 L-11,3 L-11,7 L-20,0 L-11,-7 L-11,-3 L-3,-3 L-3,-11 L-7,-11 Z" fill="#facc15" stroke="#65a30d" stroke-width="1.5"/>
+  </g>
+  <text x="1090" y="230" text-anchor="middle" class="label">Database</text>
+  <text x="1090" y="252" text-anchor="middle" class="port">MySQL</text>
+</svg>

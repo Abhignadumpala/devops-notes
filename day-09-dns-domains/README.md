@@ -1,4 +1,4 @@
-# Day 8 - DNS: How Domain Names Actually Work
+# Day 9 - DNS: How Domain Names Actually Work
 
 ## Table of Contents
 

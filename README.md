@@ -13,4 +13,5 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 5 - Key-Based Auth, Offboarding, Packages, Services, Network & Processes](day-05-users-packages-services-processes/README.md)
 - [Day 6 - 3-Tier Architecture & Databases](day-06-3-tier-architecture-databases/README.md)
 - [Day 7 - Expense Project: Database, Backend & Frontend](day-07-3tier-nodejs-expense-app/README.md)
-- [Day 8 - DNS: Domains, Registrars & Route 53](day-08-dns-domains/README.md)
+- [Day 8 - Nginx, Forward & Reverse Proxy, REST API & HTTP Status Codes](day-08-nginx-proxy-api-status-codes/README.md)
+- [Day 9 - DNS: Domains, Registrars & Route 53](day-09-dns-domains/README.md)

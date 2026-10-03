@@ -1,6 +1,6 @@
-# Day 8 - Interview Questions
+# Day 9 - Interview Questions
 
-[← Back to Day 8 notes](../README.md)
+[← Back to Day 9 notes](../README.md)
 
 **1. What is DNS and why do we need it?**
 

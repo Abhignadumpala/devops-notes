@@ -97,6 +97,8 @@ Nginx receives the user's request and **forwards it to another server** behind i
 
 **Example:** `http://<public-ip>/api/transaction` → Nginx forwards it to `http://<backend-private-ip>:8080/transaction`. More in [Forward Proxy vs Reverse Proxy](#forward-proxy-vs-reverse-proxy).
 
+![User → Load Balancer → Frontend → Backend → Database](images/05-user-lb-frontend-backend-db.svg)
+
 #### 4. SSL Termination
 
 HTTPS traffic is encrypted. Nginx holds the SSL certificate, **decrypts** the HTTPS request, and passes it to the servers behind it as plain HTTP. So only Nginx deals with certificates - the backend servers don't have to.
@@ -232,8 +234,6 @@ Reverse:  Client → Internet → [Reverse Proxy] → Server(s)
 ## Load Balancing
 
 One server can handle only so many requests. When traffic grows, we run **many copies of the same app on many servers**. Now someone has to decide which server gets each request - that's the **load balancer**.
-
-![User → Load Balancer → Frontend → Backend → Database](images/05-user-lb-frontend-backend-db.svg)
 
 A load balancer:
 

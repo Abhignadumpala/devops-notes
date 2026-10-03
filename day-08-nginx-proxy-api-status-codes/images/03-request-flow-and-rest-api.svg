@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 30px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 20px; font-weight: 700; fill: #1e293b; }
+    .box-title { font-size: 20px; font-weight: 700; fill: #ffffff; }
+    .box-text { font-size: 14px; fill: #f1f5f9; }
+    .mono { font-family: Consolas, Menlo, monospace; font-size: 14px; fill: #0f172a; }
+    .mono-lg { font-family: Consolas, Menlo, monospace; font-size: 16px; fill: #0f172a; }
+    .small { font-size: 14px; fill: #334155; }
+    .method { font-size: 30px; font-weight: 800; fill: #ffffff; }
+    .crud { font-size: 17px; font-weight: 600; fill: #ffffff; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="700" rx="16" fill="#ffffff"/>
+  <text x="600" y="40" text-anchor="middle" class="title">Request Flow in the 3-Tier App + REST API</text>
+
+  <!-- tiers -->
+  <rect x="30"   y="80" width="180" height="90" rx="12" fill="#475569"/>
+  <text x="120"  y="118" text-anchor="middle" class="box-title">Browser</text>
+  <text x="120"  y="144" text-anchor="middle" class="box-text">HTML / CSS / JS</text>
+
+  <rect x="370"  y="80" width="180" height="90" rx="12" fill="#16a34a"/>
+  <text x="460"  y="118" text-anchor="middle" class="box-title">Nginx</text>
+  <text x="460"  y="144" text-anchor="middle" class="box-text">frontend · port 80</text>
+
+  <rect x="710"  y="80" width="180" height="90" rx="12" fill="#2563eb"/>
+  <text x="800"  y="118" text-anchor="middle" class="box-title">Backend</text>
+  <text x="800"  y="144" text-anchor="middle" class="box-text">Node.js · port 8080</text>
+
+  <rect x="1000" y="80" width="170" height="90" rx="12" fill="#ea580c"/>
+  <text x="1085" y="118" text-anchor="middle" class="box-title">MySQL</text>
+  <text x="1085" y="144" text-anchor="middle" class="box-text">database · port 3306</text>
+
+  <g stroke="#475569" stroke-width="3" marker-end="url(#arrow)">
+    <line x1="212" y1="125" x2="366" y2="125"/>
+    <line x1="552" y1="125" x2="706" y2="125"/>
+    <line x1="892" y1="125" x2="996" y2="125"/>
+  </g>
+  <text x="290" y="112" text-anchor="middle" class="mono">/api/transaction</text>
+  <text x="630" y="112" text-anchor="middle" class="mono">/transaction</text>
+  <text x="944" y="112" text-anchor="middle" class="mono">SQL</text>
+
+  <rect x="225" y="190" width="550" height="40" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="500" y="216" text-anchor="middle" class="small">Nginx strips <tspan font-family="Consolas, Menlo, monospace">/api</tspan> - trailing <tspan font-family="Consolas, Menlo, monospace">/</tspan> in <tspan font-family="Consolas, Menlo, monospace">proxy_pass http://&lt;backend-ip&gt;:8080/</tspan></text>
+
+  <!-- CRUD -->
+  <text x="600" y="280" text-anchor="middle" class="sub">CRUD → HTTP Methods</text>
+
+  <rect x="30"  y="300" width="260" height="150" rx="12" fill="#16a34a"/>
+  <text x="160" y="345" text-anchor="middle" class="method">POST</text>
+  <text x="160" y="375" text-anchor="middle" class="crud">Create</text>
+  <rect x="45" y="395" width="230" height="40" rx="6" fill="#ffffff"/>
+  <text x="160" y="421" text-anchor="middle" class="mono">/api/transaction + JSON</text>
+
+  <rect x="320" y="300" width="260" height="150" rx="12" fill="#2563eb"/>
+  <text x="450" y="345" text-anchor="middle" class="method">GET</text>
+  <text x="450" y="375" text-anchor="middle" class="crud">Read</text>
+  <rect x="335" y="395" width="230" height="40" rx="6" fill="#ffffff"/>
+  <text x="450" y="421" text-anchor="middle" class="mono">/api/transaction/31</text>
+
+  <rect x="610" y="300" width="260" height="150" rx="12" fill="#d97706"/>
+  <text x="740" y="345" text-anchor="middle" class="method">PUT</text>
+  <text x="740" y="375" text-anchor="middle" class="crud">Update</text>
+  <rect x="625" y="395" width="230" height="40" rx="6" fill="#ffffff"/>
+  <text x="740" y="421" text-anchor="middle" class="mono">/api/transaction + id</text>
+
+  <rect x="900" y="300" width="270" height="150" rx="12" fill="#dc2626"/>
+  <text x="1035" y="345" text-anchor="middle" class="method">DELETE</text>
+  <text x="1035" y="375" text-anchor="middle" class="crud">Delete</text>
+  <rect x="915" y="395" width="240" height="40" rx="6" fill="#ffffff"/>
+  <text x="1035" y="421" text-anchor="middle" class="mono">/api/transaction/32</text>
+
+  <!-- JSON -->
+  <rect x="30" y="480" width="560" height="190" rx="12" fill="#0f172a"/>
+  <text x="54" y="512" font-size="15" font-weight="700" fill="#94a3b8">JSON - data the API sends and receives</text>
+  <g font-family="Consolas, Menlo, monospace" font-size="16">
+    <text x="54" y="545" fill="#e2e8f0">{</text>
+    <text x="74" y="570"><tspan fill="#7dd3fc">"id"</tspan><tspan fill="#e2e8f0">: </tspan><tspan fill="#fdba74">17</tspan><tspan fill="#e2e8f0">,</tspan></text>
+    <text x="74" y="595"><tspan fill="#7dd3fc">"amount"</tspan><tspan fill="#e2e8f0">: </tspan><tspan fill="#fdba74">1500</tspan><tspan fill="#e2e8f0">,</tspan></text>
+    <text x="74" y="620"><tspan fill="#7dd3fc">"description"</tspan><tspan fill="#e2e8f0">: </tspan><tspan fill="#86efac">"Team Outing"</tspan><tspan fill="#e2e8f0">,</tspan></text>
+    <text x="74" y="645"><tspan fill="#7dd3fc">"category"</tspan><tspan fill="#e2e8f0">: </tspan><tspan fill="#86efac">"Travel"</tspan></text>
+    <text x="54" y="662" fill="#e2e8f0">}</text>
+  </g>
+
+  <rect x="620" y="480" width="550" height="190" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="644" y="512" class="sub" font-size="18">API = Application Programming Interface</text>
+  <text x="644" y="545" class="small">The way one program talks to another.</text>
+  <text x="644" y="572" class="small">The browser calls the backend's API through Nginx</text>
+  <text x="644" y="596" class="small">and gets JSON back.</text>
+  <text x="644" y="630" class="small" font-weight="700">The browser never needs the backend's IP or port -</text>
+  <text x="644" y="652" class="small" font-weight="700">it only talks to Nginx.</text>
+</svg>

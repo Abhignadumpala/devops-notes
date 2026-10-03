@@ -26,6 +26,8 @@
 11. [Summary](#summary)
 12. [Interview Questions](#interview-questions)
 
+**Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg)
+
 ---
 
 ## Quick Recap - Deploying the Backend
@@ -60,6 +62,8 @@ Nowadays there's no need for heavy application servers - applications come with 
 The frontend is just **HTML, CSS and JS** files. They don't run on the server - the server only hands them to the browser, and the browser runs them. So all we need is a web server that can serve files → **Nginx**.
 
 ## Nginx
+
+![Why Nginx is popular](images/01-why-nginx-is-popular.svg)
 
 ### Why Nginx Is Popular
 
@@ -114,6 +118,8 @@ tail -f /var/log/nginx/error.log     # watch errors live
 ```
 
 ## Forward Proxy vs Reverse Proxy
+
+![Forward proxy vs reverse proxy and the team lead analogy](images/02-forward-vs-reverse-proxy.svg)
 
 **Proxy** = someone acting **on behalf of** someone else.
 
@@ -201,6 +207,8 @@ Two ways to give a user sudo access:
 
 ## API
 
+![Request flow in the 3-tier app and REST API methods](images/03-request-flow-and-rest-api.svg)
+
 **API = Application Programming Interface** - the way one program talks to another. Here the frontend (browser) talks to the backend through the API, and the data comes back as **JSON**.
 
 `GET http://<public-ip>/api/transaction`:
@@ -250,6 +258,8 @@ curl -X DELETE http://<public-ip>/api/transaction/32             # DELETE
 ```
 
 ## HTTP Status Codes
+
+![HTTP status codes](images/04-http-status-codes.svg)
 
 Computers only care about numbers, humans can't remember numbers - so every response carries a **status code** and we just need to know the ranges.
 

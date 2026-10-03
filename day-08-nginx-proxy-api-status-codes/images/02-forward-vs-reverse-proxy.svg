@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 30px; font-weight: 700; fill: #1e293b; }
+    .panel-title { font-size: 24px; font-weight: 700; }
+    .box { font-size: 15px; font-weight: 600; fill: #0f172a; }
+    .key { font-size: 16px; font-weight: 700; fill: #1e293b; }
+    .val { font-size: 16px; fill: #334155; }
+    .small { font-size: 14px; fill: #334155; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="780" rx="16" fill="#ffffff"/>
+  <text x="600" y="40" text-anchor="middle" class="title">Forward Proxy vs Reverse Proxy</text>
+  <text x="600" y="68" text-anchor="middle" class="small">proxy = someone acting on behalf of someone else</text>
+
+  <!-- ===== Forward proxy panel ===== -->
+  <rect x="30" y="90" width="560" height="360" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="310" y="125" text-anchor="middle" class="panel-title" fill="#1d4ed8">Forward Proxy</text>
+
+  <g>
+    <rect x="48"  y="160" width="105" height="64" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+    <text x="100" y="197" text-anchor="middle" class="box">Client</text>
+    <rect x="188" y="160" width="105" height="64" rx="10" fill="#2563eb"/>
+    <text x="240" y="188" text-anchor="middle" class="box" fill="#ffffff">Forward</text>
+    <text x="240" y="208" text-anchor="middle" class="box" fill="#ffffff">Proxy</text>
+    <rect x="328" y="160" width="105" height="64" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="380" y="197" text-anchor="middle" class="box">Internet</text>
+    <rect x="468" y="160" width="105" height="64" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <text x="520" y="197" text-anchor="middle" class="box">Server</text>
+    <g stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)">
+      <line x1="153" y1="192" x2="186" y2="192"/>
+      <line x1="293" y1="192" x2="326" y2="192"/>
+      <line x1="433" y1="192" x2="466" y2="192"/>
+    </g>
+    <path d="M60,234 L60,250 L281,250 L281,234" fill="none" stroke="#2563eb" stroke-width="2"/>
+    <text x="170" y="270" text-anchor="middle" class="small" fill="#1d4ed8">client side (client knows about the proxy)</text>
+  </g>
+
+  <text x="56" y="315" class="key">Works for:</text><text x="160" y="315" class="val">the CLIENT</text>
+  <text x="56" y="347" class="key">Hides:</text><text x="160" y="347" class="val">the client's identity</text>
+  <text x="56" y="379" class="key">Used for:</text><text x="160" y="379" class="val">VPN, changing geo location,</text>
+  <text x="160" y="403" class="val">traffic monitoring, content restriction</text>
+  <text x="160" y="427" class="val">(office internet)</text>
+
+  <!-- ===== Reverse proxy panel ===== -->
+  <rect x="610" y="90" width="560" height="360" rx="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="890" y="125" text-anchor="middle" class="panel-title" fill="#15803d">Reverse Proxy</text>
+
+  <g>
+    <rect x="628" y="160" width="105" height="64" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <text x="680" y="197" text-anchor="middle" class="box">Client</text>
+    <rect x="768" y="160" width="105" height="64" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="820" y="197" text-anchor="middle" class="box">Internet</text>
+    <rect x="908" y="160" width="105" height="64" rx="10" fill="#16a34a"/>
+    <text x="960" y="188" text-anchor="middle" class="box" fill="#ffffff">Reverse</text>
+    <text x="960" y="208" text-anchor="middle" class="box" fill="#ffffff">Proxy</text>
+    <rect x="1048" y="140" width="105" height="30" rx="7" fill="#ffffff" stroke="#16a34a" stroke-width="2"/>
+    <text x="1100" y="160" text-anchor="middle" class="small" font-weight="600">Server 1</text>
+    <rect x="1048" y="177" width="105" height="30" rx="7" fill="#ffffff" stroke="#16a34a" stroke-width="2"/>
+    <text x="1100" y="197" text-anchor="middle" class="small" font-weight="600">Server 2</text>
+    <rect x="1048" y="214" width="105" height="30" rx="7" fill="#ffffff" stroke="#16a34a" stroke-width="2"/>
+    <text x="1100" y="234" text-anchor="middle" class="small" font-weight="600">Server 3</text>
+    <g stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)">
+      <line x1="733" y1="192" x2="766" y2="192"/>
+      <line x1="873" y1="192" x2="906" y2="192"/>
+      <line x1="1013" y1="185" x2="1046" y2="157"/>
+      <line x1="1013" y1="192" x2="1046" y2="192"/>
+      <line x1="1013" y1="199" x2="1046" y2="227"/>
+    </g>
+    <path d="M920,254 L920,268 L1155,268 L1155,254" fill="none" stroke="#16a34a" stroke-width="2"/>
+    <text x="1037" y="288" text-anchor="middle" class="small" fill="#15803d">server side (e.g. Nginx)</text>
+  </g>
+
+  <text x="636" y="330" class="key">Works for:</text><text x="740" y="330" class="val">the SERVER</text>
+  <text x="636" y="362" class="key">Hides:</text><text x="740" y="362" class="val">the server's identity</text>
+  <text x="636" y="394" class="key">Used for:</text><text x="740" y="394" class="val">SSL/TLS termination, cache,</text>
+  <text x="740" y="418" class="val">load balancing</text>
+
+  <!-- ===== Team lead strip ===== -->
+  <rect x="30" y="475" width="1140" height="280" rx="14" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="600" y="510" text-anchor="middle" class="panel-title" fill="#c2410c">Load Balancer = Team Lead</text>
+
+  <rect x="500" y="530" width="200" height="60" rx="10" fill="#ea580c"/>
+  <text x="600" y="557" text-anchor="middle" class="box" fill="#ffffff">Team Lead</text>
+  <text x="600" y="577" text-anchor="middle" class="small" fill="#ffedd5">(load balancer)</text>
+
+  <g stroke="#94a3b8" stroke-width="2">
+    <line x1="600" y1="590" x2="170" y2="640"/>
+    <line x1="600" y1="590" x2="450" y2="640"/>
+    <line x1="600" y1="590" x2="750" y2="640"/>
+    <line x1="600" y1="590" x2="1030" y2="640"/>
+  </g>
+  <line x1="600" y1="590" x2="450" y2="640" stroke="#16a34a" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="80" y="640" width="180" height="56" rx="10" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+  <text x="170" y="664" text-anchor="middle" class="box">Member 1</text>
+  <text x="170" y="684" text-anchor="middle" class="small" fill="#b45309">busy - 3 tasks</text>
+  <rect x="360" y="640" width="180" height="56" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+  <text x="450" y="664" text-anchor="middle" class="box">Member 2</text>
+  <text x="450" y="684" text-anchor="middle" class="small" fill="#15803d">free → gets next task</text>
+  <rect x="660" y="640" width="180" height="56" rx="10" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+  <text x="750" y="664" text-anchor="middle" class="box">Member 3</text>
+  <text x="750" y="684" text-anchor="middle" class="small" fill="#b45309">busy - 1 task</text>
+  <rect x="940" y="640" width="180" height="56" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="1030" y="664" text-anchor="middle" class="box" fill="#64748b">Member 4</text>
+  <text x="1030" y="684" text-anchor="middle" class="small" fill="#64748b">on leave (server down)</text>
+
+  <text x="600" y="730" text-anchor="middle" class="val">Checks who is available and how busy each one is, then sends each request to one of them.</text>
+</svg>

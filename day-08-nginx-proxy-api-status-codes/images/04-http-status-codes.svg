@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" width="1200" height="740" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 30px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .range { font-size: 34px; font-weight: 800; fill: #ffffff; }
+    .range-name { font-size: 15px; font-weight: 600; fill: #ffffff; }
+    .code { font-family: Consolas, Menlo, monospace; font-size: 17px; font-weight: 700; }
+    .desc { font-size: 15px; fill: #334155; }
+    .none { font-size: 15px; fill: #64748b; font-style: italic; }
+  </style>
+  <rect width="1200" height="740" rx="16" fill="#ffffff"/>
+  <text x="600" y="40" text-anchor="middle" class="title">HTTP Status Codes</text>
+  <text x="600" y="66" text-anchor="middle" class="sub">Computers only care about numbers - so just remember the ranges</text>
+
+  <!-- 1XX -->
+  <rect x="30" y="85" width="1140" height="70" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+  <rect x="30" y="85" width="190" height="70" rx="12" fill="#64748b"/>
+  <text x="125" y="122" text-anchor="middle" class="range">1XX</text>
+  <text x="125" y="144" text-anchor="middle" class="range-name">Information</text>
+  <text x="250" y="126" class="none">Request received, still processing</text>
+
+  <!-- 2XX -->
+  <rect x="30" y="170" width="1140" height="90" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <rect x="30" y="170" width="190" height="90" rx="12" fill="#16a34a"/>
+  <text x="125" y="214" text-anchor="middle" class="range">2XX</text>
+  <text x="125" y="238" text-anchor="middle" class="range-name">Success</text>
+  <text x="250" y="210" class="code" fill="#15803d">200</text><text x="292" y="210" class="desc">OK - you got the response</text>
+  <text x="570" y="210" class="code" fill="#15803d">201</text><text x="612" y="210" class="desc">Created (after POST)</text>
+  <text x="860" y="210" class="code" fill="#15803d">204</text><text x="902" y="210" class="desc">No content - deleted</text>
+  <text x="250" y="242" class="none">Everything worked.</text>
+
+  <!-- 3XX -->
+  <rect x="30" y="275" width="1140" height="70" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="30" y="275" width="190" height="70" rx="12" fill="#2563eb"/>
+  <text x="125" y="312" text-anchor="middle" class="range">3XX</text>
+  <text x="125" y="334" text-anchor="middle" class="range-name">Redirection</text>
+  <text x="250" y="316" class="none">The page is somewhere else - go there instead</text>
+
+  <!-- 4XX -->
+  <rect x="30" y="360" width="1140" height="120" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <rect x="30" y="360" width="190" height="120" rx="12" fill="#ea580c"/>
+  <text x="125" y="414" text-anchor="middle" class="range">4XX</text>
+  <text x="125" y="438" text-anchor="middle" class="range-name">Client-side error</text>
+  <text x="250" y="398" class="code" fill="#c2410c">400</text><text x="292" y="398" class="desc">Bad request</text>
+  <text x="570" y="398" class="code" fill="#c2410c">401</text><text x="612" y="398" class="desc">Wrong credentials (not logged in)</text>
+  <text x="250" y="432" class="code" fill="#c2410c">403</text><text x="292" y="432" class="desc">No authorization (logged in, not allowed)</text>
+  <text x="860" y="398" class="code" fill="#c2410c">404</text><text x="902" y="398" class="desc">Not found</text>
+  <text x="250" y="464" class="none">The request is wrong - e.g. "descrition" instead of "description" in the JSON.</text>
+
+  <!-- 5XX -->
+  <rect x="30" y="495" width="1140" height="150" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <rect x="30" y="495" width="190" height="150" rx="12" fill="#dc2626"/>
+  <text x="125" y="564" text-anchor="middle" class="range">5XX</text>
+  <text x="125" y="588" text-anchor="middle" class="range-name">Server-side error</text>
+  <text x="250" y="533" class="code" fill="#b91c1c">500</text><text x="292" y="533" class="desc">Internal server error</text>
+  <text x="570" y="533" class="code" fill="#b91c1c">501</text><text x="612" y="533" class="desc">Not implemented</text>
+  <text x="860" y="533" class="code" fill="#b91c1c">503</text><text x="902" y="533" class="desc">Service unavailable</text>
+  <text x="250" y="569" class="code" fill="#b91c1c">502</text><text x="292" y="569" class="desc">Bad gateway - Nginx is not able to connect to the backend</text>
+  <text x="250" y="603" class="code" fill="#b91c1c">504</text><text x="292" y="603" class="desc">Gateway timeout - backend is not responding on time</text>
+  <text x="250" y="633" class="none">The request is fine - the server failed.</text>
+
+  <!-- tip -->
+  <rect x="30" y="662" width="1140" height="58" rx="12" fill="#0f172a"/>
+  <text x="600" y="698" text-anchor="middle" font-size="19" font-weight="700" fill="#ffffff">Quick rule:  <tspan fill="#fdba74">4XX → check what you sent</tspan>   ·   <tspan fill="#fca5a5">5XX → check the server (502 / 504 → is the backend up?)</tspan></text>
+</svg>

@@ -18,6 +18,7 @@
 6. [HTTP Status Codes](#http-status-codes)
    - [Status Codes We Saw While Testing](#status-codes-we-saw-while-testing)
    - [Test It Yourself: Stop the DB → 503](#test-it-yourself-stop-the-db--503)
+   - [504 Gateway Timeout - How Long Nginx Waits](#504-gateway-timeout---how-long-nginx-waits)
 7. [Summary](#summary)
 8. [Interview Questions](#interview-questions)
 
@@ -283,6 +284,36 @@ systemctl start mysqld
 ```
 
 Same idea for 502: stop the **backend** (`systemctl stop backend`) and open the app → Nginx can't reach the backend → **`502 Bad Gateway`**.
+
+### 504 Gateway Timeout - How Long Nginx Waits
+
+```text
+frontend (Nginx) → backend → database
+```
+
+When Nginx forwards a request to the backend, it **waits** for the answer - but only up to a time limit. If the backend doesn't reply within that time, Nginx stops waiting and sends the user **`504 Gateway Timeout`**.
+
+The time limit is set in the Nginx config:
+
+| Setting | What it limits | Nginx default | Our `expense.conf` |
+|---------|----------------|---------------|--------------------|
+| `proxy_connect_timeout` | Time to **connect** to the backend | 60s | `5s` |
+| `proxy_read_timeout` | Time to wait for the backend's **reply** | 60s | `30s` |
+
+```nginx
+proxy_connect_timeout 5s;
+proxy_read_timeout    30s;   # 504 if the backend takes longer than this
+```
+
+So in our setup:
+
+- Backend answers within **30 seconds** → user gets the normal response (`200`, `201` ...).
+- Backend is up but takes **more than 30 seconds** (slow DB query, stuck code) → Nginx gives up → **`504 Gateway Timeout`**.
+- If we didn't set `proxy_read_timeout`, Nginx would wait the default **60 seconds** before giving the 504.
+
+**Why not wait forever?** The user would just see a loading page, and every waiting request keeps a connection open on the frontend. It's better to fail fast with a clear error.
+
+> **502 vs 504:** 502 = Nginx **can't connect** to the backend at all (backend down / port closed). 504 = Nginx **connected**, but the backend **didn't answer in time**.
 
 ## Summary
 

@@ -53,3 +53,7 @@ The address bar only sends GET requests. Use an API testing tool such as Postman
 **13. What do 301, 304 and 405 mean?**
 
 301: moved permanently, so the browser goes to the new location automatically. 304: not modified, so the browser uses its cached copy. 405: method not allowed, meaning the URL exists but doesn't accept that method.
+
+**14. When does Nginx return 504 Gateway Timeout? What's the default wait time?**
+
+When the backend doesn't reply within `proxy_read_timeout`. The default is 60 seconds; our `expense.conf` sets it to `30s`. `proxy_connect_timeout` limits how long Nginx tries to connect (default 60s, ours `5s`).

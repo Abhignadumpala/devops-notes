@@ -1,4 +1,4 @@
-# Day 9 - DNS: How Domain Names Actually Work
+# Day 9 - DNS (Domain Name System): How Domain Names Actually Work
 
 ## Table of Contents
 
@@ -14,7 +14,15 @@
 ---
 
 ## What this is / why it matters
-Computers only route traffic using IP addresses — they have no idea what "google.com" means. Humans, on the other hand, can't remember `142.250.183.142` but can easily remember "google.com." DNS (Domain Name System) is the translation layer that bridges that gap, and understanding how it's structured explains what actually happens when you buy a domain and point it at your server.
+
+**DNS = Domain Name System.**
+
+- **Computers use only IP addresses.** They connect to servers by IP and have no idea what "facebook.com" means.
+- **Humans remember only names.** Nobody can remember `104.104.56.87`, but everyone remembers `facebook.com`.
+
+That's why we create **domain names**: humans type the name, and DNS converts it to the IP the computer needs. DNS works like the **phone contacts** on your mobile: you tap a person's name, and the phone dials the number saved behind it.
+
+Understanding how DNS is structured also explains what actually happens when you buy a domain and point it at your server.
 
 ## How it works
 
@@ -22,7 +30,14 @@ Computers only route traffic using IP addresses — they have no idea what "goog
 ```
 facebook.com  →  104.104.56.87
 ```
-A browser can't connect to a name — somewhere along the way, that name has to be resolved to an IP address before a connection can be made.
+
+When you enter `facebook.com` in the browser:
+
+1. Your system asks DNS in the background: "what's the IP of `facebook.com`?"
+2. DNS answers: `104.104.56.87`.
+3. The browser connects to that IP, and Facebook opens.
+
+The browser can't connect to a name. The name always has to be converted (**resolved**) to an IP address first.
 
 **The hierarchy — reading a domain name from right to left:**
 ```

@@ -41,3 +41,11 @@ Create a hosted zone in Route 53, copy its nameservers, update the NS records at
 **10. I changed the A record but the site still goes to the old server. Why?**
 
 DNS caching - resolvers keep the old answer until its TTL expires, so changes take time to propagate. The domain is only a pointer; changing it doesn't move the server.
+
+**11. What happens step by step when you type a domain in the browser?**
+
+The ISP's DNS resolver checks its cache. If the IP isn't there, it asks a root server, which points to the TLD registry (for example `.com`). The TLD doesn't know the IP but says which nameservers manage the domain. The resolver asks those nameservers, gets the IP, and the browser connects to it.
+
+**12. Who manages `.com`, `.in` and `.ai`?**
+
+`.com`: Verisign. `.in`: the Indian government (run by NIXI). `.ai`: the government of Anguilla, since it's Anguilla's country-code TLD, so `.ai` sales bring revenue to Anguilla.

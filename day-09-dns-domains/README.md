@@ -4,12 +4,13 @@
 
 1. [What this is / why it matters](#what-this-is--why-it-matters)
 2. [How it works](#how-it-works)
-3. [What happens when you buy a domain](#what-happens-when-you-buy-a-domain)
-4. [DNS Record Types](#dns-record-types)
-5. [Pointing a Domain at AWS (Route 53)](#pointing-a-domain-at-aws-route-53)
-6. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-7. [Key takeaways](#key-takeaways)
-8. [Interview Questions](#interview-questions)
+3. [How a DNS Lookup Works (Step by Step)](#how-a-dns-lookup-works-step-by-step)
+4. [What happens when you buy a domain](#what-happens-when-you-buy-a-domain)
+5. [DNS Record Types](#dns-record-types)
+6. [Pointing a Domain at AWS (Route 53)](#pointing-a-domain-at-aws-route-53)
+7. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
+8. [Key takeaways](#key-takeaways)
+9. [Interview Questions](#interview-questions)
 
 ---
 
@@ -44,8 +45,25 @@ The browser can't connect to a name. The name always has to be converted (**reso
 mydevops   .   com
  (name)       (TLD)
 ```
-- **TLD (Top-Level Domain)** — the last part: `.com`, `.in`, `.online`, `.org`, `.ai`, `.edu`, `.net`, `.uk`
-- Each TLD has one **registry** — the organization that actually manages that TLD's database. `.com` and `.net` are run by Verisign; `.in` is run by NIXI (India's national internet registry); `.ai` belongs to the government of Anguilla, since `.ai` is technically Anguilla's country-code TLD.
+- **TLD (Top-Level Domain)** — the last part of the domain: `.com`, `.in`, `.online`, `.edu`, `.us`, `.uk`, `.net`, `.org`, `.ai`, etc.
+
+  | Domain | TLD |
+  |--------|-----|
+  | `google.com` | `.com` |
+  | `mydevops.com` | `.com` |
+  | `mydevops.in` | `.in` |
+  | `amazon.net` | `.net` |
+
+- Each TLD has one **registry** — the organization that manages that TLD's records. The TLD registry keeps the record of **who is managing each domain** under it (its nameservers).
+
+  | TLD | Managed by |
+  |-----|------------|
+  | `.com` | Verisign (also `.net`) |
+  | `.in` | Indian government (run by NIXI - India's national internet registry) |
+  | `.uk` | UK government's registry (Nominet) |
+  | `.ai` | Government of Anguilla - `.ai` is Anguilla's country-code TLD |
+
+  > **Fun fact:** `.ai` became famous because of AI companies. Every `.ai` domain sold earns money for the registry, so a big share of that revenue goes to the small country of Anguilla.
 - A **registrar** (GoDaddy, Namecheap, Hostinger, Cloudflare, AWS, etc.) is who you actually buy a domain *from* — think of them as retailers/resellers, while the registry is more like the wholesaler/record-keeper for that TLD.
 
 | | Registry | Registrar |
@@ -72,12 +90,56 @@ Above every TLD sit the **root servers** — 13 well-known root server addresses
    Your nameservers  →  A record  →  your server's IP
 ```
 
+## How a DNS Lookup Works (Step by Step)
+
+When we search a domain, it's our **ISP's (Internet Service Provider's) responsibility** to find its IP address for us. The ISP runs a **DNS resolver** that does the searching:
+
+```text
+You type mydevops.com
+      │
+      ▼
+ISP DNS resolver ── 1. "Who manages .com?" ─────────────▶ Root servers
+      │          ◀── 2. "Ask the .com TLD registry" ────
+      │
+      ├───────── 3. "Who manages mydevops.com?" ────────▶ .com TLD registry
+      │          ◀── 4. "I don't know the IP, but these
+      │                 nameservers manage it" ─────────
+      │
+      ├───────── 5. "What's the IP of mydevops.com?" ───▶ Nameservers (e.g. GoDaddy / Route 53)
+      │          ◀── 6. "203.0.113.10" ─────────────────
+      ▼
+Browser connects to 203.0.113.10
+```
+
+1. **Resolver checks its memory (cache).** If someone looked up this domain recently, it already knows the IP and answers right away.
+2. **Root servers.** If it doesn't have the IP, the resolver asks a root server. The root doesn't know the IP either, but it knows **which TLD registry** to ask (`.com`, `.in` ...).
+3. **TLD registry.** The resolver asks the `.com` registry. It says: "I don't know your IP address, but I know **who is managing your domain**" and gives the **nameservers'** names.
+4. **Nameservers.** The resolver asks those nameservers. They hold the domain's records, so they give the actual **IP address**.
+5. **Connect.** The resolver hands the IP to your browser, and the request goes to that IP.
+
+All of this runs in the **background** within milliseconds - the user only sees the website open.
+
+```text
+TLD → Nameservers → who manages your domain → IP
+```
+
 ## What happens when you buy a domain
-1. You go to a **registrar** (GoDaddy, Namecheap, etc.) and search for a domain, e.g. `mydevops.com`.
-2. The registrar checks with the TLD's **registry** whether it's already taken.
-3. If it's free, you provide your name, contact details, and payment to the registrar.
-4. The registrar registers the domain and updates the TLD's registry with which **nameservers** manage that domain — usually the registrar's own nameservers, unless you point it elsewhere (e.g. to Cloudflare, or to your own DNS host).
-5. From then on, anyone looking up `mydevops.com` gets routed: root servers → `.com` registry → your nameservers → the actual IP address you've configured.
+We buy domains from **registrars**: GoDaddy, Hostinger, Namecheap, Cloudflare, AWS, etc. They're like **brokers / resellers / retailers** - they sell on behalf of the TLD registry.
+
+1. **Search** for a domain at a registrar. It checks with the TLD registry whether it's available:
+   ```text
+   mydevops.com        → already taken
+   mydevopsssss.com    → available
+   ```
+2. **Register** it with your details: **name, mobile number, email, address** and **payment**.
+3. **Registrar updates the TLD.** The registrar registers the domain and updates the TLD registry with the **nameservers** that manage it. By default those are the registrar's own nameservers. If you bought from GoDaddy, the `.com` registry now records: "`mydevopsssss.com` is managed by **GoDaddy's nameservers**".
+4. **Point it at your server.** In GoDaddy's DNS settings, add a record for your server's IP:
+   ```text
+   mydevopsssss.com  →  203.0.113.10
+   ```
+5. From then on, anyone looking up `mydevopsssss.com` gets routed: root servers → `.com` registry → GoDaddy nameservers → `203.0.113.10`.
+
+You can also point the domain at a different DNS provider, such as Cloudflare or AWS Route 53, instead of the registrar's own nameservers (see below).
 
 The registrar earns a commission for handling the sale and paperwork on behalf of the registry — registries don't sell directly to the public.
 
@@ -113,6 +175,7 @@ Another common confusion: thinking a domain name *is* the server. It isn't — i
 
 ## Key takeaways
 - DNS exists because computers route by IP, not by name — it's purely a name-to-IP translation layer.
+- Lookup: ISP DNS resolver → root servers → TLD registry → nameservers → IP. The TLD doesn't know the IP, only who manages the domain (nameservers).
 - The hierarchy is root servers → TLD registry → registrar → your nameservers → the IP address.
 - Registry vs registrar: the registry (e.g. Verisign for `.com`) is the authoritative record-keeper for a TLD; the registrar (e.g. GoDaddy) is who you actually buy from — a retailer, not the record-keeper.
 - ICANN oversees the whole system but is an independent nonprofit, not a government body, despite having originated under U.S. government oversight decades ago.
@@ -126,4 +189,4 @@ See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README
 
 ## Interview Questions
 
-10 questions with short answers → [interview-questions/](interview-questions/README.md)
+12 questions with short answers → [interview-questions/](interview-questions/README.md)

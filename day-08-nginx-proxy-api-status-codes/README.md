@@ -17,7 +17,12 @@
    - [Ports and Domains](#ports-and-domains)
    - [Nginx Logs](#nginx-logs)
 4. [Forward Proxy vs Reverse Proxy](#forward-proxy-vs-reverse-proxy)
+   - [What a Reverse Proxy Does](#what-a-reverse-proxy-does)
 5. [Load Balancing](#load-balancing)
+   - [Why We Need a Load Balancer](#why-we-need-a-load-balancer)
+   - [Analogy - The Team Lead](#analogy---the-team-lead)
+   - [Public LB vs Private (Internal) LB](#public-lb-vs-private-internal-lb)
+   - [Forward Proxy vs Reverse Proxy vs Load Balancer](#forward-proxy-vs-reverse-proxy-vs-load-balancer)
 6. [Nginx Reverse Proxy Config](#nginx-reverse-proxy-config)
 7. [Side Note: sudoers](#side-note-sudoers)
 8. [API](#api)
@@ -101,13 +106,24 @@ Nginx receives the user's request and **forwards it to another server** behind i
 
 #### 4. SSL Termination
 
-HTTPS traffic is encrypted. Nginx holds the SSL certificate, **decrypts** the HTTPS request, and passes it to the servers behind it as plain HTTP. So only Nginx deals with certificates - the backend servers don't have to.
+When we use **HTTPS**, the traffic between the user and our server travels over the internet **encrypted** with an SSL/TLS certificate - nobody in between can read it.
+
+Once that traffic reaches our side, Nginx holds the certificate and **decrypts** it. "Termination" = the encryption **ends** at Nginx. From there, the traffic goes to the servers behind it **unencrypted**, because it's now inside our own private network - it's our internal traffic, so there's no outsider to hide it from.
+
+```text
+User ══ HTTPS (encrypted, port 443) ══▶ Nginx ── plain HTTP (8080) ──▶ Backend ── MySQL (3306) ──▶ DB
+        over the internet                ↑         inside our private network (not encrypted)
+                                    decrypts here
+```
+
+- Only Nginx needs the certificate - the backend servers don't have to manage it.
+- Encrypting/decrypting takes CPU, so doing it once at Nginx saves the backend that work.
 
 **Example:** user opens `https://mydomain.com` (port 443) → Nginx decrypts → backend gets a normal HTTP request on 8080.
 
 #### 5. Caching Server
 
-Nginx keeps a **copy** of responses (images, CSS, pages that don't change often). When the next user asks for the same thing, Nginx answers from its copy instead of asking the backend again - faster for the user, less load on the backend.
+Instead of fetching the same files from the backend **every time**, Nginx stores a **copy** of responses (images, CSS, pages that don't change often) in its cache. Next time someone asks for the same thing, Nginx answers straight from the cache - so the response comes **faster**, and the backend gets less load.
 
 **Example:** the logo image is requested 1000 times - the backend sends it once, Nginx serves the other 999 from its cache.
 
@@ -231,6 +247,16 @@ Forward:  Client → [Forward Proxy] → Internet → Server
 Reverse:  Client → Internet → [Reverse Proxy] → Server(s)
 ```
 
+### What a Reverse Proxy Does
+
+**Nginx is the most popular reverse proxy server.** A reverse proxy does 5 jobs:
+
+1. **Server aware** - the servers behind it know about the proxy and send all their traffic through it. The client doesn't know the proxy is there - it thinks it's talking to the website directly.
+2. **Hides the server's identity** - users and the internet only see the proxy's public IP. The real servers' IPs stay private, so attackers can't reach them directly.
+3. **SSL/TLS termination** - traffic is encrypted (HTTPS) over the internet, decrypted at the proxy, and goes plain inside our private network. Details in [SSL Termination](#4-ssl-termination).
+4. **Cache** - keeps copies of responses and answers from them, so the next response is faster. Details in [Caching Server](#5-caching-server).
+5. **Load balancing** - spreads requests across many servers so none of them gets overloaded. Details in [Load Balancing](#load-balancing).
+
 ## Load Balancing
 
 One server can handle only so many requests. When traffic grows, we run **many copies of the same app on many servers**. Now someone has to decide which server gets each request - that's the **load balancer**.
@@ -256,6 +282,16 @@ A load balancer:
 
 The simplest method is **round-robin** - request 1 → server 1, request 2 → server 2, request 3 → server 3, then back to server 1.
 
+### Why We Need a Load Balancer
+
+Without a load balancer, all requests land on the same server(s). During **peak hours** (sale day, salary day, evenings):
+
+- CPU and RAM usage shoots up
+- The server starts responding **slowly**
+- If it keeps growing, the server can **go down** - and the whole app is down for everyone
+
+With a load balancer, the requests are shared across many servers, so each one stays within its limits, responses stay fast, and if one server fails the others keep serving.
+
 ### Analogy - The Team Lead
 
 Think of a team lead (TL):
@@ -265,7 +301,9 @@ Think of a team lead (TL):
 - Knows how much work each member is doing
 - Gives the next task to whoever can take it
 
-A delivery manager works the same way one level up - they don't do the work, they route it to the right lead:
+The load balancer = TL: it checks which servers are healthy and how busy they are, and sends each request to one of them.
+
+A **delivery manager** works the same way one level up - they don't do the work themselves, they look at **what kind of work** it is and send it to the right lead:
 
 ```text
                 Delivery Manager   ← like Nginx (single entry point)
@@ -275,7 +313,65 @@ A delivery manager works the same way one level up - they don't do the work, the
         UI team   Backend team    DB team
 ```
 
-The load balancer = TL: it checks which servers are healthy and how busy they are, and sends each request to one of them.
+- UI work → UI lead → UI team
+- Backend work → Backend lead → Backend team
+- DB work → DB lead → DB team
+
+Nginx does the same with requests: it looks at the request and sends it to the right group of servers. In our app:
+
+- `http://<public-ip>/` (UI) → served by the frontend (HTML files)
+- `http://<public-ip>/api/...` (backend work) → sent to the backend servers
+- Only the backend talks to the DB
+
+Because each type of work goes straight to the team that handles it, the traffic is distributed and responses are fast.
+
+### Public LB vs Private (Internal) LB
+
+In a real setup there's a load balancer in front of **each tier**:
+
+```text
+                 Internet (users)
+                       │
+                       ▼
+            ┌─────────────────────┐
+            │  PUBLIC LB          │  ← has a public IP, users can reach it
+            └─────────────────────┘
+               │               │
+           Frontend-1      Frontend-2
+               │               │
+               ▼               ▼
+            ┌─────────────────────┐
+            │  PRIVATE (internal) │  ← private IP only, not reachable
+            │  LB                 │     from the internet
+            └─────────────────────┘
+               │               │
+           Backend-1       Backend-2
+               │               │
+               ▼               ▼
+                   Database
+```
+
+| | Public LB | Private (Internal) LB |
+|---|-----------|------------------------|
+| Sits in front of | Frontend servers | Backend servers (and DB servers, if there are many) |
+| IP | Public IP / domain | Private IP only |
+| Who can reach it | Anyone on the internet | Only our own servers (frontend → backend) |
+| Why | Users must be able to open the app | Backend and DB must stay hidden from the internet |
+
+**Simple rule:** only the **first** load balancer (before the frontend) is public. Everything behind the frontend is private.
+
+### Forward Proxy vs Reverse Proxy vs Load Balancer
+
+| | Forward Proxy | Reverse Proxy | Load Balancer |
+|---|---------------|---------------|---------------|
+| Sits on | Client side | Server side | Server side |
+| Works for | The client | The server | The servers (as a group) |
+| Hides | Client's IP | Server's IP | Server IPs (users see only the LB) |
+| Main job | Go to the internet on the client's behalf | Receive requests and forward them to the server behind it | Spread requests across **many** servers |
+| Number of servers behind it | - | Can be just one | Always many |
+| Examples | VPN, office proxy | Nginx in front of our backend | Nginx `upstream`, AWS ALB |
+
+**How they relate:** a load balancer is a **type of reverse proxy** - every load balancer is a reverse proxy, but a reverse proxy with only one server behind it is not load balancing. Nginx can be both.
 
 ## Nginx Reverse Proxy Config
 
@@ -445,6 +541,8 @@ The backend doesn't get the `description` field it expects. That's the **client'
 - Nginx = HTTP server + load balancer + reverse proxy + SSL termination + cache.
 - Web files live in `/usr/share/nginx/html`, config in `/etc/nginx/nginx.conf`, logs in `/var/log/nginx`.
 - Forward proxy works for the client and hides it; reverse proxy works for the server and hides it.
+- Reverse proxy jobs: server aware, hides server IP, SSL termination (encrypted outside, plain inside), cache, load balancing.
+- Load balancer spreads requests so servers don't get overloaded at peak hours; public LB before the frontend, private LB before backend/DB.
 - `location /api/` + `proxy_pass` sends API calls to the backend on 8080; `X-Forwarded-*` headers keep the real client details.
 - REST API: `GET` read, `POST` create, `PUT` update, `DELETE` delete; data travels as JSON.
 - Status codes: 2XX success, 3XX redirect, 4XX client error, 5XX server error.

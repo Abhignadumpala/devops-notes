@@ -1,6 +1,6 @@
-# Day 9 - Troubleshooting Step by Step
+# Day 8 - Troubleshooting Step by Step
 
-[← Back to Day 9 notes](../README.md)
+[← Back to Day 8 notes](../README.md)
 
 ## Table of Contents
 

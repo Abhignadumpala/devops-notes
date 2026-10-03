@@ -1,4 +1,4 @@
-# Day 8 - Nginx, Forward & Reverse Proxy, REST API & HTTP Status Codes
+# Day 8 - Nginx, Reverse Proxy, REST API, API Testing & HTTP Status Codes
 
 > **Nginx is popular because one tool can do many jobs:**
 > * HTTP server
@@ -27,12 +27,27 @@
    - [Never Edit the Main File - Use a Separate File](#never-edit-the-main-file---use-a-separate-file)
    - [The Main Part - Sending /api/ to the Backend](#the-main-part---sending-api-to-the-backend)
 7. [API](#api)
+   - [How an API Request Travels](#how-an-api-request-travels)
 8. [HTTP Methods (CRUD)](#http-methods-crud)
-9. [HTTP Status Codes](#http-status-codes)
-10. [Summary](#summary)
-11. [Interview Questions](#interview-questions)
+9. [Testing the Backend API](#testing-the-backend-api)
+   - [Health Check](#health-check)
+   - [Why Not Just the Browser?](#why-not-just-the-browser)
+   - [Backend API Endpoints](#backend-api-endpoints)
+   - [Testing with HTTPie / Postman (Screenshots)](#testing-with-httpie--postman-screenshots)
+10. [HTTP Status Codes](#http-status-codes)
+    - [2XX - Success](#2xx---success)
+    - [3XX - Redirection](#3xx---redirection)
+    - [4XX - Client-side error](#4xx---client-side-error)
+    - [5XX - Server-side error](#5xx---server-side-error)
+    - [Test It Yourself: Stop the DB → 503](#test-it-yourself-stop-the-db--503)
+    - [504 Gateway Timeout - How Long Nginx Waits](#504-gateway-timeout---how-long-nginx-waits)
+11. [Troubleshooting](#troubleshooting)
+12. [Summary](#summary)
+13. [Interview Questions](#interview-questions)
 
-**Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg) · [User → LB → Frontend → Backend → DB](images/05-user-lb-frontend-backend-db.svg)
+**Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg) · [User → LB → Frontend → Backend → DB](images/05-user-lb-frontend-backend-db.svg) · [API Request Flow](images/06-api-request-flow.svg) · [What Causes Each Status Code](images/07-what-causes-each-status-code.svg)
+
+**More in this folder:** [Troubleshooting step by step](troubleshooting/README.md) · [Interview questions](interview-questions/README.md)
 
 ---
 
@@ -130,14 +145,35 @@ Instead of fetching the same files from the backend **every time**, Nginx stores
 
 ### Important Paths
 
-On Linux, every package puts its files in fixed places. Knowing these 4 paths is enough to deploy, configure and debug Nginx.
+On Linux, every package puts its files in fixed places. Everything we do with Nginx - changing settings, putting our website, checking errors - happens in one of these paths. Know them and you can set up and troubleshoot Nginx on any server.
 
 | Path | What |
 |------|------|
-| `/usr/share/nginx/html/` | Nginx default HTML directory - web files go here |
+| `/etc/nginx/nginx.conf` | Main (default) Nginx configuration - we read it, we don't edit it |
+| `/usr/share/nginx/html/` | Nginx default HTML directory - our website files go here |
 | `/usr/share/nginx/html/index.html` | Default HTML page. If you open `http://<public-ip>/` and see the Nginx welcome page, **Nginx is installed and running** |
-| `/etc/nginx/nginx.conf` | Nginx default configuration is stored here |
 | `/var/log/nginx/` | Nginx logs - `access.log` and `error.log` |
+| `/etc/nginx/default.d/expense.conf` | **Our** custom config - the expense reverse proxy (`/api/` → backend). Extra configs go here so the main config isn't disturbed |
+
+```text
+/etc/nginx/
+├── nginx.conf              ← main config (don't edit)
+└── default.d/
+    └── expense.conf        ← our custom config (edit here)
+
+/usr/share/nginx/html/      ← website files (index.html ...)
+
+/var/log/nginx/
+├── access.log              ← every request
+└── error.log               ← errors
+```
+
+What's inside the main `nginx.conf`:
+
+- `listen 80;` → which port Nginx listens on
+- `root /usr/share/nginx/html;` → which folder the website files are served from
+- `log_format` / `access_log` → how and where requests are logged
+- `include /etc/nginx/default.d/*.conf;` → loads our extra config files automatically
 
 > **Interview Q:** Where do you change Nginx's default port number?
 > In `/etc/nginx/nginx.conf` - change the `listen 80;` line in the `server` block, then `nginx -t` and `systemctl restart nginx`.
@@ -478,6 +514,35 @@ systemctl restart nginx     # apply the change
 }
 ```
 
+### How an API Request Travels
+
+![How an API request travels from browser to DB](images/06-api-request-flow.svg)
+
+When we add an expense in the app, the browser sends the request to the **frontend** - never directly to the backend:
+
+```text
+Browser → http://<frontend-public-ip>/api/transaction
+Method: POST
+Body:   {"amount": 100, "category": "Food", "description": "dosa"}
+Response → 201 Created
+```
+
+What happens behind the scenes:
+
+1. The request reaches **Nginx** on the frontend.
+2. The path starts with `/api`, so Nginx **forwards** it to the backend. `/api/transaction` is converted to the backend URL:
+   ```text
+   http://<backend-private-ip>:8080/transaction
+   ```
+3. The **backend** takes the data and saves it in the **DB**.
+4. The backend sends the response back → Nginx → browser (`201 Created`).
+
+So one request passes through **one server to another**: browser → frontend → backend → DB, and the answer comes back the same way.
+
+- The `/api` → backend forwarding is our **Nginx config** (`location /api/ { proxy_pass ... }` in `expense.conf`).
+- The API URLs (`/transaction`, `/health`) and what they return are **written by the developers**.
+- That's how the app can show everything together: the **frontend** gives the look (layout, colours), and the **data** comes from the DB through the backend.
+
 ## HTTP Methods (CRUD)
 
 An **HTTP method** tells the server **what action** you want on the data. Almost every app only does four things with data - **CRUD** = Create, Read, Update, Delete - and each maps to a method.
@@ -551,6 +616,99 @@ curl -X POST http://<public-ip>/api/transaction \
 curl -X DELETE http://<public-ip>/api/transaction/32              # DELETE
 ```
 
+## Testing the Backend API
+
+### Health Check
+
+The quickest test - is the backend running and can it reach the DB?
+
+```bash
+curl http://<backend-ip>:8080/health
+```
+
+```json
+{"status":"ok","db":"up"}
+```
+
+`status: ok` means the backend is working. `db: up` means it can talk to MySQL.
+
+> To call the backend directly from your laptop, port **8080** must be allowed in the backend's security group. Allow it only from **My IP**, only while testing, and remove it after - normally only the frontend should reach 8080. From the frontend server you can always test with its **private** IP.
+
+### Why Not Just the Browser?
+
+When you type a URL in the browser's address bar, the browser always sends a **GET**. So from the browser we can only **get** (read) information - we can't **post**, update or delete.
+
+To test all methods, we use **API testing tools**:
+
+| Tool | Type |
+|------|------|
+| **Postman** | Desktop/web app - most popular |
+| **HTTPie** | Web/desktop app + command line |
+| **curl** | Command line, already on every Linux server |
+
+In these tools we choose the **method**, type the **URL**, add the **JSON body**, click Send, and see the **status code** and **response**.
+
+### Backend API Endpoints
+
+**Which URL to use:**
+
+| Sending the request to | URL |
+|------------------------|-----|
+| **Frontend** (normal way, through Nginx) | `http://<FRONTEND_IP>/api/transaction` |
+| **Backend** directly (testing) | `http://<BACKEND_IP>:8080/transaction` |
+
+Frontend → add `/api`, no port (80 by default). Backend → no `/api`, add port `:8080`.
+
+Calling the backend directly:
+
+| Method | URL | What it does |
+|--------|-----|--------------|
+| `GET` | `http://<backend-ip>:8080/transaction` | Get **all** transactions |
+| `GET` | `http://<backend-ip>:8080/transaction/2` | Get the transaction with **ID 2** |
+| `POST` | `http://<backend-ip>:8080/transaction` | Add a new transaction (JSON body below) |
+| `DELETE` | `http://<backend-ip>:8080/transaction/4` | Delete transaction **4** |
+| `DELETE` | `http://<backend-ip>:8080/transaction/` | Delete **all** transactions (needs an admin token) |
+| `GET` | `http://<backend-ip>:8080/health` | Health check |
+
+`POST` body:
+
+```json
+{
+  "amount": 750,
+  "description": "Electricity bill",
+  "category": "Utilities"
+}
+```
+
+Same with `curl`:
+
+```bash
+curl http://<backend-ip>:8080/transaction                     # GET all
+curl http://<backend-ip>:8080/transaction/2                   # GET one
+curl -X POST http://<backend-ip>:8080/transaction \
+     -H "Content-Type: application/json" \
+     -d '{"amount": 750, "description": "Electricity bill", "category": "Utilities"}'
+curl -X DELETE http://<backend-ip>:8080/transaction/4         # DELETE one
+```
+
+### Testing with HTTPie / Postman (Screenshots)
+
+**1. POST a new transaction → `201 Created`** - the backend saved it and gave it `id: 2`.
+
+![POST transaction returns 201 Created](images/api-01-post-201-created.png)
+
+**2. GET all transactions → `200 OK`** - the new one (`id: 2`) is now in the list.
+
+![GET all transactions returns 200 OK](images/api-02-get-all-200-ok.png)
+
+**3. POST with broken JSON → `400 Bad Request`** - the closing `"` after `Utilities` is missing, so the input is not correct (`malformed JSON body`). Our mistake → 4XX.
+
+![POST with malformed JSON returns 400 Bad Request](images/api-03-post-bad-json-400.png)
+
+**4. DELETE all without a token → `401 Unauthorized`** - deleting everything is an admin action, and we didn't send any credentials (`admin token required`).
+
+![DELETE all without admin token returns 401 Unauthorized](images/api-04-delete-all-401.png)
+
 ## HTTP Status Codes
 
 ![HTTP status codes](images/04-http-status-codes.svg)
@@ -568,6 +726,8 @@ A **status code** is a 3-digit number the server sends back with every response 
 | **4XX** | Client-side error | **Our** mistake (the request) |
 | **5XX** | Server-side error | The **application/server's** problem |
 
+![What causes each status code](images/07-what-causes-each-status-code.svg)
+
 ### 2XX - Success
 
 If the code starts with **2**, the request worked.
@@ -578,16 +738,53 @@ If the code starts with **2**, the request worked.
 | `201` | Created | `POST` saved new data |
 | `204` | No content | `DELETE` worked - info deleted, nothing to send back |
 
+### 3XX - Redirection
+
+| Code | Meaning | In simple words |
+|------|---------|-----------------|
+| `301` | Moved permanently | The page has a new location - it's sent in the response and the browser goes there automatically |
+| `304` | Not modified | Nothing changed since last time - use your old (cached) response |
+
+A 3XX code is **not an error**. It means "**something has changed**, go here instead". The server sends the new location, and the browser (or tool) goes there automatically.
+
+**Example 1 - developers renamed the API (`301`):**
+
+```text
+Old: GET /transactions   (with "s")
+New: GET /transaction
+```
+
+The developers changed the name recently. If someone still calls the old `/transactions`, they get **`301 Moved Permanently`** with the new location, and land on `/transaction`. Old links keep working.
+
+**Example 2 - a page that moved (`301`):**
+
+```text
+http://mydomain.com/home  →  301  →  http://mydomain.com/
+```
+
+Users don't need to remember the exact page. Even if they type `/home`, they're redirected to the correct page. We set this up in `expense.conf`:
+
+```nginx
+location = /home {
+    return 301 /;
+}
+```
+
+**`304 Not Modified`** - also a 3XX, but no new location. The browser asks "has this changed since I last downloaded it?" The server says "no, **not modified**", so the browser shows its **cached** copy. It's faster, and nothing is downloaded again.
+
 ### 4XX - Client-side error
 
 If the code starts with **4**, it's **our mistake** - we asked for something wrong, something that isn't there, or something we're not allowed to see.
 
 | Code | Meaning | In simple words |
 |------|---------|-----------------|
-| `400` | Bad request | The request itself is wrong (bad/missing data) |
-| `401` | Unauthorized | Wrong credentials / not logged in |
-| `403` | Forbidden | Logged in, but **no access** - not authorised for this |
+| `400` | Bad request | Input is not correct - bad/missing data, broken JSON |
+| `401` | Unauthorized | **No credentials** sent / not logged in (e.g. DELETE all without the admin token) |
+| `403` | Forbidden | Credentials sent, but **wrong / no access** - not authorised for this |
 | `404` | Not found | Asking for data/page that isn't there (e.g. `/api/transaction/9999`) |
+| `405` | Method not allowed | The URL exists, but not for that method (e.g. `PUT` when the API doesn't support it) |
+
+> **401 vs 403:** 401 = "who are you?" (no credentials). 403 = "I know who you are, but you're not allowed".
 
 **Example** - a typo in the key (`descrition` instead of `description`):
 
@@ -610,11 +807,67 @@ If the code starts with **5**, our request was fine - the problem is on the **ap
 |------|---------|-----------------|
 | `500` | Internal server error | Something broke inside the application - the code doesn't say what. Check the backend logs |
 | `501` | Not implemented | The server doesn't support this feature yet - rarely seen |
-| `502` | Bad gateway | The frontend (Nginx) can't connect to the backend / didn't get a proper response from it |
-| `503` | Service unavailable | The service is down or too busy right now |
+| `502` | Bad gateway | **Backend down** - the frontend (Nginx) can't connect to the backend / didn't get a proper response from it |
+| `503` | Service unavailable | The service can't work right now - e.g. **DB down** |
 | `504` | Gateway timeout | The backend is up but didn't answer in time |
 
-> **Quick rule:** 2XX → success. 4XX → check what **you** sent. 5XX → check the **server** (502/504 → is the backend up and reachable?).
+> **Quick rule:** 2XX → success. 3XX → redirect, not an error. 4XX → check what **you** sent. 5XX → check the **server** (502/504 → is the backend up and reachable?).
+
+### Test It Yourself: Stop the DB → 503
+
+On the **DB server**, stop MySQL:
+
+```bash
+systemctl stop mysqld
+```
+
+Now open the app or call the API:
+
+```bash
+curl -i http://<backend-ip>:8080/health      # -i shows the status code too
+```
+
+You get **`503 Service Unavailable`** - the backend is running, but the DB behind it is down, so it can't serve the request. Start MySQL again and it works:
+
+```bash
+systemctl start mysqld
+```
+
+Same idea for 502: stop the **backend** (`systemctl stop backend`) and open the app → Nginx can't reach the backend → **`502 Bad Gateway`**.
+
+### 504 Gateway Timeout - How Long Nginx Waits
+
+```text
+frontend (Nginx) → backend → database
+```
+
+When Nginx forwards a request to the backend, it **waits** for the answer - but only up to a time limit. If the backend doesn't reply within that time, Nginx stops waiting and sends the user **`504 Gateway Timeout`**.
+
+The time limit is set in the Nginx config:
+
+| Setting | What it limits | Nginx default | Our `expense.conf` |
+|---------|----------------|---------------|--------------------|
+| `proxy_connect_timeout` | Time to **connect** to the backend | 60s | `5s` |
+| `proxy_read_timeout` | Time to wait for the backend's **reply** | 60s | `30s` |
+
+```nginx
+proxy_connect_timeout 5s;
+proxy_read_timeout    30s;   # 504 if the backend takes longer than this
+```
+
+So in our setup:
+
+- Backend answers within **30 seconds** → user gets the normal response (`200`, `201` ...).
+- Backend is up but takes **more than 30 seconds** (slow DB query, stuck code) → Nginx gives up → **`504 Gateway Timeout`**.
+- If we didn't set `proxy_read_timeout`, Nginx would wait the default **60 seconds** before giving the 504.
+
+**Why not wait forever?** The user would just see a loading page, and every waiting request keeps a connection open on the frontend. It's better to fail fast with a clear error.
+
+> **502 vs 504:** 502 = Nginx **can't connect** to the backend at all (backend down / port closed). 504 = Nginx **connected**, but the backend **didn't answer in time**.
+
+## Troubleshooting
+
+When you get errors, **check the logs first**, step by step: Nginx `access.log` → `journalctl -u backend` → `systemctl status` / `ps -ef` / `netstat -lntp` → `curl http://localhost:8080/health`. Full approach and a real example (500 → `Access denied for user 'expense'` → fix DB credentials → `daemon-reload` + `restart`) in [troubleshooting/README.md](troubleshooting/README.md).
 
 ## Summary
 
@@ -625,7 +878,10 @@ If the code starts with **5**, our request was fine - the problem is on the **ap
 - Load balancer spreads requests so servers don't get overloaded at peak hours; public LB before the frontend, private LB before backend/DB.
 - `location /api/` + `proxy_pass` sends API calls to the backend on 8080; `X-Forwarded-*` headers keep the real client details.
 - REST API: `GET` read, `POST` create, `PUT` update, `DELETE` delete; data travels as JSON.
-- Status codes: 2XX success, 3XX redirect, 4XX client error, 5XX server error.
+- API flow: browser → frontend `/api/transaction` → Nginx forwards to `backend:8080/transaction` → DB, and the response comes back the same way.
+- Browser address bar = GET only. Use Postman / HTTPie / curl to test POST, PUT and DELETE. Frontend URL: `<FRONTEND_IP>/api/transaction`; backend URL: `<BACKEND_IP>:8080/transaction`; `/health` → `{"status":"ok","db":"up"}`.
+- Status codes: 2XX success, 3XX redirect (not an error - 301 new location, 304 use cache), 4XX our mistake (400, 401, 403, 404, 405), 5XX server side (500, 502 backend down, 503 DB down, 504 too slow - Nginx waits 60s by default, 30s in our config).
+- Troubleshoot from the logs: Nginx `access.log` → `journalctl -u backend` → status/ps/netstat → `/health`.
 
 ## Interview Questions
 

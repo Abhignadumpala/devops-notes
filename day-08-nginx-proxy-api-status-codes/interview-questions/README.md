@@ -40,11 +40,11 @@ Create → `POST`, Read → `GET`, Update → `PUT`, Delete → `DELETE`.
 
 **10. 401 vs 403?**
 
-`401` = wrong/no credentials (we don't know who you are). `403` = we know who you are, but you're not allowed.
+`401` = no/wrong credentials sent - "who are you?" (e.g. DELETE all without the admin token). `403` = credentials sent, but not allowed - "I know who you are, but you can\'t do this".
 
-**11. 502 vs 504?**
+**11. 502 vs 503 vs 504?**
 
-`502 Bad Gateway` - Nginx can't connect to the backend (backend down/unreachable). `504 Gateway Timeout` - backend is reachable but didn't respond in time.
+`502 Bad Gateway` - Nginx can't connect to the backend (backend down/unreachable). `503 Service Unavailable` - service can't work right now (e.g. DB down). `504 Gateway Timeout` - backend is reachable but didn't respond in time.
 
 **12. A POST body has `descrition` instead of `description`. Which status code range do you expect?**
 
@@ -93,3 +93,47 @@ The public LB sits before the frontend, has a public IP, and users reach it from
 **23. Why is Nginx called a reverse proxy server?**
 
 It sits in front of our servers, receives every request, and forwards it to the right server behind it, while hiding those servers. It also does SSL termination, caching and load balancing, which is why it's the most popular reverse proxy.
+
+**24. What do you run after changing Nginx config?**
+
+`nginx -t` to check the syntax, then `systemctl restart nginx` to apply the change.
+
+**25. How does an API request travel in a 3-tier app?**
+
+Browser → frontend `/api/transaction` → Nginx forwards it to `http://<backend-private-ip>:8080/transaction` → backend saves or reads the data in the DB → response goes back the same way (for example `201 Created`).
+
+**26. How do you check the backend is healthy?**
+
+`curl http://<backend-ip>:8080/health` should return `{"status":"ok","db":"up"}`.
+
+**27. Why can't you test POST or DELETE from the browser address bar? What do you use instead?**
+
+The address bar only sends GET requests. Use an API testing tool such as Postman, HTTPie or curl to choose the method, add a JSON body and see the status code.
+
+**28. You stop MySQL and open the app. What status code do you expect, and why?**
+
+503 Service Unavailable. The backend is running, but the DB it depends on is down, so it can't serve the request.
+
+**29. What do 301, 304 and 405 mean?**
+
+301: moved permanently, so the browser goes to the new location automatically. 304: not modified, so the browser uses its cached copy. 405: method not allowed, meaning the URL exists but doesn't accept that method.
+
+**30. When does Nginx return 504 Gateway Timeout? What's the default wait time?**
+
+When the backend doesn't reply within `proxy_read_timeout`. The default is 60 seconds; our `expense.conf` sets it to `30s`. `proxy_connect_timeout` limits how long Nginx tries to connect (default 60s, ours `5s`).
+
+**31. The app shows an error. How do you troubleshoot?**
+
+Check the logs first, step by step. Nginx `access.log` shows the status code. `journalctl -u backend` shows the real error. `systemctl status backend`, `ps -ef | grep node` and `netstat -lntp` confirm the backend is running and listening. `curl http://localhost:8080/health` confirms the backend can reach the DB.
+
+**32. Backend logs show `Access denied for user 'expense'`. What's wrong and how do you fix it?**
+
+The backend can't log in to MySQL because the DB credentials are wrong. Correct `DB_USER` / `DB_PWD` / `DB_HOST` in `/etc/systemd/system/backend.service`, then run `systemctl daemon-reload` and `systemctl restart backend`.
+
+**33. Why `systemctl daemon-reload` before restarting?**
+
+The service file changed. `daemon-reload` makes systemd re-read the unit files, otherwise the restart would use the old settings.
+
+**34. Is a 3XX code an error?**
+
+No, it's a redirect: something changed, so go to the new location. For example, `/transactions` → `/transaction` or `/home` → `/` with 301. 304 means the content hasn't changed, so the browser uses its cached copy.

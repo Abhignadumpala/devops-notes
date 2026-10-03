@@ -69,3 +69,7 @@ The browser uses the default port when none is given - 80 for `http`, 443 for `h
 **17. What can you find in the Nginx access log vs error log?**
 
 `access.log` - every request: client IP, timestamp, method + path, status code, size, browser. `error.log` - failures. Use `tail -f` to watch either live.
+
+**18. Where is the Nginx access log format defined?**
+
+In `/etc/nginx/nginx.conf` inside the `http { }` block: `log_format main '...'` defines the format with variables like `$remote_addr`, `$time_local`, `$request`, `$status`, `$http_user_agent`, and `access_log /var/log/nginx/access.log main;` tells Nginx to use it.

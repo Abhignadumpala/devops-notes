@@ -132,21 +132,46 @@ tail -f /var/log/nginx/access.log    # watch requests live
 tail -f /var/log/nginx/error.log     # watch errors live (-f = follow, shows new lines as they come)
 ```
 
-**Reading an access log line:**
+**Where the log format comes from:**
+
+Nginx doesn't decide the log line by itself - the format is defined in the config file `/etc/nginx/nginx.conf`, inside the `http { }` block:
+
+```nginx
+http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+    ...
+}
+```
+
+- `log_format main '...'` → creates a format named **main**. Each `$variable` is filled in by Nginx for every request.
+- `access_log /var/log/nginx/access.log main;` → write every request to `access.log` **using the `main` format**.
+- The error log is set separately (outside `http`): `error_log /var/log/nginx/error.log;`
+- Want different details in the log? Change `log_format` (or create a new one), then `nginx -t` and `systemctl restart nginx`.
+
+**Reading an access log line (format → real line):**
 
 ```text
 203.0.113.42 - - [30/Sep/2026:02:24:50 +0000] "GET / HTTP/1.1" 200 9466 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0" "-"
 ```
 
-| Part | Meaning |
-|------|---------|
-| `203.0.113.42` | Client IP - where the request came from |
-| `[30/Sep/2026:02:24:50 +0000]` | Timestamp of the request |
-| `"GET / HTTP/1.1"` | Method + path + protocol (asked for the home page) |
-| `200` | Status code - success |
-| `9466` | Response size in bytes |
-| `"-"` | Referrer - page the user came from (none, typed directly) |
-| `"Mozilla/5.0 (Windows NT 10.0 ...) ... Edg/154.0.0.0"` | User agent - browser + OS (here: Microsoft Edge on Windows 10/11) |
+| Variable in `log_format` | Value in the line | Meaning |
+|--------------------------|-------------------|---------|
+| `$remote_addr` | `203.0.113.42` | Client IP - where the request came from |
+| `-` | `-` | Just a fixed dash written in the format |
+| `$remote_user` | `-` | Logged-in user (HTTP basic auth) - none, so `-` |
+| `[$time_local]` | `[30/Sep/2026:02:24:50 +0000]` | Timestamp of the request |
+| `"$request"` | `"GET / HTTP/1.1"` | Method + path + protocol (asked for the home page) |
+| `$status` | `200` | Status code - success |
+| `$body_bytes_sent` | `9466` | Response size in bytes |
+| `"$http_referer"` | `"-"` | Page the user came from - none, typed directly |
+| `"$http_user_agent"` | `"Mozilla/5.0 (Windows NT 10.0 ...) ... Edg/154.0.0.0"` | Browser + OS (here: Microsoft Edge on Windows 10/11) |
+| `"$http_x_forwarded_for"` | `"-"` | Real client IP if the request came through another proxy - none here |
+
+> Any value that's empty is written as `-`.
 
 ## Forward Proxy vs Reverse Proxy
 

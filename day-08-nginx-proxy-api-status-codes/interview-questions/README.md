@@ -53,3 +53,19 @@ Create → `POST`, Read → `GET`, Update → `PUT`, Delete → `DELETE`.
 **13. Two ways to give a user sudo access?**
 
 Edit `/etc/sudoers` directly (with `visudo`), or drop an individual file into `/etc/sudoers.d/` - the second is cleaner to add/remove.
+
+**14. Where do you change Nginx's default port number?**
+
+In `/etc/nginx/nginx.conf` - change `listen 80;` in the `server` block, then run `nginx -t` and `systemctl restart nginx`.
+
+**15. How can you quickly check Nginx is running?**
+
+Open `http://<public-ip>/` - if the default page (`/usr/share/nginx/html/index.html`) loads, Nginx is up. On the server: `systemctl status nginx`.
+
+**16. Why don't users type port numbers in URLs?**
+
+The browser uses the default port when none is given - 80 for `http`, 443 for `https`. Servers listen on these defaults, so users only type the domain. A non-default port (like 81) must be typed in the URL.
+
+**17. What can you find in the Nginx access log vs error log?**
+
+`access.log` - every request: client IP, timestamp, method + path, status code, size, browser. `error.log` - failures. Use `tail -f` to watch either live.

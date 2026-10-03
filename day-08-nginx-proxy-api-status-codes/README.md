@@ -15,7 +15,7 @@
    - [Why Nginx Is Popular](#why-nginx-is-popular)
    - [Important Paths](#important-paths)
    - [Ports and Domains](#ports-and-domains)
-   - [Reading an Access Log Line](#reading-an-access-log-line)
+   - [Nginx Logs](#nginx-logs)
 4. [Forward Proxy vs Reverse Proxy](#forward-proxy-vs-reverse-proxy)
 5. [Load Balancing - The Team Lead Analogy](#load-balancing---the-team-lead-analogy)
 6. [Nginx Reverse Proxy Config](#nginx-reverse-proxy-config)
@@ -79,43 +79,60 @@ The frontend is just **HTML, CSS and JS** files. They don't run on the server - 
 
 | Path | What |
 |------|------|
-| `/usr/share/nginx/html/` | Default HTML directory |
-| `/usr/share/nginx/html/index.html` | Default page shown at `http://<public-ip>/` |
-| `/etc/nginx/nginx.conf` | Default (main) configuration |
-| `/var/log/nginx/` | Logs - `access.log` and `error.log` |
+| `/usr/share/nginx/html/` | Nginx default HTML directory - web files go here |
+| `/usr/share/nginx/html/index.html` | Default HTML page. If you open `http://<public-ip>/` and see the Nginx welcome page, **Nginx is installed and running** |
+| `/etc/nginx/nginx.conf` | Nginx default configuration is stored here |
+| `/var/log/nginx/` | Nginx logs - `access.log` and `error.log` |
+
+> **Interview Q:** Where do you change Nginx's default port number?
+> In `/etc/nginx/nginx.conf` - change the `listen 80;` line in the `server` block, then `nginx -t` and `systemctl restart nginx`.
 
 ### Ports and Domains
 
 | URL typed | What actually happens |
 |-----------|-----------------------|
 | `http://<public-ip>/` | Connects to the Linux server on HTTP port **80** - no port typed, so the browser uses 80 by default (same as `http://<public-ip>:80/`) |
-| `http://mydomain.com` | Same as `http://<public-ip>/` - the domain is just a name for the IP |
-| `http://mydomain.com:81` | Any port other than 80/443 must be typed |
-| `https://mydomain.com` | Same as `https://mydomain.com:443` |
+| `http://mydomain.com` | After the domain is mapped in DNS, the name is converted to the IP → same as `http://<public-ip>/` |
+| `http://mydomain.com:81` | Connects on port **81**. Works only if Nginx is set to `listen 81;` - and the port **must be typed** in the URL |
+| `https://mydomain.com` | Same as `https://mydomain.com:443` - HTTPS default port is **443** |
+| backend | Our backend app is reached on port **8080** (only Nginx talks to it, not the internet) |
 
-- HTTP → **80**, HTTPS → **443** (the browser adds these automatically).
-- Our backend → **8080** (never opened to the internet, only Nginx talks to it).
+**Why everyone uses default ports:**
 
-### Reading an Access Log Line
+- If you don't mention a port in the URL, the browser takes the **default port** - **80** for `http`, **443** for `https`.
+- So clients never need to remember or type port numbers - they just type the domain.
+- The port number is written in the **server's config file** (`listen 80;`), not given to users.
+- If the server uses a non-default port (like 81), the browser still tries 80 unless you type `:81` - that's why we stick to the defaults.
+
+### Nginx Logs
+
+Both logs are in `/var/log/nginx/`:
+
+| File | What's in it |
+|------|--------------|
+| `access.log` | Every request - who came (IP), when (timestamp), what they asked for, status code, which browser |
+| `error.log` | Errors - if something fails, the details are stored here |
+
+```bash
+tail -f /var/log/nginx/access.log    # watch requests live
+tail -f /var/log/nginx/error.log     # watch errors live (-f = follow, shows new lines as they come)
+```
+
+**Reading an access log line:**
 
 ```text
-203.0.113.42 - - [30/Sep/2026:02:24:50 +0000] "GET / HTTP/1.1" 200 9466 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ... Chrome/154.0.0.0 ..." "-"
+203.0.113.42 - - [30/Sep/2026:02:24:50 +0000] "GET / HTTP/1.1" 200 9466 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0" "-"
 ```
 
 | Part | Meaning |
 |------|---------|
-| `203.0.113.42` | Client IP (who made the request) |
-| `[30/Sep/2026:02:24:50 +0000]` | Time of the request |
-| `"GET / HTTP/1.1"` | Method + path + protocol |
-| `200` | Status code |
+| `203.0.113.42` | Client IP - where the request came from |
+| `[30/Sep/2026:02:24:50 +0000]` | Timestamp of the request |
+| `"GET / HTTP/1.1"` | Method + path + protocol (asked for the home page) |
+| `200` | Status code - success |
 | `9466` | Response size in bytes |
-| `"-"` | Referrer (page the user came from - none here) |
-| `"Mozilla/5.0 ..."` | User agent (browser + OS) |
-
-```bash
-tail -f /var/log/nginx/access.log    # watch requests live
-tail -f /var/log/nginx/error.log     # watch errors live
-```
+| `"-"` | Referrer - page the user came from (none, typed directly) |
+| `"Mozilla/5.0 (Windows NT 10.0 ...) ... Edg/154.0.0.0"` | User agent - browser + OS (here: Microsoft Edge on Windows 10/11) |
 
 ## Forward Proxy vs Reverse Proxy
 

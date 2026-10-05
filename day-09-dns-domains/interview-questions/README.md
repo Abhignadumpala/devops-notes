@@ -49,3 +49,7 @@ First the browser cache is checked, then the OS cache, then the ISP DNS resolver
 **12. Who manages `.com`, `.in` and `.ai`?**
 
 `.com`: Verisign. `.in`: the Indian government (run by NIXI). `.ai`: the government of Anguilla, since it's Anguilla's country-code TLD, so `.ai` sales bring revenue to Anguilla.
+
+**13. What happens if the root servers go down? Who runs them?**
+
+New DNS lookups can't start, so domain names stop working once caches expire ("no root servers, no internet"). There are 13 root servers (A to M) run by 12 organizations. Many are in the US, such as Verisign, NASA, the US Department of Defense and the US Army Research Lab, and others are in Sweden, the Netherlands and Japan. Each one has many copies around the world, so they rarely go down.

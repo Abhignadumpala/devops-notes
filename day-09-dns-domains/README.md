@@ -75,6 +75,25 @@ mydevops   .   com
 **Root servers and ICANN:**
 Above every TLD sit the **root servers** — 13 well-known root server addresses (served from many physical locations worldwide, not 13 single machines) that know which organization manages which TLD. If a DNS lookup can't find an answer anywhere else, it eventually asks a root server "who manages `.com`?" and gets pointed to the right registry.
 
+- **Root servers track the TLDs and their details** (which registry manages `.com`, `.in`, `.ai` ...). When a DNS resolver hits them, they send back those TLD details.
+- **No root servers → no internet** (by name). Lookups can't start, so domain names stop working once caches expire. That's why there are many copies of them all over the world.
+- **13 root servers (named A to M), run by 12 organizations.** Many are in the US, including the US government, the US military and NASA. Others are in Europe and Japan:
+
+  | Root server | Run by |
+  |-------------|--------|
+  | A, J | Verisign (US) |
+  | B | University of Southern California - ISI (US) |
+  | C | Cogent Communications (US) |
+  | D | University of Maryland (US) |
+  | E | **NASA** Ames Research Center (US) |
+  | F | Internet Systems Consortium (US) |
+  | G | **US Department of Defense** (DISA) |
+  | H | **US Army** Research Lab |
+  | I | Netnod (Sweden) |
+  | K | RIPE NCC (Netherlands) |
+  | L | ICANN (US) |
+  | M | WIDE Project (Japan) |
+
 **ICANN** (Internet Corporation for Assigned Names and Numbers) is the nonprofit that oversees this entire system — the root zone, TLD policy, and the registrars allowed to sell domains. It isn't a government agency; it's an independent nonprofit, though it originated under oversight from the U.S. Department of Commerce and became fully independent of that oversight in 2016.
 
 ```text
@@ -206,4 +225,4 @@ See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README
 
 ## Interview Questions
 
-12 questions with short answers → [interview-questions/](interview-questions/README.md)
+13 questions with short answers → [interview-questions/](interview-questions/README.md)

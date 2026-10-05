@@ -69,3 +69,15 @@ Start of Authority - metadata for the domain's zone: which nameserver is the pri
 **17. Which registrar would you choose - GoDaddy or Hostinger?**
 
 Depends on how long you'll keep the domain. Check the renewal price, not just the first year. GoDaddy usually costs more up front, so it suits a long-term (permanent) domain. Hostinger is cheap in year one but renewals cost more, so it suits a short-term / practice domain.
+
+**18. What is a DNS propagation failure?**
+
+You change a domain's IP in the hosted zone, but resolvers still have the old IP cached until the TTL expires (up to 1 day). Users keep hitting the old server. Avoid it by lowering the TTL to 1 min at least 2 days before the change, then raising it back after.
+
+**19. Why buy a domain at Hostinger but manage DNS in AWS Route 53?**
+
+Buying in AWS is costly, so we buy at Hostinger. EC2 public IPs change when instances restart or are recreated, and Route 53 makes the A record easy to update (even automatically). Steps: create a hosted zone with the same domain name, copy its NS records to Hostinger, and Hostinger updates the TLD within 24 hours.
+
+**20. After moving DNS to Route 53, who manages what?**
+
+Hostinger keeps the registration and renewal. Route 53 manages the nameservers and records (A, MX...). Email MX records live in Route 53 but point to Google's mail servers.

@@ -10,7 +10,7 @@
 4. [What happens when you buy a domain](#what-happens-when-you-buy-a-domain)
 5. [DNS Record Types](#dns-record-types)
 6. [TTL (Time to Live)](#ttl-time-to-live)
-7. [Pointing a Domain at AWS (Route 53)](#pointing-a-domain-at-aws-route-53)
+7. [Domain Transfer to AWS (Route 53)](#domain-transfer-to-aws-route-53)
 8. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
 9. [Key takeaways](#key-takeaways)
 10. [Interview Questions](#interview-questions)
@@ -223,37 +223,82 @@ A domain can hold several kinds of DNS records, each pointing to a different kin
 | **SOA** | Start of Authority - metadata about the domain's zone | Which nameserver is the primary source of truth, plus settings like TTL defaults |
 
 ## TTL (Time to Live)
-Every DNS record has a **TTL** - how long a resolver (and the browser / OS) can keep a cached answer before it has to ask the nameservers again. It's a trade-off:
+
+> **TTL in short:** How long a DNS answer is kept in cache (browser, OS, ISP resolver) before it's asked again. Usually **1 day**.
 
 | | High TTL (e.g. 1 day) | Low TTL (e.g. 1 minute) |
 |---|---|---|
-| Lookup speed | Faster - most requests are answered from cache | Slower - more requests go back to the nameservers |
-| Change propagation | Slow - an IP change can take up to the full TTL to reach everyone | Fast - a change is visible almost everywhere within the TTL |
+| DNS resolution latency | **Less** - most lookups answered from cache, customers get a fast response | **More** - lookups go through all layers again, customers get a slower response |
+| IP change propagation | Slow - can take up to 1 day to reach everyone | Fast - reaches everyone within ~1 min |
+| Use when | Normal days, no IP changes | Only around a planned IP change |
 
-**Changing a record safely** (e.g. moving a domain from an on-premise server's IP to a new cloud IP):
+### DNS Propagation Failure
+
+1. In the Route 53 hosted zone: `mydevops.store → 203.0.113.10`, TTL = **1 day**.
+2. Users' resolvers cache this IP for 1 day. They won't ask again until it expires.
+3. You change the IP in the hosted zone: `mydevops.store → 203.0.113.11`.
+4. Only the hosted zone knows about the change. Others are not aware of it - they keep using the **old IP** from cache, in the worst case for up to 1 day.
+5. Those users hit the old server → site fails.
+
+This is a **DNS propagation failure** - one of the biggest issues when IPs change.
+
+**Who gets affected? Your best customers:**
+
+| Customer | Last visit | TTL | Gets |
+|----------|-----------|-----|------|
+| Rare customer | 10 days ago | Already expired | **New IP** ✅ - fresh lookup |
+| Best customer | Every hour | Still active (looked up recently, cached) | **Old IP** ❌ - which is no longer available, until the TTL expires |
+
+### Fix: Lower TTL Before an IP Change
+
+Common when companies migrate from **on-premise to cloud**:
 
 ```text
-1. Lower TTL (e.g. 1 day → 1 min) a day or two BEFORE the change
-2. Wait for the old long TTL to expire everywhere
-3. Change the A record to the new IP  → spreads within ~1 min
+1. 2 days before migration  → set TTL 1 day → 1 min
+2. Wait 1 day               → old 1-day caches expire; next lookups go through
+                              all layers and get the record fresh, now with TTL 1 min
+3. Migration day            → change the IP → spreads within ~1 min
 4. Confirm the new server works
-5. Raise TTL back to normal
+5. Set TTL back to 1 day    → fast responses again
 ```
 
-If you skip step 1, anyone whose resolver cached the old record under the long TTL keeps going to the **old IP** until that TTL expires - even though the record was already changed.
+- **No IP changes planned** → keep TTL high (usually 1 day) for fast responses.
+- **IP change planned** → lower TTL to 1 min, at least 2 days before.
+- **Handle it carefully:**
+  - Forget to lower it → daily users keep hitting the **old IP**.
+  - Forget to raise it back → every lookup goes through all layers, so daily users get **slower** responses.
 
-## Pointing a Domain at AWS (Route 53)
-Buying a domain from a registrar doesn't mean that registrar has to manage its DNS records — they can be delegated elsewhere. A common setup for a domain whose server lives on AWS:
-1. Create a **hosted zone** for the domain in AWS Route 53 — AWS hands back a set of its own nameservers for that domain.
-2. Go back to the registrar and update the domain's **NS record** to point at those AWS nameservers instead of the registrar's default ones.
-3. Once that change propagates, Route 53 becomes authoritative for the domain — any record created there is what the world actually sees when it looks up the domain.
-4. Add an **A record** in Route 53 pointing the domain at the server's public IP.
+## Domain Transfer to AWS (Route 53)
+
+> **In short:** Buy the domain cheap at Hostinger, then let AWS Route 53 manage its DNS records.
+
+**Why move DNS to AWS?**
+- **EC2 IPs keep changing.** Each time an EC2 instance is stopped/started or recreated, its public IP changes. Updating the record at Hostinger by hand every time is hard. With DNS in Route 53, the record sits next to the servers and is easy to update (even automatically).
+- **Buying a domain in AWS is costly.** So we buy it at **Hostinger** (cheaper) and move only the DNS management to Route 53.
+
+**Steps:**
+
+1. Create a **hosted zone** in Route 53 with the **same domain name** (e.g. `mydevops.store`). AWS gives you 4 **NS records** (its nameservers).
+2. Copy those NS records and update them in **Hostinger** (replace Hostinger's default nameservers).
+3. Hostinger (the registrar) updates these NS records with the **TLD** registry - takes up to **24 hours**.
+4. Add an **A record** in the hosted zone: `mydevops.store → <frontend-public-ip>`.
 
 ```text
-Registrar (NS → AWS nameservers)  →  Route 53 hosted zone  →  A record  →  <frontend-public-ip>
+Hostinger (NS → AWS nameservers)  →  TLD registry  →  Route 53 hosted zone  →  A record  →  <frontend-public-ip>
 ```
 
-From then on, `http://mydevops.online` resolves straight to the server — nobody needs to remember or share the IP, and if the server's IP ever changes, only that one A record needs updating rather than every place the IP was shared.
+**Who manages what after the move:**
+
+| Part | Managed by |
+|------|-----------|
+| Domain registration & renewal | Hostinger (registrar) |
+| Nameservers (NS) | AWS Route 53 |
+| A record (website → EC2 IP) | AWS Route 53 |
+| MX records (email) | Google - the MX records are added in the Route 53 hosted zone, but they point to **Google's mail servers** (e.g. Google Workspace) |
+
+Now `http://mydevops.store` opens the server. If the server's IP changes, update only the A record (watch the TTL - see above).
+
+> This moves only the **DNS management** to AWS. The domain is still registered (and renewed) at Hostinger.
 
 ## Common problems and how to solve them
 A common misconception is that the registrar "owns" your DNS — it doesn't. The registrar just manages which nameservers the registry has on file for your domain. You can register a domain at one registrar and point its nameservers at a completely different provider (Cloudflare, AWS Route 53, etc.) to actually manage the DNS records.
@@ -269,7 +314,7 @@ Another common confusion: thinking a domain name *is* the server. It isn't — i
 - Buying a domain doesn't give you a server — it gives you a name you can point at one, and that pointer is exactly what DNS records control.
 - Different record types do different jobs: **A** points a domain at an IP, **CNAME** aliases one domain to another, **NS** says who manages the records, **MX** routes email.
 - A domain's DNS doesn't have to stay with the registrar it was bought from — updating its NS record lets another provider (e.g. AWS Route 53) take over managing its records entirely.
-- TTL controls the trade-off between lookup speed and how fast a change propagates — lower it before a planned IP change, then raise it back once the change has settled.
+- TTL controls the trade-off between lookup speed and how fast a change propagates — lower it to 1 min at least 2 days before a planned IP change, then raise it back to 1 day. Skipping this causes a **DNS propagation failure** (users hit the old IP).
 - Picking a registrar: check renewal price, not just year one. Long-term domain → e.g. GoDaddy (higher initial price); short-term / practice → e.g. Hostinger (cheap first year, costly renewals).
 
 See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README.md) (the frontend public IP a domain's A record points to)
@@ -278,4 +323,4 @@ See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README
 
 ## Interview Questions
 
-17 questions with short answers → [interview-questions/](interview-questions/README.md)
+20 questions with short answers → [interview-questions/](interview-questions/README.md)

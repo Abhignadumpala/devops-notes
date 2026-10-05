@@ -165,3 +165,19 @@ The new instance got a new private IP, but the MySQL security group still allows
 **41. Connection timed out vs connection refused?**
 
 Timed out: the request got no reply at all, so something is blocking it (security group, NACL, route, wrong IP). Refused: the server was reached but nothing is listening on that port, so the service is down.
+
+**42. Users get 502 Bad Gateway. How do you troubleshoot? Which commands?**
+
+502 means Nginx couldn't get a valid reply from the backend, usually because the backend app is down or crashed. On the backend server: `systemctl status backend` (is it running?), `ps -ef | grep node` (is the process there?), `netstat -lntp | grep 8080` (is the port listening?) and `journalctl -u backend -n 50` (why did it stop?). On the frontend: `grep proxy_pass /etc/nginx/default.d/expense.conf` to check the backend IP and port, and `/var/log/nginx/error.log` shows `Connection refused`. Fix with `systemctl restart backend` (plus `daemon-reload` if the service file was edited).
+
+**43. Users get 503 Service Unavailable. How do you troubleshoot? Which commands?**
+
+503 means the backend is up but can't serve requests, usually because the DB is down or unreachable. On the backend: `curl http://localhost:8080/health` shows `"db":"down"`, `journalctl -u backend -n 50` shows the DB error, `systemctl show backend -p Environment` confirms `DB_HOST` / `DB_USER` / `DB_PWD`, and `mysql -h <db-ip> -u expense -p` tests the login. On the DB server: `systemctl status mysqld` and `netstat -lntp | grep 3306`. Also check that the DB security group allows 3306 from the backend.
+
+**44. Users get 504 Gateway Timeout. How do you troubleshoot? Which commands?**
+
+504 means Nginx waited for the backend and got no reply in time, so frontend → backend is blocked or the backend is too slow. From the frontend: `curl http://<backend-private-ip>:8080/health` (hangs means blocked), `grep proxy_pass /etc/nginx/default.d/expense.conf` (correct private IP?), and `/var/log/nginx/error.log` shows `upstream timed out`. In AWS, the backend security group must allow 8080 from the frontend's private IP. After fixing the config: `nginx -t` and `systemctl restart nginx`.
+
+**45. What's the first thing you check for any 5XX error?**
+
+Logs, following the request path. On the frontend: `tail -f /var/log/nginx/access.log` for the status code and `error.log` for Nginx's reason. On the backend: `systemctl status backend`, `journalctl -u backend -n 50` and `curl http://localhost:8080/health`. The code points to the layer: 502 backend down, 503 backend up but DB not ready, 504 frontend can't reach the backend in time.

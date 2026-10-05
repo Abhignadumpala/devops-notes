@@ -15,6 +15,8 @@
 9. [Key takeaways](#key-takeaways)
 10. [Interview Questions](#interview-questions)
 
+**More in this folder:** [Hands-on: Expense app with DNS names (Route 53)](hands-on/README.md) · [Interview questions](interview-questions/README.md)
+
 ---
 
 ## What this is / why it matters
@@ -299,6 +301,8 @@ Hostinger (NS → AWS nameservers)  →  TLD registry  →  Route 53 hosted zone
 Now `http://mydevops.store` opens the server. If the server's IP changes, update only the A record (watch the TTL - see above).
 
 > This moves only the **DNS management** to AWS. The domain is still registered (and renewed) at Hostinger.
+
+**Hands-on:** using Route 53 names (`mysql.`, `backend.`, `frontend.mydevops.store`) in the expense app instead of IPs → [hands-on/](hands-on/README.md)
 
 ## Common problems and how to solve them
 A common misconception is that the registrar "owns" your DNS — it doesn't. The registrar just manages which nameservers the registry has on file for your domain. You can register a domain at one registrar and point its nameservers at a completely different provider (Cloudflare, AWS Route 53, etc.) to actually manage the DNS records.

@@ -92,11 +92,26 @@ Above every TLD sit the **root servers** — 13 well-known root server addresses
 
 ## How a DNS Lookup Works (Step by Step)
 
-When we search a domain, it's our **ISP's (Internet Service Provider's) responsibility** to find its IP address for us. The ISP runs a **DNS resolver** that does the searching:
+When we search a domain, the IP is looked up **nearest first**. Each place keeps a **cache** (memory of recent answers). If one place doesn't know, the next one is asked:
+
+```text
+Browser cache → OS cache → ISP DNS resolver cache → Root servers → TLD registry → Nameservers → IP
+```
+
+If the IP isn't cached anywhere, it's our **ISP's (Internet Service Provider's) responsibility** to find it. The ISP runs a **DNS resolver** that does the searching:
 
 ```text
 You type mydevops.com
       │
+      ▼
+Browser cache ── knows? → use it ✅
+      │ no
+      ▼
+OS cache ─────── knows? → use it ✅
+      │ no
+      ▼
+ISP DNS resolver cache ── knows? → use it ✅
+      │ no
       ▼
 ISP DNS resolver ── 1. "Who manages .com?" ─────────────▶ Root servers
       │          ◀── 2. "Ask the .com TLD registry" ────
@@ -111,11 +126,13 @@ ISP DNS resolver ── 1. "Who manages .com?" ───────────
 Browser connects to 203.0.113.10
 ```
 
-1. **Resolver checks its memory (cache).** If someone looked up this domain recently, it already knows the IP and answers right away.
-2. **Root servers.** If it doesn't have the IP, the resolver asks a root server. The root doesn't know the IP either, but it knows **which TLD registry** to ask (`.com`, `.in` ...).
-3. **TLD registry.** The resolver asks the `.com` registry. It says: "I don't know your IP address, but I know **who is managing your domain**" and gives the **nameservers'** names.
-4. **Nameservers.** The resolver asks those nameservers. They hold the domain's records, so they give the actual **IP address**.
-5. **Connect.** The resolver hands the IP to your browser, and the request goes to that IP.
+1. **Browser cache.** The browser first checks its own memory. If we opened this site recently, it already knows the IP.
+2. **OS cache.** If the browser doesn't know, it asks the operating system (Windows / Linux / Mac), which keeps its own DNS cache.
+3. **ISP DNS resolver cache.** If the OS doesn't know, the request goes to the ISP's DNS resolver. If anyone using that ISP looked up this domain recently, it already knows the IP and answers right away.
+4. **Root servers.** If the resolver doesn't have the IP, it asks a root server. The root doesn't know the IP either, but it knows **which TLD registry** to ask (`.com`, `.in` ...).
+5. **TLD registry.** The resolver asks the `.com` registry. It says: "I don't know your IP address, but I know **who is managing your domain**" and gives the **nameservers'** names.
+6. **Nameservers.** The ISP DNS resolver checks with those nameservers. They hold the domain's records, so they give the actual **IP address**.
+7. **Connect.** The resolver hands the IP back to the OS and the browser (each saves it in its cache for next time), and the request goes to that IP.
 
 All of this runs in the **background** within milliseconds - the user only sees the website open.
 
@@ -175,7 +192,7 @@ Another common confusion: thinking a domain name *is* the server. It isn't — i
 
 ## Key takeaways
 - DNS exists because computers route by IP, not by name — it's purely a name-to-IP translation layer.
-- Lookup: ISP DNS resolver → root servers → TLD registry → nameservers → IP. The TLD doesn't know the IP, only who manages the domain (nameservers).
+- Lookup: browser cache → OS cache → ISP DNS resolver cache → root servers → TLD registry → nameservers → IP. The TLD doesn't know the IP, only who manages the domain (nameservers).
 - The hierarchy is root servers → TLD registry → registrar → your nameservers → the IP address.
 - Registry vs registrar: the registry (e.g. Verisign for `.com`) is the authoritative record-keeper for a TLD; the registrar (e.g. GoDaddy) is who you actually buy from — a retailer, not the record-keeper.
 - ICANN oversees the whole system but is an independent nonprofit, not a government body, despite having originated under U.S. government oversight decades ago.

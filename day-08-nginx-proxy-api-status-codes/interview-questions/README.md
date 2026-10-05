@@ -153,3 +153,15 @@ No. The package installs its own service file and systemd already knows it. `dae
 **38. You launched a new backend from an AMI and now the DB connection times out. Why?**
 
 The new instance got a new private IP, but the MySQL security group still allows 3306 only from the old backend IP. Update the inbound rule, or better, use the backend security group ID as the source. Also check old IPs copied by the AMI in `backend.service` (`DB_HOST`) and `expense.conf` (`proxy_pass`).
+
+**39. You allowed the backend IP in the DB security group, but the app still shows 504. Why?**
+
+504 comes from Nginx: it got no reply from the backend in time, so the problem is frontend → backend, not backend → DB. The backend security group must allow 8080 from the frontend's private IP, and `proxy_pass` must have the correct backend private IP. Test from the frontend with `curl http://<backend-private-ip>:8080/health`.
+
+**40. `dnf install nginx` fails with "port 443: Connection timed out". What's wrong?**
+
+443 is HTTPS. The server can't reach the internet to download packages, usually because the security group's outbound rules were edited. Allow outbound All traffic to `0.0.0.0/0` and test with `curl -I https://google.com`. Opening inbound 443 doesn't help, because security groups are stateful and the reply to an outgoing request is allowed automatically.
+
+**41. Connection timed out vs connection refused?**
+
+Timed out: the request got no reply at all, so something is blocking it (security group, NACL, route, wrong IP). Refused: the server was reached but nothing is listening on that port, so the service is down.

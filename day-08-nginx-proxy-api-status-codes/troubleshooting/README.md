@@ -11,7 +11,11 @@
 5. [Example: "db":"down" with Empty Error](#example-dbdown-with-empty-error)
 6. [Launched from an AMI? Old IPs Everywhere](#launched-from-an-ami-old-ips-everywhere)
 7. [Read the MySQL Error Code](#read-the-mysql-error-code)
-8. [Quick Checklist](#quick-checklist)
+8. [Security Groups: Allow Each Hop](#security-groups-allow-each-hop)
+9. [Example: 504 After Fixing Only the DB Security Group](#example-504-after-fixing-only-the-db-security-group)
+10. [Example: dnf install nginx → Port 443 Timed Out](#example-dnf-install-nginx--port-443-timed-out)
+11. [Timeout vs Refused](#timeout-vs-refused)
+12. [Quick Checklist](#quick-checklist)
 
 ---
 
@@ -212,6 +216,123 @@ hostname -I        # shows this server's current private IP
 | `Access denied ... (using password: YES)` | Reached MySQL, login refused | Password, `'expense'@'%'` user |
 | `Access denied ... (using password: NO)` | Password empty / not loaded | `DB_PWD` in service file + `daemon-reload` |
 | `Unknown database 'transactions'` | Login OK, schema not loaded | Load `backend.sql` |
+
+## Security Groups: Allow Each Hop
+
+Check the flow **frontend → backend → DB**. Each server must allow the one **before** it:
+
+```text
+Users ─80─▶ Frontend (Nginx) ─8080─▶ Backend (Node.js) ─3306─▶ DB (MySQL)
+```
+
+| Security group | Inbound rule | Source |
+|----------------|--------------|--------|
+| **Frontend SG** | 80 (and 22 for SSH) | `0.0.0.0/0` (users) |
+| **Backend SG** | **8080** | Frontend **private** IP (or frontend SG) |
+| **DB SG** | **3306** | Backend **private** IP (or backend SG) |
+
+- Use **private** IPs. Servers in the same VPC talk over private IPs, so a rule with a public IP won't match.
+- **Test each hop** from the server one step before it. Whichever hop times out is the SG to fix:
+  ```bash
+  curl http://<backend-private-ip>:8080/health      # from frontend
+  mysql -h <mysql-private-ip> -u expense -p          # from backend
+  ```
+
+**Inbound vs outbound:**
+
+| Rule | Means | Example |
+|------|-------|---------|
+| **Inbound** | Others coming **in** to my server | SSH (22), users opening the site (80), frontend → backend (8080) |
+| **Outbound** | My server going **out** | `dnf install`, `curl`, downloads. Keep **All traffic → `0.0.0.0/0`** (the default) |
+
+- Security groups are **stateful**: if my server starts a connection going out, the reply coming back is allowed automatically. So downloading over HTTPS needs **outbound** 443, **not inbound** 443.
+- Inbound 443 is only needed if my own website uses HTTPS.
+
+## Example: 504 After Fixing Only the DB Security Group
+
+Backend IP was added to the **DB SG**, but the app still shows **504 Gateway Timeout**.
+
+**Meaning:** 504 comes from **Nginx**. It forwarded the request to the backend and got **no reply in time**. The problem is **frontend → backend**. The DB SG fix was needed too, but it fixes the next hop (backend → DB), not this one.
+
+```text
+Browser ──▶ Frontend (Nginx) ──✖──▶ Backend :8080 ──▶ DB :3306
+                           waited, no reply → 504
+```
+
+1. **Backend SG** → inbound **8080** from the frontend's **private** IP (or frontend SG). Most likely fix.
+2. **`proxy_pass`** in `/etc/nginx/default.d/expense.conf` → must have the correct backend **private** IP and `:8080` (old IP if the backend was recreated):
+   ```bash
+   cat /etc/nginx/default.d/expense.conf
+   nginx -t
+   systemctl restart nginx
+   ```
+3. **Test from the frontend server:**
+   ```bash
+   curl http://<backend-private-ip>:8080/health
+   ```
+   | Result | Meaning |
+   |--------|---------|
+   | Hangs, then times out | Backend SG 8080 or wrong IP |
+   | `Connection refused` | Backend app not running → `systemctl status backend` |
+   | `{"status":"ok","db":"up"}` | Fixed. Reload the app |
+
+**The error tells you the hop:**
+
+| Error | Problem between | Check |
+|-------|-----------------|-------|
+| **502** | Frontend → backend (backend **down**) | `systemctl status backend` |
+| **503** | Backend up but **not ready** (often DB down) | DB server, `systemctl status mysqld` |
+| **504** | Frontend → backend (**no reply / blocked**) | **Backend SG 8080**, `proxy_pass` IP |
+| `"db":"down"` / `ERROR 2003` | Backend → DB | **DB SG 3306**, `DB_HOST` |
+
+## Example: dnf install nginx → Port 443 Timed Out
+
+On the frontend server:
+
+```text
+[root@ip-<frontend-private-ip> ~]# dnf install nginx -y
+Errors during downloading metadata for repository 'epel':
+  - Curl error (28): Timeout was reached for https://mirrors.fedoraproject.org/metalink?repo=epel-9...
+    [Failed to connect to mirrors.fedoraproject.org port 443: Connection timed out]
+Error: Failed to download metadata for repo 'epel'
+```
+
+**Meaning:** **443 = HTTPS**. `dnf` tried to download from the internet over HTTPS and got **no reply** (`Curl error (28)` = timeout). It's a **network** problem, not an nginx problem. Any `dnf install` would fail the same way.
+
+**Cause:** the security group's **outbound rules** were edited by mistake, so the server can't go out to the internet.
+
+1. **Test internet from the server:**
+   ```bash
+   curl -I https://google.com      # should return HTTP 200 / 301
+   ```
+2. **Fix:** EC2 → instance → Security → Security group → **Outbound rules** → Edit:
+   ```text
+   Type: All traffic   Destination: 0.0.0.0/0
+   ```
+   Opening **inbound** 443 does **not** fix this (stateful, see above).
+3. Run `dnf install nginx -y` again. Fixed ✅
+4. If outbound is fine and other sites work, only the EPEL mirror is down. nginx comes from the normal RHEL 9 repo, so skip EPEL:
+   ```bash
+   dnf install nginx -y --disablerepo=epel
+   ```
+5. Still failing? Check the subnet's route table has `0.0.0.0/0` → Internet Gateway, and the Network ACL allows traffic.
+
+## Timeout vs Refused
+
+| Result | What happened | Usual cause |
+|--------|---------------|-------------|
+| **Connection timed out** (`110`, curl `28`) | Request went out, **nothing came back** | Something is **blocking** it: security group, NACL, no internet route, wrong IP |
+| **Connection refused** (`111`) | Reached the server, it said **"no"** right away | Server is up but nothing is **listening** on that port (service stopped) |
+
+Timeout → think **network / SG**. Refused → think **service not running**.
+
+| Port | Used for |
+|------|----------|
+| 22 | SSH |
+| 80 | HTTP |
+| 443 | HTTPS |
+| 3306 | MySQL |
+| 8080 | Our backend (Node.js) |
 
 ## Quick Checklist
 

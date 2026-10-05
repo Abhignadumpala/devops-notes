@@ -85,6 +85,10 @@ User ───────────────▶ Frontend ─────�
 | Backend | Node.js | 8080 | Business logic, reads/writes the database |
 | Database | MySQL | 3306 | Stores the expenses |
 
+> **Don't mix them up:** Frontend = **Nginx**, Backend = **Node.js** app, DB = **MySQL**. MySQL is the database, not the backend.
+> - `backend.service` runs the **Node.js** app (`node /app/index.js`). Its `DB_HOST` / `DB_USER` / `DB_PWD` tell Node.js where MySQL is.
+> - `mysql -h <db-ip> ...` on the backend server is only the MySQL **client**, used to test the connection and load the schema. The real MySQL **server** (`mysqld`) runs on the DB server.
+
 See [Day 6](../day-06-3-tier-architecture-databases/README.md) for 3-tier basics.
 
 ---

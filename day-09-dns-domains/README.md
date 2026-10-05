@@ -7,10 +7,11 @@
 3. [How a DNS Lookup Works (Step by Step)](#how-a-dns-lookup-works-step-by-step)
 4. [What happens when you buy a domain](#what-happens-when-you-buy-a-domain)
 5. [DNS Record Types](#dns-record-types)
-6. [Pointing a Domain at AWS (Route 53)](#pointing-a-domain-at-aws-route-53)
-7. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-8. [Key takeaways](#key-takeaways)
-9. [Interview Questions](#interview-questions)
+6. [TTL (Time to Live)](#ttl-time-to-live)
+7. [Pointing a Domain at AWS (Route 53)](#pointing-a-domain-at-aws-route-53)
+8. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
+9. [Key takeaways](#key-takeaways)
+10. [Interview Questions](#interview-questions)
 
 ---
 
@@ -162,13 +163,13 @@ TLD → Nameservers → who manages your domain → IP
 ## What happens when you buy a domain
 We buy domains from **registrars**: GoDaddy, Hostinger, Namecheap, Cloudflare, AWS, etc. They're like **brokers / resellers / retailers** - they sell on behalf of the TLD registry.
 
-1. **Search** for a domain at a registrar. It checks with the TLD registry whether it's available:
+1. **Search** for a domain at a registrar. The registrar checks **availability with the TLD** registry:
    ```text
    mydevops.com        → already taken
    mydevopsssss.com    → available
    ```
-2. **Register** it with your details: **name, mobile number, email, address** and **payment**.
-3. **Registrar updates the TLD.** The registrar registers the domain and updates the TLD registry with the **nameservers** that manage it. By default those are the registrar's own nameservers. If you bought from GoDaddy, the `.com` registry now records: "`mydevopsssss.com` is managed by **GoDaddy's nameservers**".
+2. **Register** it. If it's available, the registrar takes all your details: **name, mobile number, email, address** and **payment**.
+3. **Registrar books the domain with the TLD.** The registrar registers the domain and updates the TLD registry with the **nameservers** that manage it. By default those are the registrar's own nameservers. If you bought from GoDaddy, the `.com` registry now records: "`mydevopsssss.com` is managed by **GoDaddy's nameservers**".
 4. **Point it at your server.** In GoDaddy's DNS settings, add a record for your server's IP:
    ```text
    mydevopsssss.com  →  203.0.113.10
@@ -176,6 +177,17 @@ We buy domains from **registrars**: GoDaddy, Hostinger, Namecheap, Cloudflare, A
 5. From then on, anyone looking up `mydevopsssss.com` gets routed: root servers → `.com` registry → GoDaddy nameservers → `203.0.113.10`.
 
 You can also point the domain at a different DNS provider, such as Cloudflare or AWS Route 53, instead of the registrar's own nameservers (see below).
+
+**Which registrar to pick - long-term vs short-term domain:**
+
+| | Permanent (long-term) domain | Temporary (short-term) domain |
+|---|------------------------------|-------------------------------|
+| Example registrar | GoDaddy | Hostinger |
+| First-year (initial) price | Higher | Cheap - big first-year discounts |
+| Renewal price | Reasonable | Higher - renewals cost much more than year one |
+| Good for | A domain you'll keep for years (company / product site) | Practice, demos, a project you'll drop after a year |
+
+Rule of thumb: **check the renewal price, not just the first-year price.** If you'll keep the domain for years, the cheap first year doesn't matter - the renewals do. Prices change often, so compare before buying.
 
 The registrar earns a commission for handling the sale and paperwork on behalf of the registry — registries don't sell directly to the public.
 
@@ -190,6 +202,27 @@ A domain can hold several kinds of DNS records, each pointing to a different kin
 | **NS** | The nameservers responsible for the domain | Points to whichever provider is actually managing the records — the registrar's own nameservers, or a different one like AWS Route 53, Cloudflare, etc. |
 | **MX** | A mail server | Routes email sent to the domain to the right mail provider |
 | **TXT** | Arbitrary text | Domain ownership verification, SPF/DKIM records for email |
+| **SOA** | Start of Authority - metadata about the domain's zone | Which nameserver is the primary source of truth, plus settings like TTL defaults |
+
+## TTL (Time to Live)
+Every DNS record has a **TTL** - how long a resolver (and the browser / OS) can keep a cached answer before it has to ask the nameservers again. It's a trade-off:
+
+| | High TTL (e.g. 1 day) | Low TTL (e.g. 1 minute) |
+|---|---|---|
+| Lookup speed | Faster - most requests are answered from cache | Slower - more requests go back to the nameservers |
+| Change propagation | Slow - an IP change can take up to the full TTL to reach everyone | Fast - a change is visible almost everywhere within the TTL |
+
+**Changing a record safely** (e.g. moving a domain from an on-premise server's IP to a new cloud IP):
+
+```text
+1. Lower TTL (e.g. 1 day → 1 min) a day or two BEFORE the change
+2. Wait for the old long TTL to expire everywhere
+3. Change the A record to the new IP  → spreads within ~1 min
+4. Confirm the new server works
+5. Raise TTL back to normal
+```
+
+If you skip step 1, anyone whose resolver cached the old record under the long TTL keeps going to the **old IP** until that TTL expires - even though the record was already changed.
 
 ## Pointing a Domain at AWS (Route 53)
 Buying a domain from a registrar doesn't mean that registrar has to manage its DNS records — they can be delegated elsewhere. A common setup for a domain whose server lives on AWS:
@@ -218,6 +251,8 @@ Another common confusion: thinking a domain name *is* the server. It isn't — i
 - Buying a domain doesn't give you a server — it gives you a name you can point at one, and that pointer is exactly what DNS records control.
 - Different record types do different jobs: **A** points a domain at an IP, **CNAME** aliases one domain to another, **NS** says who manages the records, **MX** routes email.
 - A domain's DNS doesn't have to stay with the registrar it was bought from — updating its NS record lets another provider (e.g. AWS Route 53) take over managing its records entirely.
+- TTL controls the trade-off between lookup speed and how fast a change propagates — lower it before a planned IP change, then raise it back once the change has settled.
+- Picking a registrar: check renewal price, not just year one. Long-term domain → e.g. GoDaddy (higher initial price); short-term / practice → e.g. Hostinger (cheap first year, costly renewals).
 
 See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README.md) (the frontend public IP a domain's A record points to)
 
@@ -225,4 +260,4 @@ See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README
 
 ## Interview Questions
 
-13 questions with short answers → [interview-questions/](interview-questions/README.md)
+17 questions with short answers → [interview-questions/](interview-questions/README.md)

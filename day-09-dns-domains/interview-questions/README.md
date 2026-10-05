@@ -53,3 +53,19 @@ First the browser cache is checked, then the OS cache, then the ISP DNS resolver
 **13. What happens if the root servers go down? Who runs them?**
 
 New DNS lookups can't start, so domain names stop working once caches expire ("no root servers, no internet"). There are 13 root servers (A to M) run by 12 organizations. Many are in the US, such as Verisign, NASA, the US Department of Defense and the US Army Research Lab, and others are in Sweden, the Netherlands and Japan. Each one has many copies around the world, so they rarely go down.
+
+**14. What is TTL in DNS?**
+
+Time to Live - how long a resolver can cache a DNS record before asking the nameservers again. High TTL = faster lookups but slow changes; low TTL = changes spread fast but more lookups hit the nameservers.
+
+**15. You're moving a domain to a new server IP. How do you avoid users hitting the old IP?**
+
+Lower the TTL (e.g. to 1 minute) a day or two before the change and wait for the old TTL to expire. Then change the A record, verify the new server, and raise the TTL back to normal.
+
+**16. What is an SOA record?**
+
+Start of Authority - metadata for the domain's zone: which nameserver is the primary source of truth, plus settings like default TTL.
+
+**17. Which registrar would you choose - GoDaddy or Hostinger?**
+
+Depends on how long you'll keep the domain. Check the renewal price, not just the first year. GoDaddy usually costs more up front, so it suits a long-term (permanent) domain. Hostinger is cheap in year one but renewals cost more, so it suits a short-term / practice domain.

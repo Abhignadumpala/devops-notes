@@ -46,6 +46,8 @@ The browser can't connect to a name. The name always has to be converted (**reso
 mydevops   .   com
  (name)       (TLD)
 ```
+Read a domain from **right to left**: the last part is the TLD, the part before it is the name.
+
 - **TLD (Top-Level Domain)** — the last part of the domain: `.com`, `.in`, `.online`, `.edu`, `.us`, `.uk`, `.net`, `.org`, `.ai`, etc.
 
   | Domain | TLD |
@@ -55,7 +57,10 @@ mydevops   .   com
   | `mydevops.in` | `.in` |
   | `amazon.net` | `.net` |
 
-- Each TLD has one **registry** — the organization that manages that TLD's records. The TLD registry keeps the record of **who is managing each domain** under it (its nameservers).
+- **Registry** — every TLD has one owner, called the registry.
+  1. The registry keeps the list of all domains under its TLD.
+  2. For each domain, it notes **who is managing it** (its nameservers).
+  3. It doesn't sell domains to us directly.
 
   | TLD | Managed by |
   |-----|------------|
@@ -65,7 +70,9 @@ mydevops   .   com
   | `.ai` | Government of Anguilla - `.ai` is Anguilla's country-code TLD |
 
   > **Fun fact:** `.ai` became famous because of AI companies. Every `.ai` domain sold earns money for the registry, so a big share of that revenue goes to the small country of Anguilla.
-- A **registrar** (GoDaddy, Namecheap, Hostinger, Cloudflare, AWS, etc.) is who you actually buy a domain *from* — think of them as retailers/resellers, while the registry is more like the wholesaler/record-keeper for that TLD.
+- **Registrar** — the shop where we actually buy a domain: GoDaddy, Namecheap, Hostinger, Cloudflare, AWS, etc.
+  - Registry = wholesaler / record-keeper. Registrar = retailer / reseller.
+  - We pay the registrar, and the registrar registers the domain with the registry.
 
 | | Registry | Registrar |
 |---|----------|-----------|
@@ -73,8 +80,15 @@ mydevops   .   com
 | Examples | Verisign (`.com`, `.net`), NIXI (`.in`) | GoDaddy, Namecheap, Hostinger, Cloudflare, AWS |
 | Sells to you directly? | No | Yes |
 
-**Root servers and ICANN:**
-Above every TLD sit the **root servers** — 13 well-known root server addresses (served from many physical locations worldwide, not 13 single machines) that know which organization manages which TLD. If a DNS lookup can't find an answer anywhere else, it eventually asks a root server "who manages `.com`?" and gets pointed to the right registry.
+**Root servers:**
+
+Root servers sit **above every TLD**. They don't know any website's IP. They only know **which registry manages which TLD**.
+
+1. A lookup can't find the IP in any cache.
+2. It asks a root server: "who manages `.com`?"
+3. The root server answers: "ask Verisign, the `.com` registry."
+
+There are **13 root server addresses**, but each one is copied to many locations around the world. So it's not 13 single machines.
 
 - **Root servers track the TLDs and their details** (which registry manages `.com`, `.in`, `.ai` ...). When a DNS resolver hits them, they send back those TLD details.
 - **No root servers → no internet** (by name). Lookups can't start, so domain names stop working once caches expire. That's why there are many copies of them all over the world.
@@ -95,7 +109,12 @@ Above every TLD sit the **root servers** — 13 well-known root server addresses
   | L | ICANN (US) |
   | M | WIDE Project (Japan) |
 
-**ICANN** (Internet Corporation for Assigned Names and Numbers) is the nonprofit that oversees this entire system — the root zone, TLD policy, and the registrars allowed to sell domains. It isn't a government agency; it's an independent nonprofit, though it originated under oversight from the U.S. Department of Commerce and became fully independent of that oversight in 2016.
+**ICANN** (Internet Corporation for Assigned Names and Numbers) is the boss of the whole DNS system.
+
+- It manages the **root** (the list of all TLDs).
+- It sets the **rules for TLDs**.
+- It decides **which registrars are allowed** to sell domains.
+- It's a **nonprofit**, not a government. It started under the US Department of Commerce and became fully independent in 2016.
 
 ```text
                 ICANN (oversees everything)
@@ -156,6 +175,8 @@ Browser connects to 203.0.113.10
 
 All of this runs in the **background** within milliseconds - the user only sees the website open.
 
+**Most lookups never reach the root servers.** The browser, the OS or the ISP resolver usually has the answer in cache already. That's the whole point of caching: skip the full trip when a recent answer is on hand.
+
 ```text
 TLD → Nameservers → who manages your domain → IP
 ```
@@ -163,7 +184,7 @@ TLD → Nameservers → who manages your domain → IP
 ## What happens when you buy a domain
 We buy domains from **registrars**: GoDaddy, Hostinger, Namecheap, Cloudflare, AWS, etc. They're like **brokers / resellers / retailers** - they sell on behalf of the TLD registry.
 
-1. **Search** for a domain at a registrar. The registrar checks **availability with the TLD** registry:
+1. **Search.** Go to a registrar (GoDaddy, Namecheap, etc.) and search for a domain, e.g. `mydevops.com`. The registrar checks with the TLD registry whether it's free:
    ```text
    mydevops.com        → already taken
    mydevopsssss.com    → available

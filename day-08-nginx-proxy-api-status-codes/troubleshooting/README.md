@@ -11,11 +11,12 @@
 5. [Example: "db":"down" with Empty Error](#example-dbdown-with-empty-error)
 6. [Launched from an AMI? Old IPs Everywhere](#launched-from-an-ami-old-ips-everywhere)
 7. [Read the MySQL Error Code](#read-the-mysql-error-code)
-8. [Security Groups: Allow Each Hop](#security-groups-allow-each-hop)
-9. [Example: 504 After Fixing Only the DB Security Group](#example-504-after-fixing-only-the-db-security-group)
-10. [Example: dnf install nginx → Port 443 Timed Out](#example-dnf-install-nginx--port-443-timed-out)
-11. [Timeout vs Refused](#timeout-vs-refused)
-12. [Quick Checklist](#quick-checklist)
+8. [502 vs 503 vs 504: What to Check](#502-vs-503-vs-504-what-to-check)
+9. [Security Groups: Allow Each Hop](#security-groups-allow-each-hop)
+10. [Example: 504 After Fixing Only the DB Security Group](#example-504-after-fixing-only-the-db-security-group)
+11. [Example: dnf install nginx → Port 443 Timed Out](#example-dnf-install-nginx--port-443-timed-out)
+12. [Timeout vs Refused](#timeout-vs-refused)
+13. [Quick Checklist](#quick-checklist)
 
 ---
 
@@ -216,6 +217,117 @@ hostname -I        # shows this server's current private IP
 | `Access denied ... (using password: YES)` | Reached MySQL, login refused | Password, `'expense'@'%'` user |
 | `Access denied ... (using password: NO)` | Password empty / not loaded | `DB_PWD` in service file + `daemon-reload` |
 | `Unknown database 'transactions'` | Login OK, schema not loaded | Load `backend.sql` |
+
+## 502 vs 503 vs 504: What to Check
+
+All three are **5XX = server-side problem**, not the user's request. The usual place to look is the **backend**.
+
+| Code | Name | Meaning | In our 3-tier app |
+|------|------|---------|-------------------|
+| **502** | Bad Gateway | Nginx reached for the backend and got **no valid reply**, often an immediate "connection refused" | **Backend app is down or crashed** |
+| **503** | Service Unavailable | The server is up but **can't serve the request right now** | Backend is up but a dependency isn't ready. Usually the **DB is down**, or the server is overloaded / in maintenance |
+| **504** | Gateway Timeout | Nginx waited for the backend and **got no reply in time** | Frontend → backend **blocked** (backend SG 8080, wrong IP) or backend **too slow** |
+
+Easy way to remember:
+- **502** → backend is **down**
+- **503** → backend is up but **not ready** (often the DB)
+- **504** → backend is **too slow, or blocked**
+
+**Start the same way for every 5XX:**
+
+```bash
+# Frontend server - which code, and what does Nginx say?
+tail -f /var/log/nginx/access.log
+tail -f /var/log/nginx/error.log
+
+# Backend server - is the app OK?
+systemctl status backend
+journalctl -u backend -n 50
+curl http://localhost:8080/health
+```
+
+### 502 Bad Gateway → is the backend running?
+
+On the **backend** server:
+
+```bash
+systemctl status backend          # "active (running)"? or failed / inactive
+ps -ef | grep node                # node /app/index.js listed?
+netstat -lntp | grep 8080         # port 8080 in LISTEN?
+journalctl -u backend -n 50       # why did it stop / crash?
+```
+
+On the **frontend** server:
+
+```bash
+grep proxy_pass /etc/nginx/default.d/expense.conf    # right backend private IP and :8080?
+tail -20 /var/log/nginx/error.log                    # "connect() failed (111: Connection refused)"
+```
+
+Fix:
+
+```bash
+systemctl daemon-reload           # only if backend.service was edited
+systemctl restart backend
+curl http://localhost:8080/health
+```
+
+### 503 Service Unavailable → is the DB OK?
+
+On the **backend** server:
+
+```bash
+curl http://localhost:8080/health                    # {"status":"degraded","db":"down"} ?
+journalctl -u backend -n 50                          # DB error: Access denied / ECONNREFUSED / timeout
+systemctl show backend -p Environment                # DB_HOST, DB_USER, DB_PWD correct?
+mysql -h <mysql-private-ip> -u expense -p -e "show databases;"   # can backend log in to DB?
+```
+
+On the **DB** server:
+
+```bash
+systemctl status mysqld           # MySQL running?
+netstat -lntp | grep 3306         # MySQL listening on 3306?
+systemctl start mysqld            # start it if stopped
+```
+
+Also check: **DB SG** allows **3306** from the backend private IP. For DB login errors, see [Access Denied](#example-500-error--access-denied-for-user-expense) and [ERROR 2003](#example-error-2003-cant-connect-to-mysql-110).
+
+### 504 Gateway Timeout → can the frontend reach the backend?
+
+On the **frontend** server:
+
+```bash
+curl http://<backend-private-ip>:8080/health         # hangs → blocked; JSON → reachable
+grep proxy_pass /etc/nginx/default.d/expense.conf    # right backend private IP?
+tail -20 /var/log/nginx/error.log                    # "upstream timed out (110: Connection timed out)"
+```
+
+On the **backend** server:
+
+```bash
+systemctl status backend
+curl http://localhost:8080/health                    # fast reply? slow → backend itself is slow
+```
+
+In AWS:
+- **Backend SG** → inbound **8080** from the frontend **private** IP (or frontend SG).
+
+Fix the IP in `expense.conf` if needed:
+
+```bash
+vim /etc/nginx/default.d/expense.conf
+nginx -t
+systemctl restart nginx
+```
+
+### Summary: Error → Where → Commands
+
+| Error | Check on | Commands |
+|-------|----------|----------|
+| **502** | Backend | `systemctl status backend`, `ps -ef \| grep node`, `netstat -lntp \| grep 8080`, `journalctl -u backend` |
+| **503** | Backend + DB | `curl localhost:8080/health`, `journalctl -u backend`, `mysql -h <db-ip> -u expense -p`, `systemctl status mysqld` |
+| **504** | Frontend → backend | `curl http://<backend-ip>:8080/health` (from frontend), `grep proxy_pass expense.conf`, **backend SG 8080** |
 
 ## Security Groups: Allow Each Hop
 

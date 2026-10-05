@@ -84,6 +84,8 @@ Read a domain from **right to left**: the last part is the TLD, the part before 
 
 **Root servers:**
 
+> **Root servers in short:** The top of DNS. They don't know any website's IP - they only tell you which registry manages a TLD (e.g. `.com` → Verisign). 13 root servers (A to M), copied all over the world. No root servers → no internet by name.
+
 Root servers sit **above every TLD**. They don't know any website's IP. They only know **which registry manages which TLD**.
 
 1. A lookup can't find the IP in any cache.
@@ -110,6 +112,8 @@ There are **13 root server addresses**, but each one is copied to many locations
   | K | RIPE NCC (Netherlands) |
   | L | ICANN (US) |
   | M | WIDE Project (Japan) |
+
+> **ICANN in short:** The nonprofit that runs the whole DNS system - it manages the root, sets TLD rules and decides which registrars can sell domains.
 
 **ICANN** (Internet Corporation for Assigned Names and Numbers) is the boss of the whole DNS system.
 

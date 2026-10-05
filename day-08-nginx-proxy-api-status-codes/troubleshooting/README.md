@@ -78,17 +78,50 @@ curl http://localhost:8080/health
    ```text
    Access denied for user 'expense'@'<backend-private-ip>' (using password: YES)
    ```
-3. **Meaning:** the backend can't log in to MySQL. The DB **credentials are wrong** (user or password).
-4. **Fix:** correct `DB_USER` / `DB_PWD` (and check `DB_HOST`) in the service file:
+3. **Meaning:** the backend **reached** MySQL (so network and port 3306 are fine), but MySQL **refused the login**. The user, password or allowed host is wrong.
+   - MySQL checks the user **together with the host it connects from**, which is why the backend's IP shows up in the error.
+4. **Test the login by hand** from the backend server:
+   ```bash
+   mysql -h <mysql-private-ip> -u expense -p<DB_PASSWORD> -e "show databases;"
+   ```
+   - Same error → problem is on the **MySQL side** (step 5).
+   - Works → problem is in the **service file** (step 6).
+5. **Check the user on the MySQL server:**
+   ```sql
+   SELECT user, host FROM mysql.user;
+   ```
+   If you only see `expense | localhost`, the user can't log in from another server. Create/fix it for any host (`%`):
+   ```sql
+   CREATE USER IF NOT EXISTS 'expense'@'%' IDENTIFIED BY '<DB_PASSWORD>';
+   ALTER USER 'expense'@'%' IDENTIFIED BY '<DB_PASSWORD>';
+   GRANT ALL ON transactions.* TO 'expense'@'%';
+   FLUSH PRIVILEGES;
+   ```
+6. **Check you entered the right password** in the service file. Correct `DB_USER` / `DB_PWD` (and check `DB_HOST`):
    ```bash
    vim /etc/systemd/system/backend.service
+   systemctl show backend -p Environment     # what systemd actually loaded
    ```
-5. Reload and restart:
+7. **Reload, restart and watch the logs:**
    ```bash
    systemctl daemon-reload        # service file changed, so systemd must re-read it
    systemctl restart backend
+   journalctl -u backend -f       # watch the logs
    ```
-6. Check again with `curl http://localhost:8080/health` and the app. Success, error solved.
+   > Forgetting `daemon-reload` is a very common reason a fixed password **still fails**. systemd keeps using the old values until you run it.
+   >
+   > `daemon-reload` is only needed for service files **you create or edit** (like `backend.service`). After installing MySQL, just `systemctl enable mysqld` + `systemctl start mysqld` is enough.
+8. **Check the backend is really running** (service, process, port):
+   ```bash
+   systemctl status backend       # service → should say "active (running)"
+   ps -ef | grep node             # process → node /app/index.js should be listed
+   netstat -lntp | grep 8080      # port → 8080 should be in LISTEN state
+   ```
+9. **Check health again:**
+   ```bash
+   curl http://localhost:8080/health
+   ```
+   The response should no longer say `"db":"down"`. Then check the app in the browser. Success, error solved.
 
 ## Quick Checklist
 
@@ -99,5 +132,10 @@ curl http://localhost:8080/health
    ps -ef | grep node                      → process running?
    netstat -lntp | grep 8080               → port opened?
 4. curl http://localhost:8080/health       → backend + DB ok?
-5. Fix → systemctl daemon-reload (if service file changed) → systemctl restart backend
+5. Access denied? → mysql -h <mysql-private-ip> -u expense -p   → login works by hand?
+                   → SELECT user, host FROM mysql.user;          → 'expense'@'%' exists?
+6. Fix → systemctl daemon-reload (if service file changed) → systemctl restart backend
+       → journalctl -u backend -f
+       → systemctl status backend / ps -ef | grep node / netstat -lntp | grep 8080
+       → curl http://localhost:8080/health ("db" not "down")
 ```

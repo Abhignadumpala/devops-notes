@@ -137,3 +137,11 @@ The service file changed. `daemon-reload` makes systemd re-read the unit files, 
 **34. Is a 3XX code an error?**
 
 No, it's a redirect: something changed, so go to the new location. For example, `/transactions` → `/transaction` or `/home` → `/` with 301. 304 means the content hasn't changed, so the browser uses its cached copy.
+
+**35. The error says `Access denied for user 'expense'@'<backend-ip>' (using password: YES)`. Is it a network problem?**
+
+No. The backend reached MySQL and MySQL answered, so the network and port 3306 are fine. The login was refused: wrong password, or the user only exists as `'expense'@'localhost'` and not for the backend's host. Test with `mysql -h <mysql-ip> -u expense -p` from the backend, check `SELECT user, host FROM mysql.user;`, and fix with `'expense'@'%'`.
+
+**36. Do you need `daemon-reload` after installing MySQL and running `systemctl enable/start mysqld`?**
+
+No. The package installs its own service file and systemd already knows it. `daemon-reload` is only needed when you create or edit a service file yourself, like `backend.service`.

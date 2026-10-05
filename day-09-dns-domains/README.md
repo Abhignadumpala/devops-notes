@@ -182,22 +182,13 @@ TLD → Nameservers → who manages your domain → IP
 ```
 
 ## What happens when you buy a domain
-We buy domains from **registrars**: GoDaddy, Hostinger, Namecheap, Cloudflare, AWS, etc. They're like **brokers / resellers / retailers** - they sell on behalf of the TLD registry.
+1. You go to a registrar (GoDaddy, Namecheap, etc.) and search for a domain, e.g. `mydevops.com`.
+2. The registrar checks with the TLD's registry whether it's already taken.
+3. If it's free, you provide your name, contact details and payment to the registrar.
+4. The registrar registers the domain and updates the TLD's registry with which **nameservers** manage it - usually the registrar's own nameservers, unless you point it elsewhere (e.g. Cloudflare or AWS Route 53).
+5. From then on, anyone looking up `mydevops.com` gets routed: root servers → `.com` registry → your nameservers → the IP address you've configured.
 
-1. **Search.** Go to a registrar (GoDaddy, Namecheap, etc.) and search for a domain, e.g. `mydevops.com`. The registrar checks with the TLD registry whether it's free:
-   ```text
-   mydevops.com        → already taken
-   mydevopsssss.com    → available
-   ```
-2. **Register** it. If it's available, the registrar takes all your details: **name, mobile number, email, address** and **payment**.
-3. **Registrar books the domain with the TLD.** The registrar registers the domain and updates the TLD registry with the **nameservers** that manage it. By default those are the registrar's own nameservers. If you bought from GoDaddy, the `.com` registry now records: "`mydevopsssss.com` is managed by **GoDaddy's nameservers**".
-4. **Point it at your server.** In GoDaddy's DNS settings, add a record for your server's IP:
-   ```text
-   mydevopsssss.com  →  203.0.113.10
-   ```
-5. From then on, anyone looking up `mydevopsssss.com` gets routed: root servers → `.com` registry → GoDaddy nameservers → `203.0.113.10`.
-
-You can also point the domain at a different DNS provider, such as Cloudflare or AWS Route 53, instead of the registrar's own nameservers (see below).
+The registrar earns a commission for handling the sale and paperwork on behalf of the registry - registries don't sell directly to the public.
 
 **Which registrar to pick - long-term vs short-term domain:**
 

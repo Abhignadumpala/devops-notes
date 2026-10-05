@@ -7,7 +7,11 @@
 1. [Rule: Check the Logs First](#rule-check-the-logs-first)
 2. [Step-by-Step Approach](#step-by-step-approach)
 3. [Example: 500 Error → Access Denied for User 'expense'](#example-500-error--access-denied-for-user-expense)
-4. [Quick Checklist](#quick-checklist)
+4. [Example: ERROR 2003 Can't Connect to MySQL (110)](#example-error-2003-cant-connect-to-mysql-110)
+5. [Example: "db":"down" with Empty Error](#example-dbdown-with-empty-error)
+6. [Launched from an AMI? Old IPs Everywhere](#launched-from-an-ami-old-ips-everywhere)
+7. [Read the MySQL Error Code](#read-the-mysql-error-code)
+8. [Quick Checklist](#quick-checklist)
 
 ---
 
@@ -122,6 +126,92 @@ curl http://localhost:8080/health
    curl http://localhost:8080/health
    ```
    The response should no longer say `"db":"down"`. Then check the app in the browser. Success, error solved.
+
+## Example: ERROR 2003 Can't Connect to MySQL (110)
+
+Loading the schema from the backend server fails:
+
+```bash
+mysql -h <mysql-private-ip> -u root -p<DB_PASSWORD> < /app/schema/backend.sql
+```
+```text
+ERROR 2003 (HY000): Can't connect to MySQL server on '<mysql-private-ip>:3306' (110)
+```
+
+**Meaning:** `(110)` = **connection timed out**. The backend never reached MySQL, so this is a **network** problem. The password isn't even checked yet.
+
+1. **MySQL security group** (most common). Inbound rule must allow port `3306` from the backend:
+   - Type `MYSQL/Aurora`, Port `3306`
+   - Source: backend's security group ID, or backend private IP, or VPC CIDR (e.g. `172.31.0.0/16`)
+2. **Right IP?** Must be the MySQL server's **private** IP (`hostname -I` on the DB server).
+3. **MySQL running and listening?** On the DB server:
+   ```bash
+   systemctl status mysqld
+   netstat -lntp | grep 3306
+   ```
+4. **Test the port** from the backend server:
+   ```bash
+   telnet <mysql-private-ip> 3306     # or: nc -zv <mysql-private-ip> 3306
+   ```
+   Hangs → security group or wrong IP.
+5. Port reachable → load the schema again.
+
+> Tip: use `-p` without the password so MySQL asks for it. A password on the command line shows up in history and screenshots.
+
+## Example: "db":"down" with Empty Error
+
+```bash
+curl http://localhost:8080/health
+```
+```text
+{"status":"degraded","db":"down","error":""}
+```
+
+**Meaning:** the backend app **is running** (it answered on 8080) but it **can't talk to the DB**.
+
+1. **Network to DB.** Test from the backend server:
+   ```bash
+   mysql -h <mysql-private-ip> -u expense -p -e "show databases;"
+   ```
+   Timeout `(110)` → see [ERROR 2003](#example-error-2003-cant-connect-to-mysql-110).
+2. **Service file values.** `DB_HOST` (MySQL **private** IP), `DB_USER`, `DB_PWD`, `DB_DATABASE=transactions`:
+   ```bash
+   cat /etc/systemd/system/backend.service
+   systemctl show backend -p Environment
+   ```
+3. **Schema loaded?** If the schema load failed earlier, the `transactions` DB and `expense` user don't exist yet.
+4. **Real error is in the logs** (the health output shows `error:""`):
+   ```bash
+   journalctl -u backend -n 50
+   ```
+5. Fix → `systemctl daemon-reload` → `systemctl restart backend` → `curl http://localhost:8080/health` again.
+
+## Launched from an AMI? Old IPs Everywhere
+
+If the server was created from a **recently used AMI** (or recreated), it gets a **new private IP**. But old IPs are still written in places:
+
+| Where | Old IP problem | Fix |
+|-------|----------------|-----|
+| **MySQL security group inbound rule** | Rule allows `3306` from the **old backend IP**/32, so the new backend is blocked → `(110)` timeout | Edit inbound rules → put the **new** backend private IP |
+| `/etc/systemd/system/backend.service` (copied by the AMI) | `DB_HOST` still points to the **old MySQL IP** | Update `DB_HOST` → `daemon-reload` → `restart backend` |
+| `/etc/nginx/default.d/expense.conf` on frontend (copied by the AMI) | `proxy_pass` still points to the **old backend IP** → `504` | Update the IP → `nginx -t` → `restart nginx` |
+
+- The AMI doesn't copy security group rules, but reusing the **same security group** keeps the old IP rule.
+- **Better:** in the inbound rule, use the **backend's security group ID** (`sg-xxxx`) or the VPC CIDR as the source instead of a single IP. Then a new IP doesn't break anything.
+
+```bash
+hostname -I        # shows this server's current private IP
+```
+
+## Read the MySQL Error Code
+
+| Error | Meaning | Look at |
+|-------|---------|---------|
+| `ERROR 2003 ... (110)` timed out | Can't reach the server at all | Security group 3306, private IP, old IP after AMI |
+| `ERROR 2003 ... (111)` connection refused | Reached the server, MySQL not listening | `systemctl status mysqld`, `netstat -lntp \| grep 3306` |
+| `Access denied ... (using password: YES)` | Reached MySQL, login refused | Password, `'expense'@'%'` user |
+| `Access denied ... (using password: NO)` | Password empty / not loaded | `DB_PWD` in service file + `daemon-reload` |
+| `Unknown database 'transactions'` | Login OK, schema not loaded | Load `backend.sql` |
 
 ## Quick Checklist
 

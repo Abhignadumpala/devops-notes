@@ -145,3 +145,11 @@ No. The backend reached MySQL and MySQL answered, so the network and port 3306 a
 **36. Do you need `daemon-reload` after installing MySQL and running `systemctl enable/start mysqld`?**
 
 No. The package installs its own service file and systemd already knows it. `daemon-reload` is only needed when you create or edit a service file yourself, like `backend.service`.
+
+**37. `ERROR 2003 Can't connect to MySQL server (110)`. What's wrong?**
+
+`110` means connection timed out, so the backend can't reach MySQL at all. It's a network problem, not a password problem. Check the MySQL security group allows 3306 from the backend, the IP is the MySQL private IP, and `mysqld` is running. `111` (connection refused) means the server was reached but MySQL isn't listening.
+
+**38. You launched a new backend from an AMI and now the DB connection times out. Why?**
+
+The new instance got a new private IP, but the MySQL security group still allows 3306 only from the old backend IP. Update the inbound rule, or better, use the backend security group ID as the source. Also check old IPs copied by the AMI in `backend.service` (`DB_HOST`) and `expense.conf` (`proxy_pass`).

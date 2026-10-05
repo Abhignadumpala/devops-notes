@@ -1,5 +1,7 @@
 # Day 9 - DNS (Domain Name System): How Domain Names Actually Work
 
+> **DNS in short:** DNS converts a domain name into an IP address. We type `facebook.com`, DNS finds its IP (`104.104.56.87`), and the browser connects to that IP. It's like the phone contacts list of the internet.
+
 ## Table of Contents
 
 1. [What this is / why it matters](#what-this-is--why-it-matters)

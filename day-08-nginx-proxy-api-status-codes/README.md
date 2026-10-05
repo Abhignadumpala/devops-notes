@@ -821,15 +821,15 @@ The backend doesn't get the `description` field it expects. That's **our** mista
 
 If the code starts with **5**, our request was fine - the problem is on the **application/server side**.
 
-| Code | Meaning | In simple words |
-|------|---------|-----------------|
-| `500` | Internal server error | Something broke inside the application - the code doesn't say what. Check the backend logs |
-| `501` | Not implemented | The server doesn't support this feature yet - rarely seen |
-| `502` | Bad gateway | **Backend down** - the frontend (Nginx) can't connect to the backend / didn't get a proper response from it |
-| `503` | Service unavailable | The service can't work right now - e.g. **DB down** |
-| `504` | Gateway timeout | The backend is up but didn't answer in time |
+| Code | Meaning | In simple words | Commands to check |
+|------|---------|-----------------|-------------------|
+| `500` | Internal server error | Something broke inside the application - the code doesn't say what. Check the backend logs | Backend: `journalctl -u backend -n 50`, `tail -f /var/log/nginx/error.log` |
+| `501` | Not implemented | The server doesn't support this feature yet - rarely seen | Check the API supports that method/URL: `curl -i -X <method> http://localhost:8080/api/...` |
+| `502` | Bad gateway | **Backend down** - the frontend (Nginx) can't connect to the backend / didn't get a proper response from it | Backend: `systemctl status backend`, `netstat -lntp \| grep 8080`, `journalctl -u backend -n 50` |
+| `503` | Service unavailable | The service can't work right now - e.g. **DB down** | Backend: `curl localhost:8080/health`. DB: `systemctl status mysqld`, `netstat -lntp \| grep 3306`, `telnet <mysql-private-ip> 3306` |
+| `504` | Gateway timeout | The backend is up but didn't answer in time | Frontend: `curl http://<backend-private-ip>:8080/health`, `grep proxy_pass /etc/nginx/default.d/expense.conf`. AWS: **backend SG 8080** |
 
-> **Quick rule:** 2XX → success. 3XX → redirect, not an error. 4XX → check what **you** sent. 5XX → check the **server** (502/504 → is the backend up and reachable?).
+> **Quick rule:** 2XX → success. 3XX → redirect, not an error. 4XX → check what **you** sent. 5XX → check the **server** (502/504 → is the backend up and reachable?). Full steps → [troubleshooting/](troubleshooting/README.md#502-vs-503-vs-504-what-to-check)
 
 ### Test It Yourself: Stop the DB → 503
 

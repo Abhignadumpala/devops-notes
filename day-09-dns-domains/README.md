@@ -166,6 +166,9 @@ TLD → Nameservers → who manages your domain → IP
 ```
 
 ## What happens when you buy a domain
+
+![What happens when you buy a domain](images/02-buying-a-domain.svg)
+
 1. You go to a registrar (GoDaddy, Namecheap, etc.) and search for a domain, e.g. `mydevops.com`.
 2. The registrar checks with the TLD's registry whether it's already taken.
 3. If it's free, you provide your name, contact details and payment to the registrar.

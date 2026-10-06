@@ -15,7 +15,7 @@
 9. [Key takeaways](#key-takeaways)
 10. [Interview Questions](#interview-questions)
 
-**More in this folder:** [Hands-on: Expense app with DNS names (Route 53)](hands-on/README.md) · [Interview questions](interview-questions/README.md)
+**More in this folder:** [Hands-on: Expense app with DNS names (Route 53) and a load balancer](hands-on/README.md) · [Interview questions](interview-questions/README.md)
 
 ---
 
@@ -147,31 +147,7 @@ Browser cache → OS cache → ISP DNS resolver cache → Root servers → TLD r
 
 If the IP isn't cached anywhere, it's our **ISP's (Internet Service Provider's) responsibility** to find it. The ISP runs a **DNS resolver** that does the searching:
 
-```text
-You type mydevops.com
-      │
-      ▼
-Browser cache ── knows? → use it ✅
-      │ no
-      ▼
-OS cache ─────── knows? → use it ✅
-      │ no
-      ▼
-ISP DNS resolver cache ── knows? → use it ✅
-      │ no
-      ▼
-ISP DNS resolver ── 1. "Who manages .com?" ─────────────▶ Root servers
-      │          ◀── 2. "Ask the .com TLD registry" ────
-      │
-      ├───────── 3. "Who manages mydevops.com?" ────────▶ .com TLD registry
-      │          ◀── 4. "I don't know the IP, but these
-      │                 nameservers manage it" ─────────
-      │
-      ├───────── 5. "What's the IP of mydevops.com?" ───▶ Nameservers (e.g. GoDaddy / Route 53)
-      │          ◀── 6. "203.0.113.10" ─────────────────
-      ▼
-Browser connects to 203.0.113.10
-```
+![How a DNS lookup works step by step](images/01-dns-lookup-step-by-step.svg)
 
 1. **Browser cache.** The browser first checks its own memory. If we opened this site recently, it already knows the IP.
 2. **OS cache.** If the browser doesn't know, it asks the operating system (Windows / Linux / Mac), which keeps its own DNS cache.
@@ -302,7 +278,7 @@ Now `http://mydevops.store` opens the server. If the server's IP changes, update
 
 > This moves only the **DNS management** to AWS. The domain is still registered (and renewed) at Hostinger.
 
-**Hands-on:** using Route 53 names (`mysql.`, `backend.`, `frontend.mydevops.store`) in the expense app instead of IPs → [hands-on/](hands-on/README.md)
+**Hands-on:** using Route 53 names (`mysql.`, `backend.`, `frontend.mydevops.store`) in the expense app instead of IPs, plus a second frontend and a load balancer → [hands-on/](hands-on/README.md)
 
 ## Common problems and how to solve them
 A common misconception is that the registrar "owns" your DNS — it doesn't. The registrar just manages which nameservers the registry has on file for your domain. You can register a domain at one registrar and point its nameservers at a completely different provider (Cloudflare, AWS Route 53, etc.) to actually manage the DNS records.

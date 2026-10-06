@@ -58,7 +58,8 @@ A complete 3-tier app on 3 Linux servers, set up step by step.
 | [troubleshooting/](troubleshooting/README.md) | Debug steps, common mistakes, what each error means |
 | [concepts/](concepts/README.md) | System user, build tools, service files, IPs, reverse proxy, Nginx, load balancer, REST API, status codes |
 | [interview-questions/](interview-questions/README.md) | 26 questions with short answers |
-| [01-mysql.md](01-mysql.md), [02-backend.md](02-backend.md), [03-frontend.md](03-frontend.md) | Quick setup commands per server |
+| [01-mysql.md](01-mysql.md), [02-backend.md](02-backend.md), [03-frontend.md](03-frontend.md), [04-load-balancer.md](04-load-balancer.md) | Quick setup commands per server |
+| [expense.conf](expense.conf), [lb.conf](lb.conf) | Nginx config files - frontend reverse proxy and load balancer |
 
 ---
 

@@ -40,6 +40,7 @@ A complete 3-tier app on 3 Linux servers, set up step by step.
 
 1. [What We Are Building](#what-we-are-building)
 2. [Before You Start](#before-you-start)
+   - [Mental Model - Build in Reverse of the Request Flow](#mental-model---build-in-reverse-of-the-request-flow)
 3. [Part 1 - Database Server (MySQL)](#part-1---database-server-mysql)
 4. [Part 2 - Backend Server (Node.js)](#part-2---backend-server-nodejs)
 5. [Part 3 - Frontend Server (Nginx)](#part-3---frontend-server-nginx)
@@ -235,6 +236,39 @@ ssh ec2-user@<public-ip>
 ### Step 5: Install in This Order
 
 **Database → Backend → Frontend.** Each tier needs the one after it to be ready.
+
+#### Mental Model - Build in Reverse of the Request Flow
+
+![Setup order mental model - DB, backend, frontend](images/01-setup-order-mental-model.svg)
+
+- **Requests flow:** Browser → Frontend → Backend → DB.
+- **We build in reverse:** DB → Backend → Frontend.
+- Build what others **depend on** first. The backend depends on the DB. The frontend depends on the backend.
+
+**Why the order matters - the question that explains it:**
+
+> The backend loads the schema by logging in to the DB as **root**. If the DB doesn't exist yet, how does it know the password?
+
+It can't. No DB → nothing to log in to → schema not loaded → `expense` DB user never created → `"db":"down"` errors on every tier above it.
+
+| # | ✅ Right way | ❌ Wrong way (what I did first) |
+|---|---|---|
+| 1 | **DB:** install MySQL, start it, set root password → DB exists and knows its password | **Frontend:** `/api/health` → **5XX** (no backend yet) |
+| 2 | **Backend:** load schema (creates DB, table, `expense` user), start service → `{"db":"up"}` | **Backend:** schema load → `ERROR 2003 (111)` (no DB yet) → `Access denied for user 'expense'` |
+| 3 | **Frontend:** Nginx + `/api/` proxy → `{"status":"ok"}` | **DB:** password set, but schema never loaded → go **back** to backend, reload schema, restart |
+| 4 | **Browser:** UI loads, no errors ✅ | Extra debugging, back and forth |
+
+**Test each tier before moving up:**
+
+| After setting up | Run on that server | Expect |
+|---|---|---|
+| DB | `mysql -u root -p -e "SELECT 1;"` | a small table with `1` |
+| Backend | `curl http://localhost:8080/health` | `{"status":"ok","db":"up"}` |
+| Frontend | `curl http://localhost/api/health` | `{"status":"ok","db":"up"}` |
+
+> **Interview one-liner:** I set up a 3-tier app bottom-up - DB, then backend, then frontend - the reverse of the request flow, because each tier depends on the one below it. The backend loads the schema into the DB, so the DB must be running with its password set first.
+
+Full story of my mistake: [Troubleshooting - My Mistake](troubleshooting/README.md#my-mistake---loaded-the-schema-before-the-db-was-ready).
 
 Run all setup commands as **root**, not ec2-user. Log in as `ec2-user`, then switch to root:
 

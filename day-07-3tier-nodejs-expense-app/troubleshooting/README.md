@@ -25,6 +25,7 @@ Check from **frontend to database**, one tier at a time.
 | Used public IP between servers | Use **private** IPs |
 | `nginx -t` → `host not found in upstream "<backend-private-ip>"` | Placeholder not replaced. Put the real backend private IP in `proxy_pass` |
 | `curl localhost/api/health` → **404** even though `expense.conf` is correct | Nginx wasn't restarted. `systemctl restart nginx` and check again |
+| Loaded the schema before the DB was set up → `Access denied for user 'expense'` | Set up DB first, then re-run the schema load on the backend. See [My Mistake](#my-mistake---loaded-the-schema-before-the-db-was-ready) |
 
 ## The Error Tells You the Layer
 
@@ -47,3 +48,56 @@ Run `curl http://localhost/api/health` on the frontend and read the result:
 > ```
 >
 > Same idea for the backend: after editing `backend.service` → `systemctl daemon-reload` + `systemctl restart backend`.
+
+## My Mistake - Loaded the Schema Before the DB Was Ready
+
+I set up the servers in the wrong order: **frontend → backend → DB**. The backend's schema step needs a working DB, so it broke. I've seen many people make the same mistake.
+
+### What I did wrong
+
+1. Set up the frontend fully (Nginx + `expense.conf`).
+2. Set up the backend fully - including **Load Database Schema** - but the DB server wasn't set up yet.
+3. Ran `mysql_secure_installation --set-root-pass ...` on the **backend** server by mistake. MySQL server isn't on the backend, so it did nothing.
+4. Only then set up the DB server.
+
+### What I saw
+
+| Where | Command | Result | Meaning |
+|---|---|---|---|
+| Frontend | `curl http://localhost/api/health` | **5XX** "backend service is unavailable" | Nginx is fine, backend isn't answering |
+| Frontend | `curl http://<backend-private-ip>:8080/health` | `Connection refused` | Nothing running on 8080 (a security group block would **time out** instead) |
+| Frontend | `tail /var/log/nginx/error.log` | `connect() failed (111: Connection refused) while connecting to upstream` | Same - backend down |
+| DB | `mysql -u root -p<password>` | `ERROR 1045 Access denied for user 'root'@'localhost'` | Root password was never set |
+| DB | `mysql -u root` (no password) | Opened `mysql>` | Confirmed - root had **no** password |
+| Backend | schema load (`mysql -h ... < backend.sql`) | `ERROR 2003 Can't connect to MySQL server ... (111)` | DB wasn't ready - schema **not loaded** |
+| Backend | `curl http://localhost:8080/health` | `"db":"down"`, `Access denied for user 'expense'@...` | Backend reaches MySQL, but the `expense` user doesn't exist - the schema creates it |
+
+### How I fixed it
+
+1. **On the DB server** - set the root password (on the right server this time):
+   ```bash
+   systemctl status mysqld                               # must be running
+   mysql_secure_installation --set-root-pass <db-root-password>
+   mysql -u root -p<db-root-password> -e "SHOW DATABASES;"   # check it works
+   ```
+2. **Back on the backend** - load the schema again (now it creates the DB, table and `expense` user):
+   ```bash
+   mysql -h <mysql-private-ip> -u root -p<db-root-password> < /app/schema/backend.sql
+   ```
+   Only the "password on the command line" warning = success.
+3. **Restart and check the backend:**
+   ```bash
+   systemctl daemon-reload
+   systemctl restart backend
+   curl http://localhost:8080/health      # {"status":"ok","db":"up"} ✅
+   ```
+4. **On the frontend:** `curl http://localhost/api/health` → `{"status":"ok","db":"up"}` ✅
+
+### Lessons
+
+- **Order matters: DB → backend → frontend.** Each tier needs the one after it to be ready.
+- **Load the schema only after the DB is set up** (`mysqld` running + root password set).
+- Run `mysql_secure_installation` **on the DB server**, not the backend. The backend only has the MySQL **client**.
+- Check right after setting the password: `mysql -u root -p<password> -e "SELECT 1;"`.
+- `Access denied for user 'expense'` = schema not loaded. `Access denied for user 'root'` = root password wrong / not set.
+- `Connection refused` = nothing listening. `Timeout` = firewall / security group.

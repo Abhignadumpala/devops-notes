@@ -185,6 +185,10 @@ WantedBy=multi-user.target
 
 ## Load Database Schema
 
+> ⚠️ **Do this step only after the DB server is ready.** On the MySQL server first: MySQL installed, `mysqld` running, root password set ([01-mysql.md](01-mysql.md)). Check from the backend: `mysql -h <MYSQL-SERVER-IPADDRESS> -u root -p -e "SELECT 1;"` must work.
+>
+> **Common mistake:** setting up the whole backend before the DB. The schema load fails, so the `expense` DB user is never created, and the app says `Access denied for user 'expense'`. Order: **DB → backend → frontend.** See [Troubleshooting](troubleshooting/README.md#my-mistake---loaded-the-schema-before-the-db-was-ready).
+
 ```bash
 dnf install mysql -y
 mysql -h <MYSQL-SERVER-IPADDRESS> -u root -p < /app/schema/backend.sql

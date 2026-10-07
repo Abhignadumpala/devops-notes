@@ -1,5 +1,20 @@
 # MySQL
 
+## Server Login
+
+| Item | Value |
+|------|-------|
+| Server name | `mysqldb` |
+| AMI | `Redhat-9-DevOps-Practice` (`ami-0220d79f3f480ecf5`, us-east-1) |
+| Username | `ec2-user` |
+| Password | `DevOps321` |
+
+```bash
+ssh ec2-user@<mysqldb-public-ip>    # enter the password
+sudo su -                         # become root
+hostnamectl set-hostname mysqldb   # name the server, then: exec bash
+```
+
 MySQL is the database for this app. We need to install, configure, and load the schema.
 
 > **Check with the developer for the exact version required. This setup uses MySQL 8.0.x.**

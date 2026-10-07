@@ -1,5 +1,20 @@
 # Backend
 
+## Server Login
+
+| Item | Value |
+|------|-------|
+| Server name | `backend` |
+| AMI | `Redhat-9-DevOps-Practice` (`ami-0220d79f3f480ecf5`, us-east-1) |
+| Username | `ec2-user` |
+| Password | `DevOps321` |
+
+```bash
+ssh ec2-user@<backend-public-ip>    # enter the password
+sudo su -                         # become root
+hostnamectl set-hostname backend   # name the server, then: exec bash
+```
+
 The backend service is responsible for handling API requests and persisting data to the database. It is written in Node.js.
 
 > **Check with the developer for the exact version required. This setup requires Node.js >= 24.**

@@ -1,5 +1,20 @@
 # Frontend
 
+## Server Login
+
+| Item | Value |
+|------|-------|
+| Server name | `frontend` |
+| AMI | `Redhat-9-DevOps-Practice` (`ami-0220d79f3f480ecf5`, us-east-1) |
+| Username | `ec2-user` |
+| Password | `DevOps321` |
+
+```bash
+ssh ec2-user@<frontend-public-ip>    # enter the password
+sudo su -                         # become root
+hostnamectl set-hostname frontend   # name the server, then: exec bash
+```
+
 The frontend serves static web content (HTML, CSS, JS) via Nginx. It also acts as a reverse proxy, forwarding `/api/` requests to the backend EC2 instance.
 
 ---

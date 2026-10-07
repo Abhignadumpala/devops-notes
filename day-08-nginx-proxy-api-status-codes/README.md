@@ -315,6 +315,18 @@ Browser → http://<frontend-ip>/api/transaction
           (browser never sees the backend - Nginx hides it)
 ```
 
+**And a forward proxy example - VPN on my laptop:**
+
+1. I turn on a VPN on my computer and open a website.
+2. My request goes to the VPN server first, and the VPN server goes to the website for me.
+3. The website sees the **VPN server's IP**, not my real IP.
+4. The VPN is on **my side** (the client) and hides **me** → that's the forward-proxy idea. ✅
+
+```text
+Me (laptop) → VPN server → Internet → Website
+          (website sees the VPN's IP, never mine)
+```
+
 **Rule I remember:**
 
 - Building an app and putting something **in front of my servers** → **reverse proxy** (Nginx, load balancer, AWS ALB, K8s Ingress).

@@ -44,12 +44,13 @@
     - [Test It Yourself: Stop the DB → 503](#test-it-yourself-stop-the-db--503)
     - [504 Gateway Timeout - How Long Nginx Waits](#504-gateway-timeout---how-long-nginx-waits)
 11. [Troubleshooting](#troubleshooting)
+    - [Hands-On: Rebuilding the App + Two DB Bugs](#hands-on-rebuilding-the-app--two-db-bugs)
 12. [Summary](#summary)
 13. [Interview Questions](#interview-questions)
 
-**Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg) · [User → LB → Frontend → Backend → DB](images/05-user-lb-frontend-backend-db.svg) · [API Request Flow](images/06-api-request-flow.svg) · [What Causes Each Status Code](images/07-what-causes-each-status-code.svg)
+**Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg) · [User → LB → Frontend → Backend → DB](images/05-user-lb-frontend-backend-db.svg) · [API Request Flow](images/06-api-request-flow.svg) · [What Causes Each Status Code](images/07-what-causes-each-status-code.svg) · [MySQL Account = User + Host](images/08-mysql-accounts-user-host.svg)
 
-**More in this folder:** [Troubleshooting step by step](troubleshooting/README.md) · [Interview questions](interview-questions/README.md)
+**More in this folder:** [Hands-on - rebuilding the app (screenshots)](hands-on/README.md) · [Troubleshooting step by step](troubleshooting/README.md) · [Interview questions](interview-questions/README.md)
 
 ---
 
@@ -936,6 +937,15 @@ So in our setup:
 ## Troubleshooting
 
 When you get errors, **check the logs first**, step by step: Nginx `access.log` → `journalctl -u backend` → `systemctl status` / `ps -ef` / `netstat -lntp` → `curl http://localhost:8080/health`. Full approach and a real example (500 → `Access denied for user 'expense'` → fix DB credentials → `daemon-reload` + `restart`) in [troubleshooting/README.md](troubleshooting/README.md).
+
+### Hands-On: Rebuilding the App + Two DB Bugs
+
+I rebuilt the expense app on fresh servers before the DNS setup (Day 9) and hit two DB bugs:
+
+1. **Wrong setup order** (frontend → backend → DB) → schema never loaded → `"db":"down"`, `Access denied for user 'expense'`.
+2. **`root@localhost` had an empty password** → local login failed while remote root worked. MySQL account = user + host.
+
+Screenshots and fixes: [hands-on/README.md](hands-on/README.md). Detailed debug steps: [troubleshooting](troubleshooting/README.md#example-schema-loaded-before-the-db-was-ready).
 
 ## Summary
 

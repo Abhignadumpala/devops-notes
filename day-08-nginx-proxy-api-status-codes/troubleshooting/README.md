@@ -17,6 +17,8 @@
 11. [Example: dnf install nginx → Port 443 Timed Out](#example-dnf-install-nginx--port-443-timed-out)
 12. [Timeout vs Refused](#timeout-vs-refused)
 13. [Quick Checklist](#quick-checklist)
+14. [Example: Schema Loaded Before the DB Was Ready](#example-schema-loaded-before-the-db-was-ready)
+15. [Example: root@localhost Has an Empty Password](#example-rootlocalhost-has-an-empty-password)
 
 ---
 
@@ -217,6 +219,8 @@ hostname -I        # shows this server's current private IP
 | `Access denied ... (using password: YES)` | Reached MySQL, login refused | Password, `'expense'@'%'` user |
 | `Access denied ... (using password: NO)` | Password empty / not loaded | `DB_PWD` in service file + `daemon-reload` |
 | `Unknown database 'transactions'` | Login OK, schema not loaded | Load `backend.sql` |
+| `Access denied for user 'expense'` right after setup | `expense` user never created - schema load failed | [Schema loaded before the DB was ready](#example-schema-loaded-before-the-db-was-ready) |
+| `Access denied for user 'root'@'localhost'` but remote root works | `root@localhost` has a different/empty password | [root@localhost empty](#example-rootlocalhost-has-an-empty-password) |
 
 ## 502 vs 503 vs 504: What to Check
 
@@ -462,3 +466,83 @@ Timeout → think **network / SG**. Refused → think **service not running**.
        → systemctl status backend / ps -ef | grep node / netstat -lntp | grep 8080
        → curl http://localhost:8080/health ("db" not "down")
 ```
+
+## Example: Schema Loaded Before the DB Was Ready
+
+From my [second run](../hands-on/README.md#4-problem-1---dbdown-because-i-set-up-in-the-wrong-order). I set up **frontend → backend → DB**.
+
+**Symptoms, top to bottom:**
+
+| Where | Command | Result | Means |
+|---|---|---|---|
+| Frontend | `curl http://localhost/api/health` | 5XX page | Nginx OK, backend not answering |
+| Frontend | `curl http://<backend-private-ip>:8080/health` | `Connection refused` | Nothing on 8080 yet (an SG block would **time out**) |
+| Frontend | `tail /var/log/nginx/error.log` | `connect() failed (111: Connection refused) while connecting to upstream` | Same - backend down |
+| Backend | schema load | `ERROR 2003 ... (111)` | MySQL not running yet → schema **not loaded** |
+| Backend | `curl http://localhost:8080/health` | `"db":"down"`, `Access denied for user 'expense'` | Backend reaches MySQL, but `expense` user doesn't exist |
+
+**Root cause:** the schema load (`mysql -h <db-ip> -u root -p... < /app/schema/backend.sql`) runs on the backend but **creates** the DB, table and `expense` user **in** MySQL. The DB wasn't ready, so none of it was created.
+
+**Fix:**
+
+1. DB server: `systemctl start mysqld` + set the root password → check `mysql -u root -p<db-root-password> -e "SELECT 1;"`
+2. Backend: run the schema load again → only the password warning = success
+3. Backend: `systemctl restart backend` → `curl http://localhost:8080/health` → `{"status":"ok","db":"up"}`
+4. Frontend: `curl http://localhost/api/health` → same ✅
+
+**Prevent it:** build **DB → backend → frontend** and test each tier before moving up. Diagram: [Day 7 mental model](../../day-07-3tier-nodejs-expense-app/README.md#mental-model---build-in-reverse-of-the-request-flow).
+
+## Example: root@localhost Has an Empty Password
+
+From my [second run](../hands-on/README.md#6-problem-2---rootlocalhost-had-an-empty-password).
+
+![MySQL account = user + host](../images/08-mysql-accounts-user-host.svg)
+
+**Symptoms:**
+
+| Where | Command | Result |
+|---|---|---|
+| Backend | `mysql -h <db-private-ip> -u root -p<db-root-password>` | ✅ works |
+| DB server | `mysql -u root -p<db-root-password>` | ❌ `ERROR 1045 Access denied for user 'root'@'localhost' (using password: YES)` |
+| DB server | `mysql_secure_installation --set-root-pass <db-root-password>` | `Password already set, You cannot reset the password with mysql_secure_installation` |
+
+**Debug steps:**
+
+1. **Did I type the wrong password?** → `history | grep -i "set-root-pass\|ALTER USER"` → same password both times. Not a typo.
+2. **Is there a password at all?** → `mysql -u root -e "SELECT 1;"` with **no** password → it worked. Root on the DB server had **none**.
+3. **Check every root account:**
+   ```bash
+   mysql -u root -e "SELECT user, host, IF(authentication_string='','EMPTY','set') AS pwd FROM mysql.user WHERE user='root';"
+   ```
+   ```text
+   | root | %         | set   |   ← backend logs in with this one
+   | root | localhost | EMPTY |   ← DB server logs in with this one
+   ```
+
+**Root cause:** a MySQL account is **user + host**. `root@localhost` and `root@%` are separate accounts. `set-root-pass` set only `root@%` and printed nothing. An account with **no** password rejects **any** password → Access denied.
+
+**Fix** (on the DB server, no restart needed):
+
+```bash
+mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '<db-root-password>';"
+mysql -u root -p<db-root-password> -e "SHOW DATABASES;"    # transactions listed ✅
+```
+
+If you can't log in locally at all, log in as `root@%` instead (`mysql -h <db-private-ip> -u root -p...`, works from the DB server too) and run the same `ALTER USER`.
+
+**Where passwords live:**
+
+| Password | Real copy on | Set by |
+|---|---|---|
+| `root@localhost` | DB server, `mysql.user` table (hashed) | `mysql_secure_installation` / `ALTER USER` |
+| `root@%` | DB server, `mysql.user` table | `mysql_secure_installation` / `ALTER USER` |
+| `expense@%` (app) | DB server, `mysql.user` table | `backend.sql` (schema load from the backend) |
+| Copy of `expense` password | Backend, `DB_PWD=` in `backend.service` | Me, when writing the file - must **match** the DB |
+
+**Rules:**
+
+- `set-root-pass` works only **once** (while root has no password). After that → `ALTER USER`.
+- A password change in MySQL works **at once** - no restart. Changing `backend.service` needs `daemon-reload` + `restart backend`.
+- Editing `DB_PWD` never changes a MySQL password - it only changes what the app sends.
+- Always check right after setting a password: `mysql -u root -p<db-root-password> -e "SELECT 1;"`.
+

@@ -268,7 +268,7 @@ It can't. No DB → nothing to log in to → schema not loaded → `expense` DB 
 
 > **Interview one-liner:** I set up a 3-tier app bottom-up - DB, then backend, then frontend - the reverse of the request flow, because each tier depends on the one below it. The backend loads the schema into the DB, so the DB must be running with its password set first.
 
-Full story of my mistake: [Troubleshooting - My Mistake](troubleshooting/README.md#my-mistake---loaded-the-schema-before-the-db-was-ready).
+Root cause in short: [Troubleshooting - Root Cause in Short](troubleshooting/README.md#root-cause-in-short) · Full story: [My Mistake](troubleshooting/README.md#my-mistake---loaded-the-schema-before-the-db-was-ready).
 
 Run all setup commands as **root**, not ec2-user. Log in as `ec2-user`, then switch to root:
 

@@ -53,6 +53,21 @@ Run `curl http://localhost/api/health` on the frontend and read the result:
 
 I set up the servers in the wrong order: **frontend → backend → DB**. The backend's schema step needs a working DB, so it broke. I've seen many people make the same mistake.
 
+### Root Cause in Short
+
+Found the root cause of the "db down" error 🎯
+
+- The servers need to be set up in **reverse of the request flow**: **DB → Backend → Frontend**.
+- I first did frontend → backend → DB. The problem: on the backend we run:
+  ```bash
+  mysql -h <db-ip> -u root -p<db-root-password> < /app/schema/backend.sql
+  ```
+- This loads the schema **into** the DB (the file lives on the backend in `/app/schema/`), but the DB wasn't set up yet - no MySQL running, no root password.
+- So the schema never loaded → the `expense` DB user was never created → the backend showed `"db":"down"` / `Access denied for user 'expense'`.
+- **Fix:** set up the DB (start `mysqld` + set the root password) → go back to the backend → run the schema load again → restart the backend. Works ✅ No need to rebuild anything.
+
+Picture of the right vs wrong order: [Mental Model - Build in Reverse of the Request Flow](../README.md#mental-model---build-in-reverse-of-the-request-flow).
+
 ### What I did wrong
 
 1. Set up the frontend fully (Nginx + `expense.conf`).

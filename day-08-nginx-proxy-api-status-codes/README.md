@@ -734,8 +734,8 @@ Calling the backend directly:
 | `GET` | `http://<backend-ip>:8080/transaction` | Get **all** transactions |
 | `GET` | `http://<backend-ip>:8080/transaction/2` | Get the transaction with **ID 2** |
 | `POST` | `http://<backend-ip>:8080/transaction` | Add a new transaction (JSON body below) |
-| `DELETE` | `http://<backend-ip>:8080/transaction/4` | Delete transaction **4** |
-| `DELETE` | `http://<backend-ip>:8080/transaction/` | Delete **all** transactions (needs an admin token) |
+| `DELETE` | `http://<backend-ip>:8080/transaction/4` | Delete transaction **4** (needs the admin token) |
+| `DELETE` | `http://<backend-ip>:8080/transaction/` | Delete **all** transactions (needs the admin token) |
 | `GET` | `http://<backend-ip>:8080/health` | Health check |
 
 `POST` body:
@@ -756,26 +756,87 @@ curl http://<backend-ip>:8080/transaction/2                   # GET one
 curl -X POST http://<backend-ip>:8080/transaction \
      -H "Content-Type: application/json" \
      -d '{"amount": 750, "description": "Electricity bill", "category": "Utilities"}'
-curl -X DELETE http://<backend-ip>:8080/transaction/4         # DELETE one
+curl -X DELETE http://<backend-ip>:8080/transaction/4 \
+     -H "Authorization: Bearer <admin-token>"                # DELETE one
 ```
+
+**The admin token** - every `DELETE` needs it in our backend version:
+
+| What | Value |
+|---|---|
+| Where it's set | `Environment=ADMIN_TOKEN=<admin-token>` in `backend.service` (on the backend) |
+| How to see it | `grep ADMIN_TOKEN /etc/systemd/system/backend.service` |
+| Which header | `Authorization: Bearer <admin-token>` - found with `grep -n -i "token" /app/index.js` |
+| Why `Bearer ` | The code does `auth.slice(7)` → cuts off the first 7 characters (`Bearer` + space) and compares the rest with the token |
+| In HTTPie | **Auth** tab → Bearer → paste the token (HTTPie adds the `Bearer ` part) |
+
+> Changed `ADMIN_TOKEN`? Run `systemctl daemon-reload` and `systemctl restart backend`, or the old value stays.
 
 ### Testing with HTTPie / Postman (Screenshots)
 
-**1. POST a new transaction → `201 Created`** - the backend saved it and gave it `id: 2`.
+My own run with the **HTTPie web app** (httpie.io/app) from my laptop, after rebuilding the app ([hands-on](hands-on/README.md)).
 
-![POST transaction returns 201 Created](images/api-01-post-201-created.png)
+**Which IP from HTTPie?** My laptop is **outside AWS**, so:
 
-**2. GET all transactions → `200 OK`** - the new one (`id: 2`) is now in the list.
+| URL | Works? | Why |
+|---|---|---|
+| `http://<backend-private-ip>:8080/transaction` | ❌ | Private IPs only work **inside** the VPC |
+| `http://<backend-public-ip>:8080/transaction` | ❌ times out | `backend-sg` allows 8080 only from `frontend-sg` |
+| `http://<frontend-public-ip>/api/transaction` | ✅ | Port 80 is open, Nginx forwards `/api/` to the backend |
 
-![GET all transactions returns 200 OK](images/api-02-get-all-200-ok.png)
+So I always used the **frontend public IP + `/api`**.
 
-**3. POST with broken JSON → `400 Bad Request`** - the closing `"` after `Utilities` is missing, so the input is not correct (`malformed JSON body`). Our mistake → 4XX.
+**1. GET all → `200 OK`** - my 2 expenses from the browser (`id` 1 and 2).
 
-![POST with malformed JSON returns 400 Bad Request](images/api-03-post-bad-json-400.png)
+![GET all transactions returns 200 OK](images/api-01-get-all-200-ok.png)
 
-**4. DELETE all without a token → `401 Unauthorized`** - deleting everything is an admin action, and we didn't send any credentials (`admin token required`).
+**2. GET one → `200 OK`** - `/api/transaction/2` gives only id 2.
 
-![DELETE all without admin token returns 401 Unauthorized](images/api-04-delete-all-401.png)
+![GET one transaction returns 200 OK](images/api-02-get-one-200-ok.png)
+
+**3. POST → `201 Created`** - Body tab → JSON, then Send. The backend saved it and gave it `id: 3`.
+
+```json
+{ "amount": 500, "description": "groceries", "category": "Food" }
+```
+
+![POST transaction returns 201 Created](images/api-03-post-201-created.png)
+
+**4. GET all again** - I clicked Send on the POST **twice**, so I got **two** rows (id 3 and 4). POST creates a new row **every** time - it is not idempotent (GET/PUT/DELETE give the same result if repeated).
+
+![GET all after POST shows ids 3 and 4](images/api-04-get-all-after-post.png)
+
+**5. DELETE one → id 4** - `DELETE /api/transaction/4` with the admin token in the **Auth** tab (blacked out).
+
+- First it asked for the key → every DELETE needs the token, not only Delete All.
+- Without the token → `401`, wrong token → `403`.
+- With the right token → deleted ✅. Sending the same DELETE again → **`404`** `transaction 4 not found` - it's already gone. The token check passed, otherwise I'd get 401/403.
+
+![DELETE one with token - 404 when sent again](images/api-05-delete-one-with-token.png)
+
+**6. GET all after DELETE** - id 4 is gone, 1-3 are still there. Ids are **never reused** - the next POST gets id 5.
+
+![GET all after DELETE - id 4 gone](images/api-06-get-after-delete.png)
+
+**7. POST with broken JSON → `400 Bad Request`** - the closing `"` after `Utilities` is missing, so the input is not correct (`malformed JSON body`). Our mistake → 4XX.
+
+![POST with malformed JSON returns 400 Bad Request](images/api-07-post-bad-json-400.png)
+
+**8. DELETE all without a token → `401 Unauthorized`** - deleting everything is an admin action, and we didn't send any credentials (`admin token required`).
+
+![DELETE all without admin token returns 401 Unauthorized](images/api-08-delete-all-401.png)
+
+**What each test proved:**
+
+| Test | Code | Meaning |
+|---|---|---|
+| GET all / one | `200` | Read works |
+| POST | `201` | New row created |
+| DELETE one (right token) | `200`/`204` | Row deleted |
+| DELETE same id again | `404` | That id doesn't exist |
+| DELETE, no token | `401` | No credentials |
+| DELETE, wrong token | `403` | Credentials sent, but not allowed |
+| POST broken JSON | `400` | Bad request body |
 
 ## HTTP Status Codes
 

@@ -179,6 +179,8 @@ Open `http://<frontend-public-ip>` - the frontend is the only server with port 8
 
 Full flow proven: **browser → Nginx (frontend) → Node.js (backend) → MySQL (DB)** ✅
 
+Then I tested every API method (GET, POST, DELETE with the admin token) from **HTTPie** - screenshots in [Testing with HTTPie / Postman](../README.md#testing-with-httpie--postman-screenshots).
+
 ---
 
 ## 8. Lessons

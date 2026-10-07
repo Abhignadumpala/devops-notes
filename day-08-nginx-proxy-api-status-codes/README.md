@@ -17,6 +17,7 @@
    - [Ports and Domains](#ports-and-domains)
    - [Nginx Logs](#nginx-logs)
 4. [Forward Proxy vs Reverse Proxy](#forward-proxy-vs-reverse-proxy)
+   - [Where I Got Confused - "It Forwards, So It's a Forward Proxy?"](#where-i-got-confused---it-forwards-so-its-a-forward-proxy)
    - [What a Reverse Proxy Does](#what-a-reverse-proxy-does)
 5. [Load Balancing](#load-balancing)
    - [Why We Need a Load Balancer](#why-we-need-a-load-balancer)
@@ -283,6 +284,43 @@ http {
 Forward:  Client → [Forward Proxy] → Internet → Server
 Reverse:  Client → Internet → [Reverse Proxy] → Server(s)
 ```
+
+### Where I Got Confused - "It Forwards, So It's a Forward Proxy?"
+
+While setting up Nginx for the expense app, I paused at this step:
+
+> The browser only talks to the frontend (Nginx). When the app needs data, it calls `/api/...`. We tell Nginx: "any request starting with `/api/` → **forward** it to the backend on port 8080."
+
+**My doubt:** Nginx takes the browser's request and **forwards** it to the backend on our behalf... so isn't that a **forward** proxy? 🤔
+
+**The answer:** every proxy forwards requests. "Forwarding" doesn't decide the type. What decides it is **whose side the proxy is on** and **who it hides**.
+
+**Think like the app owner:**
+
+1. I'm building **my own** app.
+2. My concern is to **protect and hide my app servers**.
+3. So I put Nginx **in front of my server**.
+4. The browser only sees Nginx. It never sees or reaches the backend.
+5. Nginx is hiding **my server** → it's a **reverse proxy**. ✅
+
+| | Forward Proxy | Reverse Proxy |
+|---|---|---|
+| Hides | The **client** from the server | The **servers** from the client (browser / people) |
+| Sits in front of | Clients | Servers |
+| Who sets it up | User / company network | App owner (me) |
+
+```text
+Browser → http://<frontend-ip>/api/transaction
+            → Nginx (frontend) → http://<backend-private-ip>:8080/transaction → Backend
+          (browser never sees the backend - Nginx hides it)
+```
+
+**Rule I remember:**
+
+- Building an app and putting something **in front of my servers** → **reverse proxy** (Nginx, load balancer, AWS ALB, K8s Ingress).
+- My machines going **out to the internet** through a company proxy (`http_proxy`) → **forward proxy**.
+
+> **Interview one-liner:** "Forwarding" happens in both. A forward proxy acts for the client and hides the client; a reverse proxy acts for the server and hides the servers. Nginx in front of our backend is a reverse proxy.
 
 ### What a Reverse Proxy Does
 

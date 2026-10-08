@@ -133,6 +133,13 @@ systemctl enable backend
 systemctl start backend
 ```
 
+After any change to `backend.service` (or after loading the schema), restart - `start` does nothing if the service is already running:
+
+```bash
+systemctl daemon-reload
+systemctl restart backend
+```
+
 ---
 
 ## Verification

@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 28px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .box-title { font-size: 20px; font-weight: 700; fill: #ffffff; }
+    .box-text { font-size: 14px; fill: #f1f5f9; }
+    .name { font-size: 14px; font-weight: 700; fill: #0f172a; font-family: Consolas, Menlo, monospace; }
+    .label { font-size: 14px; fill: #0f172a; }
+    .phase { font-size: 17px; font-weight: 700; fill: #1e293b; }
+    .mono { font-size: 13px; fill: #0f172a; font-family: Consolas, Menlo, monospace; }
+    .note { font-size: 15px; fill: #334155; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker>
+  </defs>
+  <rect width="1200" height="900" rx="16" fill="#ffffff"/>
+  <text x="600" y="44" text-anchor="middle" class="title">My Expense App by DNS Names (abhignadevops.store)</text>
+  <text x="600" y="72" text-anchor="middle" class="sub">Every server finds the next one by a Route 53 name, not an IP. IP changes? Update one record.</text>
+
+  <!-- Route 53 panel -->
+  <rect x="20" y="92" width="1160" height="96" rx="14" fill="#fff7ed" stroke="#fed7aa"/>
+  <text x="40" y="118" class="phase">Route 53 hosted zone - Namecheap points the domain here (Custom DNS = 4 AWS nameservers)</text>
+  <text x="40" y="146" class="mono">abhignadevops.store  A → LB public IP      www  CNAME → abhignadevops.store</text>
+  <text x="40" y="170" class="mono">frontend-1 / frontend-2  A → private IPs     backend  A → private IP     mysql  A → private IP</text>
+
+  <!-- Browser -->
+  <rect x="60" y="225" width="220" height="110" rx="12" fill="#475569"/>
+  <text x="170" y="270" text-anchor="middle" class="box-title">Browser</text>
+  <text x="170" y="296" text-anchor="middle" class="box-text">my laptop</text>
+  <line x1="280" y1="280" x2="470" y2="280" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <text x="375" y="266" text-anchor="middle" class="name">abhignadevops.store</text>
+  <text x="375" y="304" text-anchor="middle" class="label">port 80, internet</text>
+
+  <!-- LB -->
+  <rect x="475" y="225" width="250" height="110" rx="12" fill="#7c3aed"/>
+  <text x="600" y="265" text-anchor="middle" class="box-title">lb (Nginx)</text>
+  <text x="600" y="290" text-anchor="middle" class="box-text">upstream, round robin</text>
+  <text x="600" y="312" text-anchor="middle" class="box-text">public IP · lb-sg port 80</text>
+
+  <!-- arrows to frontends -->
+  <line x1="560" y1="335" x2="330" y2="420" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <line x1="640" y1="335" x2="870" y2="420" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <text x="300" y="380" class="name">frontend-1.abhignadevops.store</text>
+  <text x="680" y="380" class="name">frontend-2.abhignadevops.store</text>
+
+  <!-- frontends -->
+  <rect x="170" y="425" width="300" height="110" rx="12" fill="#0891b2"/>
+  <text x="320" y="465" text-anchor="middle" class="box-title">frontend-1 (Nginx)</text>
+  <text x="320" y="490" text-anchor="middle" class="box-text">static files + /api/ reverse proxy</text>
+  <text x="320" y="512" text-anchor="middle" class="box-text">private IP · frontend-sg</text>
+
+  <rect x="730" y="425" width="300" height="110" rx="12" fill="#0891b2"/>
+  <text x="880" y="465" text-anchor="middle" class="box-title">frontend-2 (Nginx)</text>
+  <text x="880" y="490" text-anchor="middle" class="box-text">same setup as frontend-1</text>
+  <text x="880" y="512" text-anchor="middle" class="box-text">private IP · frontend-sg</text>
+
+  <!-- to backend -->
+  <line x1="320" y1="535" x2="560" y2="615" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <line x1="880" y1="535" x2="640" y2="615" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <text x="600" y="572" text-anchor="middle" class="name">proxy_pass http://backend.abhignadevops.store:8080/</text>
+
+  <rect x="460" y="620" width="280" height="100" rx="12" fill="#16a34a"/>
+  <text x="600" y="660" text-anchor="middle" class="box-title">backend (Node.js)</text>
+  <text x="600" y="686" text-anchor="middle" class="box-text">:8080 · backend-sg: from frontend-sg</text>
+
+  <line x1="600" y1="720" x2="600" y2="785" stroke="#475569" stroke-width="3" marker-end="url(#a)"/>
+  <text x="612" y="758" class="name" style="font-size:12px">DB_HOST=mysql.abhignadevops.store</text>
+
+  <rect x="460" y="790" width="280" height="90" rx="12" fill="#dc2626"/>
+  <text x="600" y="828" text-anchor="middle" class="box-title">mysqldb (MySQL)</text>
+  <text x="600" y="854" text-anchor="middle" class="box-text">:3306 · mysql-sg: from backend-sg</text>
+
+  <!-- side note -->
+  <rect x="870" y="610" width="310" height="270" rx="12" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="890" y="640" class="phase">Why names, not IPs</text>
+  <text x="890" y="670" class="note">• Stop/start → public IP changes</text>
+  <text x="890" y="696" class="note">• Recreate a server → new IP</text>
+  <text x="890" y="722" class="note">• With names: edit 1 Route 53 record,</text>
+  <text x="906" y="746" class="note">no config files on servers</text>
+  <text x="890" y="776" class="note">• Public IP only for the LB</text>
+  <text x="890" y="802" class="note">• Private IPs for server-to-server</text>
+  <text x="890" y="832" class="note">• Nginx resolves names at start →</text>
+  <text x="906" y="856" class="note">reload Nginx after an IP change</text>
+
+  <rect x="20" y="610" width="310" height="270" rx="12" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="40" y="640" class="phase">Security groups chain</text>
+  <text x="40" y="670" class="note">internet → lb-sg (80)</text>
+  <text x="40" y="696" class="note">lb → frontend-sg (80)</text>
+  <text x="40" y="722" class="note">frontend-sg → backend-sg (8080)</text>
+  <text x="40" y="748" class="note">backend-sg → mysql-sg (3306)</text>
+  <text x="40" y="782" class="note">Next step for security:</text>
+  <text x="40" y="806" class="note">frontend-sg port 80 only from</text>
+  <text x="40" y="830" class="note">lb-sg, so nobody skips the LB</text>
+</svg>

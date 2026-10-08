@@ -15,7 +15,7 @@
 9. [Key takeaways](#key-takeaways)
 10. [Interview Questions](#interview-questions)
 
-**More in this folder:** [Hands-on: Expense app with DNS names (Route 53) and a load balancer](hands-on/README.md) · [Interview questions](interview-questions/README.md)
+**More in this folder:** [Hands-on: my own domain + Route 53 + load balancer (screenshots)](hands-on/README.md) · [Troubleshooting: DNS caching step by step](troubleshooting/README.md) · [Interview questions](interview-questions/README.md)
 
 ---
 
@@ -281,12 +281,27 @@ Now `http://mydevops.store` opens the server. If the server's IP changes, update
 
 > This moves only the **DNS management** to AWS. The domain is still registered (and renewed) at Hostinger.
 
-**Hands-on:** using Route 53 names (`mysql.`, `backend.`, `frontend.mydevops.store`) in the expense app instead of IPs, plus a second frontend and a load balancer → [hands-on/](hands-on/README.md)
+**Hands-on:** I bought `abhignadevops.store` on Namecheap, moved its DNS to Route 53, connected the expense app by names (`mysql.`, `backend.`, `frontend-1/2.abhignadevops.store`) instead of IPs, and added a second frontend and an Nginx load balancer → [hands-on/](hands-on/README.md)
+
+![Expense app by DNS names](images/03-expense-app-by-dns-names.svg)
 
 ## Common problems and how to solve them
 A common misconception is that the registrar "owns" your DNS — it doesn't. The registrar just manages which nameservers the registry has on file for your domain. You can register a domain at one registrar and point its nameservers at a completely different provider (Cloudflare, AWS Route 53, etc.) to actually manage the DNS records.
 
 Another common confusion: thinking a domain name *is* the server. It isn't — it's just a pointer. Changing a DNS record (e.g. an A record pointing to a new IP) doesn't move or change your server; it just changes where the name resolves to, and that change can take time to propagate depending on DNS caching (TTL).
+
+**What I hit in my own lab** - Route 53 was always right, a cache had the old answer:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Domain redirects to `www` instead of my app | Home router cached Namecheap's old answer | Wait the TTL / use 8.8.8.8 |
+| `nginx -t`: host not found in upstream | VPC resolver cached "not found" (negative caching, SOA 900s) | Create records **before** looking them up; wait |
+| `www` shows Namecheap's parking page | Browser's own cache | Clear Firefox DNS cache / private window |
+| Record "changed" but old IP | Not saved / trailing dot on the IP | Remove the dot, click **Save** |
+
+Step by step with `dig` outputs → [troubleshooting/](troubleshooting/README.md)
+
+![DNS caching layers](images/04-dns-caching-layers.svg)
 
 ## Key takeaways
 - DNS exists because computers route by IP, not by name — it's purely a name-to-IP translation layer.
@@ -298,6 +313,7 @@ Another common confusion: thinking a domain name *is* the server. It isn't — i
 - Different record types do different jobs: **A** points a domain at an IP, **CNAME** aliases one domain to another, **NS** says who manages the records, **MX** routes email.
 - A domain's DNS doesn't have to stay with the registrar it was bought from — updating its NS record lets another provider (e.g. AWS Route 53) take over managing its records entirely.
 - TTL controls the trade-off between lookup speed and how fast a change propagates — lower it to 1 min at least 2 days before a planned IP change, then raise it back to 1 day. Skipping this causes a **DNS propagation failure** (users hit the old IP).
+- DNS caches **"not found" too** (negative caching, from the SOA record) - create records before anything looks them up.
 - Picking a registrar: check renewal price, not just year one. Long-term domain → e.g. GoDaddy (higher initial price); short-term / practice → e.g. Hostinger (cheap first year, costly renewals).
 
 See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README.md) (the frontend public IP a domain's A record points to)
@@ -306,4 +322,4 @@ See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README
 
 ## Interview Questions
 
-20 questions with short answers → [interview-questions/](interview-questions/README.md)
+25 questions with short answers → [interview-questions/](interview-questions/README.md)

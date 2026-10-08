@@ -81,3 +81,23 @@ Buying in AWS is costly, so we buy at Hostinger. EC2 public IPs change when inst
 **20. After moving DNS to Route 53, who manages what?**
 
 Hostinger keeps the registration and renewal. Route 53 manages the nameservers and records (A, MX...). Email MX records live in Route 53 but point to Google's mail servers.
+
+**21. What is negative caching in DNS?**
+
+Resolvers also cache "not found" (NXDOMAIN) answers, for the time set in the zone's SOA record (900s in Route 53). If a server looks up a name before you create it, it keeps getting "not found" for up to 15 minutes. Create records before anything queries them.
+
+**22. A record vs CNAME?**
+
+A maps a name to an IPv4 address (`frontend-1` → `172.31.2.206`). CNAME maps a name to another name (`www` → `abhignadevops.store`), so `www` follows the root automatically when its IP changes.
+
+**23. Why use private IPs in Route 53 records for backend and DB?**
+
+Only servers inside the VPC talk to them, and private IPs don't change on stop/start. Only the server users open (the load balancer) gets a record with a public IP.
+
+**24. You changed a DNS record, Route 53 shows the new IP, but your browser still opens the old site. Why?**
+
+A cache along the way still has the old answer - browser, OS, home router or ISP resolver - until its TTL runs out. Check with `dig @8.8.8.8` vs `dig @<your-resolver>`, and `curl` vs the browser, to find which layer.
+
+**25. Nginx uses `backend.example.com` in `proxy_pass`. The backend's IP changes and you update DNS. Does Nginx follow?**
+
+Not by itself - Nginx resolves names only when it starts or reloads. Run `systemctl reload nginx` after changing the record.

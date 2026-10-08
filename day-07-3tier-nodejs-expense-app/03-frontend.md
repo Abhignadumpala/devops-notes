@@ -8,6 +8,7 @@
 | AMI | `Redhat-9-DevOps-Practice` (`ami-0220d79f3f480ecf5`, us-east-1) |
 | Username | `ec2-user` |
 | Password | `DevOps321` |
+| MySQL root password | `<db-root-password>` (user: `root`) |
 
 ```bash
 ssh ec2-user@<frontend-public-ip>    # enter the password

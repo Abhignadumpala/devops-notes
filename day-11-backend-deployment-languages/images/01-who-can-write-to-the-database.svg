@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 28px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .h { font-size: 17px; font-weight: 700; fill: #0f172a; }
+    .t { font-size: 14px; fill: #0f172a; }
+    .mono { font-size: 13px; fill: #0f172a; font-family: Consolas, Menlo, monospace; }
+    .who { font-size: 15px; font-weight: 700; fill: #0f172a; }
+    .red { font-size: 14px; font-weight: 700; fill: #dc2626; }
+    .note { font-size: 15px; fill: #334155; }
+  </style>
+  <defs>
+    <marker id="o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker>
+  </defs>
+
+  <rect width="1200" height="780" rx="16" fill="#ffffff"/>
+  <text x="600" y="44" text-anchor="middle" class="title">Who Can Write to the Database?</text>
+  <text x="600" y="72" text-anchor="middle" class="sub">Nobody connects to the DB directly. Data always comes in through a server the DB security group allows.</text>
+
+  <!-- Seller path (orange) -->
+  <rect x="40" y="130" width="170" height="90" rx="12" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+  <circle cx="125" cy="158" r="13" fill="none" stroke="#ea580c" stroke-width="3"/>
+  <path d="M101,190 Q125,166 149,190" fill="none" stroke="#ea580c" stroke-width="3"/>
+  <text x="125" y="210" text-anchor="middle" class="who">Amazon seller</text>
+  <line x1="210" y1="175" x2="268" y2="175" stroke="#ea580c" stroke-width="2.5" marker-end="url(#o)"/>
+  <rect x="270" y="125" width="200" height="100" rx="12" fill="#fed7aa" stroke="#ea580c" stroke-width="2"/>
+  <text x="370" y="162" text-anchor="middle" class="h">Seller app</text>
+  <text x="370" y="186" text-anchor="middle" class="t">(Amazon backend)</text>
+  <text x="370" y="208" text-anchor="middle" class="t">adds products via API</text>
+  <path d="M470,175 H500 V335 H528" fill="none" stroke="#ea580c" stroke-width="2.5" marker-end="url(#o)"/>
+
+  <!-- Developer path (blue) -->
+  <rect x="40" y="520" width="170" height="90" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <circle cx="125" cy="548" r="13" fill="none" stroke="#2563eb" stroke-width="3"/>
+  <path d="M101,580 Q125,556 149,580" fill="none" stroke="#2563eb" stroke-width="3"/>
+  <text x="125" y="600" text-anchor="middle" class="who">Developer / DevOps</text>
+  <line x1="210" y1="565" x2="268" y2="565" stroke="#2563eb" stroke-width="2.5" marker-end="url(#b)"/>
+  <rect x="270" y="495" width="200" height="140" rx="12" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+  <text x="370" y="527" text-anchor="middle" class="h">catalogue server</text>
+  <text x="370" y="553" text-anchor="middle" class="t">DB client installed</text>
+  <text x="370" y="575" text-anchor="middle" class="mono">mongosh</text>
+  <text x="370" y="601" text-anchor="middle" class="t">loads schema / data</text>
+  <text x="370" y="621" text-anchor="middle" class="mono">master-data.js</text>
+  <path d="M470,565 H500 V445 H528" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#b)"/>
+
+  <!-- Database -->
+  <rect x="530" y="290" width="160" height="190" fill="#ede9fe" stroke="#7c3aed" stroke-width="2.5"/>
+  <ellipse cx="610" cy="480" rx="80" ry="22" fill="#ede9fe" stroke="#7c3aed" stroke-width="2.5"/>
+  <rect x="532" y="440" width="156" height="40" fill="#ede9fe"/>
+  <ellipse cx="610" cy="290" rx="80" ry="22" fill="#ddd6fe" stroke="#7c3aed" stroke-width="2.5"/>
+  <text x="610" y="380" text-anchor="middle" class="h">Database</text>
+  <text x="610" y="404" text-anchor="middle" class="t">MongoDB / MySQL</text>
+  <text x="610" y="428" text-anchor="middle" class="t">private subnet</text>
+
+  <!-- Admin path (green) -->
+  <rect x="1000" y="345" width="170" height="90" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <circle cx="1085" cy="373" r="13" fill="none" stroke="#16a34a" stroke-width="3"/>
+  <path d="M1061,405 Q1085,381 1109,405" fill="none" stroke="#16a34a" stroke-width="3"/>
+  <text x="1085" y="425" text-anchor="middle" class="who">Admin</text>
+  <line x1="1000" y1="390" x2="942" y2="390" stroke="#16a34a" stroke-width="2.5" marker-end="url(#g)"/>
+  <rect x="740" y="340" width="200" height="100" rx="12" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/>
+  <text x="840" y="377" text-anchor="middle" class="h">Admin client server</text>
+  <text x="840" y="401" text-anchor="middle" class="t">admin tools / DB client</text>
+  <text x="840" y="423" text-anchor="middle" class="t">(jump server)</text>
+  <line x1="740" y1="390" x2="692" y2="390" stroke="#16a34a" stroke-width="2.5" marker-end="url(#g)"/>
+
+  <!-- Blocked direct access (red) -->
+  <rect x="740" y="120" width="230" height="90" rx="12" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="855" y="155" text-anchor="middle" class="h">Anyone else</text>
+  <text x="855" y="180" text-anchor="middle" class="t">laptop / internet</text>
+  <path d="M740,165 H660 V262" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#r)"/>
+  <circle cx="700" cy="165" r="16" fill="#ffffff" stroke="#dc2626" stroke-width="2.5"/>
+  <path d="M691,156 L709,174 M709,156 L691,174" stroke="#dc2626" stroke-width="3"/>
+  <text x="855" y="235" text-anchor="middle" class="red">✕ blocked by the DB security group</text>
+
+  <!-- Legend -->
+  <rect x="20" y="680" width="1160" height="80" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="600" y="712" text-anchor="middle" class="note">DB security group allows only: seller backend app · catalogue server · admin client server</text>
+  <text x="600" y="740" text-anchor="middle" class="note">People never get a direct DB connection - they go through an app or a server that is allowed.</text>
+</svg>

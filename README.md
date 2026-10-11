@@ -16,6 +16,7 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 8 - Nginx, Reverse Proxy, REST API, API Testing & HTTP Status Codes](day-08-nginx-proxy-api-status-codes/README.md)
 - [Day 9 - DNS: Domains, Registrars & Route 53](day-09-dns-domains/README.md)
 - [Day 10 - Databases: SQL, NoSQL, Caching & Message Queues](day-10-databases-sql-nosql-cache-queues/README.md)
+- [Day 11 - Backend Deployment: Node.js vs Java vs Python vs Go](day-11-backend-deployment-languages/README.md)
 
 ## Projects
 

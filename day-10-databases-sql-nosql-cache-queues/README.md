@@ -119,10 +119,29 @@ Cache hit:   App → Cache → User                (fast)
 Cache miss:  App → Cache → DB → Cache → User   (goes to the DB, then saves in cache for next time)
 ```
 
-**TTL** - how long a cached value is trusted (e.g. 1 hour).
+**What gets cached:**
 
-- Data changed before the TTL ends? → the app must **invalidate** (clear) that cache entry.
-- If not, users see the **old (stale)** value until the TTL expires.
+- Only **read** operations are cached.
+- **Update / write** operations are not cached - they always go to the **database**.
+
+**TTL** - how long a cached value is trusted (e.g. 1 hour). After the TTL, the entry is removed automatically.
+
+**Data changed before the TTL ends? → Cache invalidation:**
+
+1. A user updates some data in the app.
+2. The app writes the change to the **database**.
+3. The developer's code then **invalidates** the cache, which means it **clears that cache entry**.
+4. The next read is a cache miss, so the app gets the **fresh data from the database**.
+5. The app **saves the fresh data in the cache** again.
+
+Without invalidation, users see the **old (stale)** value until the TTL ends.
+
+| Operation | Goes to |
+|-----------|---------|
+| Read | Cache first → DB only on a miss |
+| Update / write | DB, then clear the cache entry |
+
+> **Interview one-liner:** Cache only reads, with a TTL like 1 hour; when data changes, the app writes to the DB and clears the cache entry, so the next read gets fresh data from the DB and caches it again.
 
 **Examples:** Redis, Memcached.
 

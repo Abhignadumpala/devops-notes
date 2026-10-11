@@ -45,6 +45,15 @@ Structure: **Database → Tables → Rows and Columns**.
 
 ## NoSQL Databases
 
+**In simple words:**
+
+- NoSQL is a **flexible structure** to store data.
+- You have more freedom here - put the data however you like.
+- Everything is stored as **JSON documents**.
+- Used where the data is **not strict** and structure doesn't really matter - e.g. **e-commerce** (product catalog).
+- Also used to store **huge amounts of data**.
+- **SQL** is used where data must be strict - **payments, bank transactions, cart/checkout**.
+
 Structure: **Database → Collections → Documents (JSON)**.
 
 A document holds whatever fields it needs - **no fixed schema**:

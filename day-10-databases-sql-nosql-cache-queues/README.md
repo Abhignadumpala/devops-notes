@@ -93,6 +93,10 @@ Most apps use both, each where it fits. Example - an e-commerce app:
 | Product catalog (name, description, ratings, reviews, specs - different per product) | NoSQL (MongoDB) | Fields vary per product |
 | Orders and payments | SQL (MySQL) | Strict structure, needs transactions |
 
+**Roboshop - one app using all of them:**
+
+![Roboshop 3 tier architecture](images/01-roboshop-3-tier-architecture.svg)
+
 **Security groups at the DB tier:**
 
 1. A `catalogue` service uses MongoDB on its default port **27017**.

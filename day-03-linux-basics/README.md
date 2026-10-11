@@ -47,6 +47,43 @@ ssh -i /c/devops/practice/devops-key ec2-user@<public-ip>    # absolute path to 
 - `ec2-user` = default user on Amazon Linux (`ubuntu` on Ubuntu)
 - If you see a permissions error on the key: `chmod 400 devops-key`
 
+### What `-i` Does
+
+- `-i` = which **private key file** SSH should use.
+- Without `-i`, SSH only tries default keys in `~/.ssh/` (`id_rsa`, `id_ed25519`).
+- My EC2 key is saved somewhere else (e.g. `Downloads/devops-key.pem`), so I point to it with `-i`.
+
+| Part | Meaning |
+|------|---------|
+| `ssh` | Start a secure shell connection |
+| `-i devops-key` | Private key that matches the public key on the server |
+| `ec2-user@<public-ip>` | Username + server address |
+
+### Where Each Key Lives
+
+| Key | Stored where |
+|-----|--------------|
+| **Public key** | AWS: EC2 → Key Pairs (AWS keeps only the public key) |
+| **Public key** | Server: `~/.ssh/authorized_keys` of the default user (e.g. `/home/ec2-user/.ssh/authorized_keys`) - copied there at boot by cloud-init |
+| **Private key** | Only on my laptop (`.pem` / `.ppk`) - AWS gives it **once**, lose it = can't download again |
+
+### How Login Works
+
+1. I run `ssh -i devops-key ec2-user@<public-ip>`.
+2. My laptop uses the **private key** to prove I own the matching public key.
+3. Server checks that proof against `authorized_keys`.
+4. Match → I'm logged in.
+5. The private key **never leaves** my laptop.
+
+### Common Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Permissions are too open` | Key file readable by others | `chmod 400 devops-key` |
+| `Permission denied (publickey)` | Wrong key, wrong username, or wrong IP | Check all three |
+
+> **Interview one-liner:** Public key sits on the server in `authorized_keys`, private key stays with me; `ssh -i` tells SSH which private key to use to prove who I am.
+
 ---
 
 ## Absolute vs Relative Path

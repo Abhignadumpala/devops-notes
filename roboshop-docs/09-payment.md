@@ -19,6 +19,37 @@ It does the same job as PM2 for Node.js. It replaces uWSGI from the older versio
 
 ---
 
+## Python Basics
+
+| | Python |
+|---|---|
+| Extension | `.py` |
+| Build tool | pip |
+| Build file | `requirements.txt` |
+| Install dependencies | `pip install -r requirements.txt` → reads the file and installs the dependencies |
+| Stored in (by default) | A **common** folder inside the system |
+
+### The problem: no GAV in Python
+
+- Java keeps versions apart with **GAV** - Python has nothing like that.
+- Two apps on one server, both installing into the common folder:
+  - app-1 needs `http-request 1.3.0`
+  - app-2 needs `http-request 1.5.0`
+- → the 2 apps **clash**.
+
+### The fix: a virtual environment (venv) per app
+
+- Each app gets its own **venv** → its own dependency versions, stored **inside the app directory** (`/app/.venv`).
+- Same idea as Node.js, where every app directory has its own `node_modules`.
+
+| Language | Where dependencies go | How versions stay apart |
+|---|---|---|
+| Node.js | `node_modules` inside each app | Each app has its own folder |
+| Java | `~/.m2/repository` (common) | GAV |
+| Python | Common system folder | Use a **venv** inside each app |
+
+---
+
 ## Install Python
 
 RHEL 9 comes with Python 3.9 as `python3`. Newer versions are installed next to it with their own name, so system tools that use 3.9 keep working:
@@ -27,6 +58,9 @@ RHEL 9 comes with Python 3.9 as `python3`. Newer versions are installed next to 
 dnf install python3.14 python3.14-pip -y
 python3.14 --version
 ```
+
+- Before: `dnf module list python` → modules for Python are **deprecated by RHEL**, because managing them was complicated.
+- Now: no modules - the version is in the package name itself (`python3.14`, `python3.14-pip`).
 
 ---
 

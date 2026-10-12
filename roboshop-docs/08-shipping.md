@@ -43,6 +43,22 @@ Node.js:  source code (.js)  → no compile step → compiled and run at runtime
 - **Java** → must compile **before** running; only then I get bytecode.
 - **Node.js** → no compile step; it compiles while running.
 
+### Maven Lifecycle
+
+**Build tool** = packages the source code into an **artifact** (for Java, a `.jar` file).
+
+```
+source code → install dependencies → compile → run test cases → bytecode (package the app)
+```
+
+1. Take the source code
+2. Install the dependencies (into `~/.m2/repository`)
+3. Compile the code
+4. Run the test cases
+5. Convert it to bytecode and pack it into one `.jar` → this step is called **packaging**
+
+All of this runs with one command: `mvn clean package` → the artifact lands in `target/` (here `target/shipping.jar`).
+
 ### JDK vs JRE
 
 | | Full form | What it has |

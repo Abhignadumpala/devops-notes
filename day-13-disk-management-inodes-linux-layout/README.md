@@ -82,6 +82,23 @@ ls -li
 - `current.log` → inode **5678** (different)
 - `l` at the start = it's a symlink, `->` shows where it points
 
+**If I remove the main file, the symlink breaks.**
+
+1. The symlink only stores the path `app.log` - not the content.
+2. Delete `app.log` → the path points to nothing.
+3. The symlink is still there, but it's **broken** (a "dangling" link).
+
+```bash
+rm app.log
+cat current.log
+```
+```text
+cat: current.log: No such file or directory
+```
+
+- `ls -l` still shows `current.log -> app.log` (in red on most terminals).
+- Fix: create `app.log` again, or point the symlink to another file with `ln -sf <new-target> current.log`.
+
 **Use - version switching during an upgrade:**
 
 ```

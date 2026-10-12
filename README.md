@@ -17,6 +17,8 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 9 - DNS: Domains, Registrars & Route 53](day-09-dns-domains/README.md)
 - [Day 10 - Databases: SQL, NoSQL, Caching & Message Queues](day-10-databases-sql-nosql-cache-queues/README.md)
 - [Day 11 - Backend Deployment: Node.js vs Java vs Python vs Go](day-11-backend-deployment-languages/README.md)
+- [Day 12 - Nginx: Reverse Proxy for a Multi-Service Backend](day-12-nginx-multi-service-reverse-proxy/README.md)
+- [Day 13 - Disk Management, Inodes & the Linux Directory Layout](day-13-disk-management-inodes-linux-layout/README.md)
 
 ## Projects
 

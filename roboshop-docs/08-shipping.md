@@ -104,6 +104,12 @@ alternatives --config java
 
 It lists the installed Java versions. Type the number of the line with `java-25-openjdk` and press Enter. Now the `java` command points to Java 25.
 
+**Why `JAVA_HOME`?** Maven should know **which Java** to use and **where it's installed**.
+
+- `JAVA_HOME` = the Java 25 folder, e.g. `/usr/lib/jvm/java-25-openjdk-...`
+- I save it in `/etc/profile.d/java.sh` so it's set at every login.
+- `echo $JAVA_HOME` → prints the folder, so I know it's set.
+
 Maven needs `JAVA_HOME`, the Java 25 folder. The folder name contains the full version, so take it from the `java` command instead of typing it:
 
 ```shell
@@ -152,6 +158,15 @@ cd /app
 mvn clean package
 mv target/shipping.jar shipping.jar
 ```
+
+**What `mvn clean package` does:**
+
+| Part | Meaning |
+|---|---|
+| `clean` | A Maven phase - deletes the old build |
+| `package` | Validate → install dependencies → compile → test → package, all in one |
+
+Result → `target/shipping.jar`
 
 The first build takes a few minutes, because Maven downloads all the libraries.
 

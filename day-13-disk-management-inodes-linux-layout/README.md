@@ -60,6 +60,28 @@ A symlink points to another file or folder - like a desktop shortcut.
 ln -s <target> <link-name>
 ```
 
+**Is the inode of the main file and the symlink the same? No.**
+
+1. Every file has its own inode number.
+2. A symlink is also a file - a small file that only stores the path of the main file.
+3. So the symlink gets its **own inode number**.
+4. Main file inode ≠ symlink inode.
+
+**Example:**
+
+```bash
+ln -s app.log current.log
+ls -li
+```
+```text
+1234 -rw-r--r-- 1 ec2-user ec2-user 120 Oct 12 10:00 app.log
+5678 lrwxrwxrwx 1 ec2-user ec2-user   7 Oct 12 10:01 current.log -> app.log
+```
+
+- `app.log` → inode **1234**
+- `current.log` → inode **5678** (different)
+- `l` at the start = it's a symlink, `->` shows where it points
+
 **Use - version switching during an upgrade:**
 
 ```

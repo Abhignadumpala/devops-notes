@@ -53,7 +53,7 @@ Node.js:  source code (.js)  → no compile step → compiled and run at runtime
 
 **Build tool** = packages the source code into an **artifact** (for Java, a `.jar` file).
 
-The Maven lifecycle is a **sequential process** - phases run one after another, in this order:
+The Maven lifecycle is a **sequential process execution** to build the project with different **phases** - the phases run one after another, in this order:
 
 ```
 clean → install dependencies → compile → test → package → install

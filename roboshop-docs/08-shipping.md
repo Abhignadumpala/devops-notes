@@ -10,6 +10,12 @@ Shipping is written in Java with Spring Boot 4. **Maven** is the Java build tool
 
 ## Java Basics
 
+**Why Java?**
+
+- Famous programming language, mostly used at **enterprise level** (banks, big companies).
+- Can run **many tasks at the same time** (multi-threading). Node.js runs my code on a single thread.
+- Uses **more CPU and memory** than Node.js - that's why the shipping server needs more RAM.
+
 | | Java |
 |---|---|
 | Extension | `.java` |
@@ -47,17 +53,24 @@ Node.js:  source code (.js)  → no compile step → compiled and run at runtime
 
 **Build tool** = packages the source code into an **artifact** (for Java, a `.jar` file).
 
+The Maven lifecycle is a **sequential process** - phases run one after another, in this order:
+
 ```
-source code → install dependencies → compile → run test cases → bytecode (package the app)
+clean → install dependencies → compile → test → package → install
 ```
 
-1. Take the source code
-2. Install the dependencies (into `~/.m2/repository`)
-3. Compile the code
-4. Run the test cases
-5. Convert it to bytecode and pack it into one `.jar` → this step is called **packaging**
+| # | Phase | What happens |
+|---|---|---|
+| 1 | Clean | Delete the old build (`target/` folder) |
+| 2 | Install dependencies | Download them into `~/.m2/repository` |
+| 3 | Compile | Check the source code and compile it |
+| 4 | Test | Run the test cases |
+| 5 | Package | Convert to bytecode and pack into one `.jar` → this is **packaging** |
+| 6 | Install | Copy the `.jar` into `~/.m2/repository`, so other projects on the machine can use it |
 
-All of this runs with one command: `mvn clean package` → the artifact lands in `target/` (here `target/shipping.jar`).
+- If one phase fails (e.g. a test fails), the next phases don't run.
+- Running a phase runs every phase before it too.
+- Here I use `mvn clean package` → runs phases 1-5 → artifact lands in `target/shipping.jar`.
 
 ### JDK vs JRE
 

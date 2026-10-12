@@ -281,3 +281,21 @@ curl http://localhost:8080/codes
 ## Security Group
 
 Allow **inbound TCP 8080** from `roboshop-frontend` only.
+
+---
+
+## Summary - Java
+
+| Topic | In short |
+|---|---|
+| Extension | `.java` |
+| Build tool | Maven |
+| Build file | `pom.xml` |
+| GAV | Group-id, Artifact-id, Version |
+| JDK | For **development** - heavy |
+| JRE | For **running** the bytecode - lightweight |
+| JDK vs JRE | JDK = JRE + development tools |
+| Maven lifecycle | Phases run one after another: clean → dependencies → compile → test → package → install |
+| Dependencies stored in | `~/.m2/repository` |
+| `mvn clean package` | Creates the `target/` folder → `.jar` file inside |
+| `.jar` | **J**ava **AR**chive file → holds the bytecode |

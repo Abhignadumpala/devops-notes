@@ -8,6 +8,56 @@ Shipping is written in Java with Spring Boot 4. **Maven** is the Java build tool
 
 ---
 
+## Java Basics
+
+| | Java |
+|---|---|
+| Extension | `.java` |
+| Build tool | Maven |
+| Build file | `pom.xml` → name, version, description, dependencies, etc. |
+| Install dependencies | `mvn package` (like `npm install` in Node.js) |
+| Dependencies stored in | `~/.m2/repository` |
+
+### Where dependencies are stored
+
+| Node.js | Maven (Java) |
+|---|---|
+| Each app has its **own** `node_modules` folder | **One common** folder for all apps: `~/.m2/repository` |
+| `app-1/node_modules`<br>`app-2/node_modules`<br>`app-3/node_modules` | `~/.m2/repository/http-request-1.0.0`<br>`~/.m2/repository/http-request-2.0.0` |
+
+**How can one common folder keep 2 versions of the same dependency? → GAV**
+
+- Maven names every component with **GAV** = **G**roup-id, **A**rtifact-id, **V**ersion.
+- GAV makes each component unique in the universe.
+- So `http-request-1.0.0` and `http-request-2.0.0` sit side by side without clashing.
+
+### Compilation
+
+**Compilation** = checking the source code is correct and converting it.
+
+```
+Java:     source code (.java) → compile → bytecode → binary language → runs
+Node.js:  source code (.js)  → no compile step → compiled and run at runtime
+```
+
+- **Java** → must compile **before** running; only then I get bytecode.
+- **Node.js** → no compile step; it compiles while running.
+
+### JDK vs JRE
+
+| | Full form | What it has |
+|---|---|---|
+| **JRE** | Java Runtime Environment | Only what's needed to **run** Java |
+| **JDK** | Java Development Kit | JRE + extra tools and packages for **development** (e.g. `javac` compiler) |
+
+- JRE is a subset of JDK → **JRE < JDK**
+- **JDK = JRE + extra tools for development**
+- While developing / building (like `mvn package` here) → need the **JDK** (that's why we install `java-25-openjdk-devel`).
+
+More on how Java compares with Node.js, Python and Go: [Day 11 - Backend Deployment](../day-11-backend-deployment-languages/README.md)
+
+---
+
 ## Install Java and Maven
 
 **You can list modules by using `dnf module list maven`**

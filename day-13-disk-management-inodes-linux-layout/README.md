@@ -17,6 +17,8 @@
 4. [Key takeaways](#key-takeaways)
 5. [Interview Questions](#interview-questions)
 
+**Diagrams:** [Inode, Symlink & Hard Link](images/01-inode-symlink-hardlink.svg) · [Add a New Disk](images/02-add-a-new-disk-steps.svg) · [Resize a Disk](images/03-resize-disk-layers.svg)
+
 **More in this folder:** [Interview questions](interview-questions/README.md)
 
 ---
@@ -30,6 +32,8 @@
 ## How it works
 
 ### Inodes: Metadata, Separate from Content
+
+![Inode, symlink and hard link](images/01-inode-symlink-hardlink.svg)
 
 - Think of a person's ID record (name, date of birth, Aadhaar number) vs the person.
 - An **inode** is the ID record of a file:
@@ -88,6 +92,8 @@ ln <file> <link-name>
 | Typical use | Shortcuts, version switching | File-level backup redundancy |
 
 ### Adding a New Disk (EBS Volume)
+
+![Adding a new EBS disk - 7 steps](images/02-add-a-new-disk-steps.svg)
 
 **Why a separate disk:**
 
@@ -192,6 +198,8 @@ df -hT | grep data
 - Always run **`mount -a`** before rebooting.
 
 ### Resizing an Existing Disk
+
+![Resizing a disk - grow every layer](images/03-resize-disk-layers.svg)
 
 Growing a disk is **layered** - each layer needs its own step:
 

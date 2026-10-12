@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 28px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .h { font-size: 17px; font-weight: 700; fill: #0f172a; }
+    .hw { font-size: 16px; font-weight: 700; fill: #ffffff; }
+    .t { font-size: 14px; fill: #0f172a; }
+    .s { font-size: 13px; fill: #334155; }
+    .mono { font-size: 14px; fill: #0f172a; font-family: Consolas, Menlo, monospace; }
+  </style>
+  <defs>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker>
+    <marker id="o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker>
+    <marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/></marker>
+  </defs>
+
+  <rect width="1200" height="660" rx="16" fill="#ffffff"/>
+  <text x="600" y="44" text-anchor="middle" class="title">Inode, Symlink and Hard Link</text>
+  <text x="600" y="72" text-anchor="middle" class="sub">A file name → an inode (metadata) → the data blocks (content).</text>
+
+  <!-- band labels -->
+  <text x="40" y="168" class="s" font-weight="700">NAMES</text>
+  <text x="40" y="318" class="s" font-weight="700">INODES</text>
+  <text x="40" y="488" class="s" font-weight="700">CONTENT</text>
+
+  <!-- symlink route on top -->
+  <path d="M660,140 V112 H170 V138" fill="none" stroke="#ea580c" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#o)"/>
+  <text x="415" y="104" text-anchor="middle" class="t" style="fill:#c2410c" font-weight="700">symlink stores the PATH "app.log"</text>
+
+  <!-- names -->
+  <rect x="110" y="140" width="150" height="56" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="185" y="166" text-anchor="middle" class="mono" font-weight="700">app.log</text>
+  <text x="185" y="186" text-anchor="middle" class="s">original name</text>
+  <rect x="300" y="140" width="210" height="56" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="405" y="166" text-anchor="middle" class="mono" font-weight="700">backup.log</text>
+  <text x="405" y="186" text-anchor="middle" class="s">hard link  (ln)</text>
+  <rect x="560" y="140" width="200" height="56" rx="10" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+  <text x="660" y="166" text-anchor="middle" class="mono" font-weight="700">current.log</text>
+  <text x="660" y="186" text-anchor="middle" class="s">symlink  (ln -s)</text>
+
+  <!-- arrows names -> inodes -->
+  <line x1="185" y1="196" x2="265" y2="258" stroke="#2563eb" stroke-width="2.5" marker-end="url(#b)"/>
+  <line x1="405" y1="196" x2="345" y2="258" stroke="#16a34a" stroke-width="2.5" marker-end="url(#g)"/>
+  <line x1="660" y1="196" x2="660" y2="258" stroke="#ea580c" stroke-width="2.5" marker-end="url(#o)"/>
+
+  <!-- inodes -->
+  <rect x="160" y="260" width="300" height="140" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="160" y="260" width="300" height="36" rx="12" fill="#7c3aed"/><rect x="160" y="282" width="300" height="14" fill="#7c3aed"/>
+  <text x="310" y="284" text-anchor="middle" class="hw">inode 1234</text>
+  <text x="180" y="320" class="t">owner, group, permissions</text>
+  <text x="180" y="343" class="t">size, created / updated time</text>
+  <text x="180" y="366" class="t" font-weight="700">link count = 2</text>
+  <text x="180" y="388" class="s">(app.log + backup.log)</text>
+
+  <rect x="560" y="260" width="200" height="140" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <rect x="560" y="260" width="200" height="36" rx="12" fill="#ea580c"/><rect x="560" y="282" width="200" height="14" fill="#ea580c"/>
+  <text x="660" y="284" text-anchor="middle" class="hw">inode 5678</text>
+  <text x="580" y="322" class="t">its own inode</text>
+  <text x="580" y="345" class="t">holds only a path</text>
+  <text x="580" y="368" class="t">no content of</text>
+  <text x="580" y="388" class="t">its own</text>
+
+  <!-- content -->
+  <line x1="310" y1="400" x2="310" y2="448" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#p)"/>
+  <rect x="160" y="450" width="300" height="80" rx="12" fill="#f1f5f9" stroke="#475569" stroke-width="2"/>
+  <text x="310" y="482" text-anchor="middle" class="h">Data blocks</text>
+  <text x="310" y="507" text-anchor="middle" class="t">the actual file content</text>
+
+  <!-- commands -->
+  <rect x="110" y="560" width="650" height="76" rx="10" fill="#0f172a"/>
+  <text x="130" y="590" style="fill:#86efac" class="mono">ls -li → inode numbers</text><text x="430" y="590" style="fill:#86efac" class="mono">stat app.log → full metadata</text>
+  <text x="130" y="616" style="fill:#86efac" class="mono">ln app.log backup.log</text><text x="430" y="616" style="fill:#86efac" class="mono">ln -s app.log current.log</text>
+
+  <!-- right panel -->
+  <rect x="800" y="100" width="360" height="536" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="980" y="134" text-anchor="middle" class="h">What if I delete app.log?</text>
+
+  <rect x="820" y="155" width="320" height="120" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <text x="840" y="185" class="h" style="fill:#b91c1c">current.log (symlink)</text>
+  <text x="840" y="210" class="t">BREAKS - the path it points</text>
+  <text x="840" y="232" class="t">to is gone ("dangling" link)</text>
+  <text x="840" y="258" class="s">fix: re-create target or re-point</text>
+
+  <rect x="820" y="290" width="320" height="120" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="840" y="320" class="h" style="fill:#15803d">backup.log (hard link)</text>
+  <text x="840" y="345" class="t">STILL WORKS - link count 2 → 1,</text>
+  <text x="840" y="367" class="t">content is still there</text>
+  <text x="840" y="393" class="s">content gone only when count = 0</text>
+
+  <rect x="820" y="425" width="320" height="190" rx="10" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="840" y="455" class="h">Quick rules</text>
+  <text x="840" y="482" class="t">• Symlink: own inode, files + folders</text>
+  <text x="840" y="507" class="t">• Hard link: same inode, files only</text>
+  <text x="840" y="532" class="t">• Symlink use: version switching</text>
+  <text x="840" y="552" class="s">   prometheus → prometheus-3.15.0/...</text>
+  <text x="840" y="577" class="t">• Hard link use: backup redundancy</text>
+  <text x="840" y="600" class="t">• Inode never holds the content</text>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 28px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .h { font-size: 17px; font-weight: 700; fill: #0f172a; }
+    .hw { font-size: 17px; font-weight: 700; fill: #ffffff; }
+    .t { font-size: 14px; fill: #0f172a; }
+    .mono { font-size: 14px; fill: #ffffff; font-family: Consolas, Menlo, monospace; }
+    .num { font-size: 16px; font-weight: 700; fill: #ffffff; }
+    .note { font-size: 15px; fill: #0f172a; }
+  </style>
+  <defs>
+    <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="10" height="10" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="10" stroke="#94a3b8" stroke-width="4"/>
+    </pattern>
+    <marker id="k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker>
+  </defs>
+
+  <rect width="1200" height="640" rx="16" fill="#ffffff"/>
+  <text x="600" y="44" text-anchor="middle" class="title">Resizing a Disk - Grow Every Layer</text>
+  <text x="600" y="72" text-anchor="middle" class="sub">Grow from the bottom up. Each layer sits on the one below and doesn't grow by itself.</text>
+
+  <!-- column labels -->
+  <text x="575" y="108" text-anchor="middle" class="t" font-weight="700">old size</text>
+  <text x="935" y="108" text-anchor="middle" class="t" font-weight="700">+ new space</text>
+
+  <!-- Layer 4 filesystem -->
+  <circle cx="60" cy="160" r="16" fill="#16a34a"/><text x="60" y="166" text-anchor="middle" class="num">4</text>
+  <text x="88" y="155" class="h">Filesystem</text><text x="88" y="177" class="t">what df -h shows</text>
+  <rect x="250" y="120" width="580" height="80" rx="10" fill="#16a34a"/>
+  <text x="270" y="152" class="hw">XFS on / and /var</text>
+  <text x="270" y="180" class="mono">sudo xfs_growfs /    sudo xfs_growfs /var</text>
+  <rect x="840" y="120" width="190" height="80" rx="10" fill="url(#hatch)" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 4"/>
+
+  <!-- Layer 3 LV -->
+  <circle cx="60" cy="260" r="16" fill="#7c3aed"/><text x="60" y="266" text-anchor="middle" class="num">3</text>
+  <text x="88" y="255" class="h">Logical volume</text><text x="88" y="277" class="t">only if LVM is used</text>
+  <rect x="250" y="220" width="580" height="80" rx="10" fill="#7c3aed"/>
+  <text x="270" y="252" class="hw">RootVG / rootVol, varVol</text>
+  <text x="270" y="280" class="mono">sudo lvextend -L +20G /dev/RootVG/rootVol</text>
+  <rect x="840" y="220" width="190" height="80" rx="10" fill="url(#hatch)" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4"/>
+
+  <!-- Layer 2 partition -->
+  <circle cx="60" cy="360" r="16" fill="#ea580c"/><text x="60" y="366" text-anchor="middle" class="num">2</text>
+  <text x="88" y="355" class="h">Partition</text><text x="88" y="377" class="t">e.g. partition 4</text>
+  <rect x="250" y="320" width="580" height="80" rx="10" fill="#ea580c"/>
+  <text x="270" y="352" class="hw">/dev/nvme0n1p4</text>
+  <text x="270" y="380" class="mono">sudo growpart /dev/nvme0n1 4</text>
+  <rect x="840" y="320" width="190" height="80" rx="10" fill="url(#hatch)" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 4"/>
+
+  <!-- Layer 1 EBS -->
+  <circle cx="60" cy="460" r="16" fill="#2563eb"/><text x="60" y="466" text-anchor="middle" class="num">1</text>
+  <text x="88" y="455" class="h">EBS volume</text><text x="88" y="477" class="t">AWS console</text>
+  <rect x="250" y="420" width="580" height="80" rx="10" fill="#2563eb"/>
+  <text x="270" y="452" class="hw">/dev/nvme0n1</text>
+  <text x="270" y="480" class="mono">EC2 → Volumes → Modify volume → new size</text>
+  <rect x="840" y="420" width="190" height="80" rx="10" fill="#93c5fd" stroke="#2563eb" stroke-width="2"/>
+  <text x="935" y="466" text-anchor="middle" class="h">added in AWS</text>
+
+  <!-- order arrow -->
+  <line x1="1095" y1="495" x2="1095" y2="130" stroke="#334155" stroke-width="3" marker-end="url(#k)"/>
+  <text x="1110" y="320" class="t" font-weight="700" transform="rotate(-90 1110 320)" text-anchor="middle">order: bottom → top</text>
+  <text x="1080" y="320" class="t" transform="rotate(-90 1080 320)" text-anchor="middle">check with lsblk</text>
+
+  <!-- footer -->
+  <rect x="40" y="530" width="1120" height="86" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <text x="60" y="562" class="note" style="fill:#b91c1c;font-weight:700">Stop halfway = space you pay for but can't use</text>
+  <text x="60" y="590" class="note">Grew only the EBS volume? lsblk shows the bigger disk, but df -h still shows the old size - run growpart → lvextend → xfs_growfs.</text>
+</svg>

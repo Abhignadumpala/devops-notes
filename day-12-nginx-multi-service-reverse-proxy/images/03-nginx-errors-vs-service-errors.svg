@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 28px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .h { font-size: 17px; font-weight: 700; fill: #0f172a; }
+    .hw { font-size: 18px; font-weight: 700; fill: #ffffff; }
+    .bx { font-size: 15px; font-weight: 700; fill: #0f172a; }
+    .t { font-size: 14px; fill: #0f172a; }
+    .code { font-size: 22px; font-weight: 800; }
+    .mono { font-size: 13px; fill: #0f172a; font-family: Consolas, Menlo, monospace; }
+  </style>
+  <defs>
+    <marker id="k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker>
+  </defs>
+
+  <rect width="1200" height="640" rx="16" fill="#ffffff"/>
+  <text x="600" y="44" text-anchor="middle" class="title">Nginx Errors vs Service Errors</text>
+  <text x="600" y="72" text-anchor="middle" class="sub">Only errors made by Nginx itself are turned into JSON. The service's own errors pass straight through.</text>
+
+  <!-- LEFT PANEL -->
+  <rect x="40" y="100" width="545" height="510" rx="14" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <rect x="40" y="100" width="545" height="46" rx="14" fill="#dc2626"/><rect x="40" y="130" width="545" height="16" fill="#dc2626"/>
+  <text x="312" y="131" text-anchor="middle" class="hw">From Nginx itself → JSON via error_page</text>
+
+  <rect x="60" y="170" width="130" height="60" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="125" y="206" text-anchor="middle" class="bx">Browser</text>
+  <rect x="245" y="170" width="130" height="60" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="310" y="206" text-anchor="middle" class="bx">Nginx</text>
+  <rect x="430" y="170" width="135" height="60" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 4"/><text x="497" y="206" text-anchor="middle" class="bx" style="fill:#64748b">service</text>
+  <line x1="190" y1="200" x2="243" y2="200" stroke="#334155" stroke-width="2.5" marker-end="url(#k)"/>
+  <line x1="375" y1="200" x2="428" y2="200" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <g stroke="#dc2626" stroke-width="4"><line x1="392" y1="187" x2="412" y2="213"/><line x1="412" y1="187" x2="392" y2="213"/></g>
+
+  <rect x="60" y="255" width="505" height="100" rx="10" fill="#ffffff" stroke="#dc2626" stroke-width="2"/>
+  <text x="80" y="290" class="code" style="fill:#dc2626">502</text>
+  <text x="140" y="288" class="h">Bad Gateway - can't reach the service</text>
+  <text x="80" y="315" class="t">• wrong IP  • service stopped  • port 8080 blocked in SG</text>
+  <text x="80" y="338" class="t">• SELinux blocks Nginx → setsebool -P httpd_can_network_connect 1</text>
+
+  <rect x="60" y="370" width="505" height="80" rx="10" fill="#ffffff" stroke="#ea580c" stroke-width="2"/>
+  <text x="80" y="405" class="code" style="fill:#ea580c">504</text>
+  <text x="140" y="403" class="h">Gateway Timeout - no answer in time</text>
+  <text x="80" y="430" class="t">service took longer than proxy_read_timeout (30s)</text>
+
+  <rect x="60" y="470" width="505" height="120" rx="10" fill="#0f172a"/>
+  <text x="80" y="497" style="fill:#cbd5e1" class="mono">Browser gets JSON, not an HTML page:</text>
+  <text x="80" y="525" style="fill:#86efac" class="mono">{"message":"service not reachable</text>
+  <text x="80" y="545" style="fill:#86efac" class="mono">  (502 Bad Gateway from nginx)"}</text>
+  <text x="80" y="573" style="fill:#fde047" class="mono">error_page 502 = @bad_gateway;</text>
+
+  <!-- RIGHT PANEL -->
+  <rect x="615" y="100" width="545" height="510" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="615" y="100" width="545" height="46" rx="14" fill="#2563eb"/><rect x="615" y="130" width="545" height="16" fill="#2563eb"/>
+  <text x="887" y="131" text-anchor="middle" class="hw">From the service → passed through untouched</text>
+
+  <rect x="635" y="170" width="130" height="60" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="700" y="206" text-anchor="middle" class="bx">Browser</text>
+  <rect x="820" y="170" width="130" height="60" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="885" y="206" text-anchor="middle" class="bx">Nginx</text>
+  <rect x="1005" y="170" width="135" height="60" rx="10" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/><text x="1072" y="206" text-anchor="middle" class="bx">service</text>
+  <line x1="765" y1="188" x2="818" y2="188" stroke="#334155" stroke-width="2.5" marker-end="url(#k)"/>
+  <line x1="950" y1="188" x2="1003" y2="188" stroke="#334155" stroke-width="2.5" marker-end="url(#k)"/>
+  <line x1="1003" y1="214" x2="952" y2="214" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#b)"/>
+  <line x1="818" y1="214" x2="767" y2="214" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#b)"/>
+
+  <rect x="635" y="255" width="505" height="80" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <text x="655" y="290" class="code" style="fill:#2563eb">404</text>
+  <text x="715" y="288" class="h">service says "product not found"</text>
+  <text x="655" y="315" class="t">the service answered - it's its own correct reply</text>
+
+  <rect x="635" y="350" width="505" height="80" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="655" y="385" class="code" style="fill:#7c3aed">503</text>
+  <text x="715" y="383" class="h">service says "my DB is down"</text>
+  <text x="655" y="410" class="t">the service reports its own problem</text>
+
+  <rect x="635" y="450" width="505" height="140" rx="10" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="655" y="482" class="h">How to tell them apart</text>
+  <text x="655" y="510" class="t">• Message says "from nginx" → Nginx couldn't talk to the service</text>
+  <text x="655" y="535" class="t">• Any other message → the service answered</text>
+  <text x="655" y="560" class="t">• 404 returning index.html → typo in the location path</text>
+</svg>

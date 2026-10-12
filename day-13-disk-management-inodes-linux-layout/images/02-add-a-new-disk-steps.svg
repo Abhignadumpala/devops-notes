@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 690" width="1200" height="690" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 28px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .hw { font-size: 17px; font-weight: 700; fill: #ffffff; }
+    .t { font-size: 13.5px; fill: #0f172a; }
+    .mono { font-size: 12.5px; fill: #0f172a; font-family: Consolas, Menlo, monospace; }
+    .num { font-size: 15px; font-weight: 700; }
+    .note { font-size: 15px; fill: #0f172a; }
+  </style>
+  <defs>
+    <marker id="k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker>
+  </defs>
+
+  <rect width="1200" height="690" rx="16" fill="#ffffff"/>
+  <text x="600" y="44" text-anchor="middle" class="title">Adding a New EBS Disk - 7 Steps</text>
+  <text x="600" y="72" text-anchor="middle" class="sub">Attach the volume (same AZ as the instance), then follow the steps in this exact order.</text>
+
+  <!-- Row 1 -->
+  <g>
+    <rect x="40" y="110" width="255" height="170" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <rect x="40" y="110" width="255" height="40" rx="12" fill="#2563eb"/><rect x="40" y="135" width="255" height="15" fill="#2563eb"/>
+    <circle cx="66" cy="130" r="13" fill="#ffffff"/><text x="66" y="135" text-anchor="middle" class="num" style="fill:#2563eb">1</text>
+    <text x="90" y="136" class="hw">See the disk</text>
+    <text x="58" y="180" class="mono">lsblk</text>
+    <text x="58" y="215" class="t">new disk shows up as:</text>
+    <text x="58" y="238" class="mono">nvme1n1  25G  disk</text>
+    <text x="58" y="265" class="t">raw disk, nothing on it yet</text>
+  </g>
+  <g>
+    <rect x="330" y="110" width="255" height="170" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <rect x="330" y="110" width="255" height="40" rx="12" fill="#7c3aed"/><rect x="330" y="135" width="255" height="15" fill="#7c3aed"/>
+    <circle cx="356" cy="130" r="13" fill="#ffffff"/><text x="356" y="135" text-anchor="middle" class="num" style="fill:#7c3aed">2</text>
+    <text x="380" y="136" class="hw">Partition</text>
+    <text x="348" y="178" class="mono">sudo parted /dev/nvme1n1</text>
+    <text x="348" y="196" class="mono">  --script mklabel gpt</text>
+    <text x="348" y="214" class="mono">  mkpart primary 0% 100%</text>
+    <text x="348" y="242" class="t">creates the partition</text>
+    <text x="348" y="265" class="mono">/dev/nvme1n1p1</text>
+  </g>
+  <g>
+    <rect x="620" y="110" width="255" height="170" rx="12" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+    <rect x="620" y="110" width="255" height="40" rx="12" fill="#ea580c"/><rect x="620" y="135" width="255" height="15" fill="#ea580c"/>
+    <circle cx="646" cy="130" r="13" fill="#ffffff"/><text x="646" y="135" text-anchor="middle" class="num" style="fill:#ea580c">3</text>
+    <text x="670" y="136" class="hw">Filesystem</text>
+    <text x="638" y="180" class="mono">sudo mkfs.xfs -f</text>
+    <text x="638" y="198" class="mono">  /dev/nvme1n1p1</text>
+    <text x="638" y="230" class="t">0s and 1s → files and folders</text>
+    <text x="638" y="253" class="t">-f wipes data on a used disk!</text>
+  </g>
+  <g>
+    <rect x="910" y="110" width="250" height="170" rx="12" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/>
+    <rect x="910" y="110" width="250" height="40" rx="12" fill="#0d9488"/><rect x="910" y="135" width="250" height="15" fill="#0d9488"/>
+    <circle cx="936" cy="130" r="13" fill="#ffffff"/><text x="936" y="135" text-anchor="middle" class="num" style="fill:#0d9488">4</text>
+    <text x="960" y="136" class="hw">Mount</text>
+    <text x="928" y="180" class="mono">sudo mkdir -p /data</text>
+    <text x="928" y="200" class="mono">sudo mount /dev/nvme1n1p1</text>
+    <text x="928" y="218" class="mono">  /data</text>
+    <text x="928" y="248" class="mono">df -hT | grep data</text>
+    <text x="928" y="268" class="t">works - until a reboot</text>
+  </g>
+  <g stroke="#334155" stroke-width="2.5" marker-end="url(#k)">
+    <line x1="295" y1="195" x2="328" y2="195"/>
+    <line x1="585" y1="195" x2="618" y2="195"/>
+    <line x1="875" y1="195" x2="908" y2="195"/>
+  </g>
+  <path d="M1035,280 V320 H312 V358" fill="none" stroke="#334155" stroke-width="2.5" marker-end="url(#k)"/>
+  <text x="680" y="312" text-anchor="middle" class="t" style="fill:#475569">a manual mount is lost on reboot → make it permanent</text>
+
+  <!-- Row 2 -->
+  <g>
+    <rect x="185" y="360" width="255" height="170" rx="12" fill="#fce7f3" stroke="#db2777" stroke-width="2"/>
+    <rect x="185" y="360" width="255" height="40" rx="12" fill="#db2777"/><rect x="185" y="385" width="255" height="15" fill="#db2777"/>
+    <circle cx="211" cy="380" r="13" fill="#ffffff"/><text x="211" y="385" text-anchor="middle" class="num" style="fill:#db2777">5</text>
+    <text x="235" y="386" class="hw">Get the UUID</text>
+    <text x="203" y="430" class="mono">sudo blkid /dev/nvme1n1p1</text>
+    <text x="203" y="460" class="mono">UUID="&lt;disk-uuid&gt;"</text>
+    <text x="203" y="478" class="mono">TYPE="xfs"</text>
+    <text x="203" y="510" class="t">device names can change; UUID never</text>
+  </g>
+  <g>
+    <rect x="475" y="360" width="255" height="170" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <rect x="475" y="360" width="255" height="40" rx="12" fill="#16a34a"/><rect x="475" y="385" width="255" height="15" fill="#16a34a"/>
+    <circle cx="501" cy="380" r="13" fill="#ffffff"/><text x="501" y="385" text-anchor="middle" class="num" style="fill:#16a34a">6</text>
+    <text x="525" y="386" class="hw">Add to /etc/fstab</text>
+    <text x="493" y="430" class="mono">UUID=&lt;disk-uuid&gt; /data xfs</text>
+    <text x="493" y="448" class="mono">  defaults,nofail 0 2</text>
+    <text x="493" y="482" class="t">nofail = still boot if the</text>
+    <text x="493" y="502" class="t">disk is missing or slow</text>
+  </g>
+  <g>
+    <rect x="765" y="360" width="255" height="170" rx="12" fill="#bbf7d0" stroke="#15803d" stroke-width="2"/>
+    <rect x="765" y="360" width="255" height="40" rx="12" fill="#15803d"/><rect x="765" y="385" width="255" height="15" fill="#15803d"/>
+    <circle cx="791" cy="380" r="13" fill="#ffffff"/><text x="791" y="385" text-anchor="middle" class="num" style="fill:#15803d">7</text>
+    <text x="815" y="386" class="hw">Test it</text>
+    <text x="783" y="430" class="mono">sudo mount -a</text>
+    <text x="783" y="450" class="mono">df -hT | grep data</text>
+    <text x="783" y="482" class="t">no errors → entry is correct</text>
+    <text x="783" y="505" class="t">then one planned sudo reboot</text>
+  </g>
+  <g stroke="#334155" stroke-width="2.5" marker-end="url(#k)">
+    <line x1="440" y1="445" x2="473" y2="445"/>
+    <line x1="730" y1="445" x2="763" y2="445"/>
+  </g>
+
+  <!-- footer -->
+  <rect x="40" y="560" width="555" height="106" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="60" y="590" class="note" font-weight="700">Why a separate disk?</text>
+  <text x="60" y="615" class="note">Root disk = OS + config, deleted with the instance.</text>
+  <text x="60" y="640" class="note">EBS data disk = app data, lives on its own (same AZ).</text>
+  <rect x="615" y="560" width="545" height="106" rx="12" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="635" y="590" class="note" font-weight="700">Production rules</text>
+  <text x="635" y="615" class="note">• Mount by UUID   • Always add nofail</text>
+  <text x="635" y="640" class="note">• No logs / DB data on root   • mount -a before reboot</text>
+</svg>

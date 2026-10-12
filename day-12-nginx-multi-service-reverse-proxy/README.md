@@ -19,6 +19,8 @@
 4. [Key takeaways](#key-takeaways)
 5. [Interview Questions](#interview-questions)
 
+**Diagrams:** [Multi-Service Routing](images/01-multi-service-routing.svg) · [Request ID Tracing](images/02-request-id-tracing.svg) · [Nginx vs Service Errors](images/03-nginx-errors-vs-service-errors.svg)
+
 **More in this folder:** [Interview questions](interview-questions/README.md)
 
 ---
@@ -35,6 +37,8 @@
 ## How it works
 
 ### Routing Multiple Services Behind One Entry Point
+
+![One Nginx in front of many services](images/01-multi-service-routing.svg)
 
 - Each service gets its own `location` block, matched by a path prefix.
 - The **trailing slash** on both the path and the `proxy_pass` target strips the `/api/<service>` prefix before forwarding.
@@ -82,6 +86,8 @@ proxy_read_timeout    30s;   # returns 504 if a service takes longer than this
 
 ### Tracing One Request Across Every Service
 
+![Tracing one click with X-Request-Id](images/02-request-id-tracing.svg)
+
 ```nginx
 add_header X-Request-Id $request_id always;
 proxy_set_header X-Request-Id $request_id;
@@ -123,6 +129,8 @@ gzip_min_length 1024;
 - Images (JPG/PNG) are already compressed, so they're not listed.
 
 ### Consistent JSON Error Responses
+
+![Nginx errors vs service errors](images/03-nginx-errors-vs-service-errors.svg)
 
 - If Nginx can't reach a service, or the service is too slow, Nginx returns its own **HTML** error page.
 - A JSON API client can't parse HTML → so return JSON instead:

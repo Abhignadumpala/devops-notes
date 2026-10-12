@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 28px; font-weight: 700; fill: #1e293b; }
+    .sub { font-size: 15px; fill: #475569; }
+    .hw { font-size: 17px; font-weight: 700; fill: #ffffff; }
+    .t { font-size: 14px; fill: #0f172a; }
+    .mono { font-size: 14px; fill: #0f172a; font-family: Consolas, Menlo, monospace; }
+    .log { font-size: 13px; fill: #86efac; font-family: Consolas, Menlo, monospace; }
+    .logh { font-size: 13px; fill: #cbd5e1; font-family: Consolas, Menlo, monospace; }
+    .id { font-size: 13px; fill: #fde047; font-weight: 700; font-family: Consolas, Menlo, monospace; }
+    .num { font-size: 15px; font-weight: 700; fill: #ffffff; }
+    .note { font-size: 16px; fill: #0f172a; }
+  </style>
+  <defs>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker>
+  </defs>
+
+  <rect width="1200" height="600" rx="16" fill="#ffffff"/>
+  <text x="600" y="44" text-anchor="middle" class="title">Tracing One Click with X-Request-Id</text>
+  <text x="600" y="72" text-anchor="middle" class="sub">Nginx creates one ID per request and passes it everywhere - one ID to search in every log.</text>
+
+  <!-- boxes -->
+  <rect x="40" y="130" width="200" height="120" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <rect x="40" y="130" width="200" height="40" rx="12" fill="#0284c7"/><rect x="40" y="155" width="200" height="15" fill="#0284c7"/>
+  <text x="140" y="157" text-anchor="middle" class="hw">Browser</text>
+  <text x="140" y="200" text-anchor="middle" class="t">clicks "Add to cart"</text>
+
+  <rect x="330" y="130" width="240" height="120" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <rect x="330" y="130" width="240" height="40" rx="12" fill="#16a34a"/><rect x="330" y="155" width="240" height="15" fill="#16a34a"/>
+  <text x="450" y="157" text-anchor="middle" class="hw">Nginx</text>
+  <text x="450" y="196" text-anchor="middle" class="t">creates</text>
+  <text x="450" y="220" text-anchor="middle" class="mono">$request_id = 7f3a9c</text>
+
+  <rect x="660" y="130" width="220" height="120" rx="12" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+  <rect x="660" y="130" width="220" height="40" rx="12" fill="#ea580c"/><rect x="660" y="155" width="220" height="15" fill="#ea580c"/>
+  <text x="770" y="157" text-anchor="middle" class="hw">cart</text>
+  <text x="770" y="200" text-anchor="middle" class="t">gets the same ID</text>
+
+  <rect x="960" y="130" width="200" height="120" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <rect x="960" y="130" width="200" height="40" rx="12" fill="#2563eb"/><rect x="960" y="155" width="200" height="15" fill="#2563eb"/>
+  <text x="1060" y="157" text-anchor="middle" class="hw">catalogue</text>
+  <text x="1060" y="200" text-anchor="middle" class="t">cart passes it on</text>
+
+  <!-- request arrows -->
+  <line x1="240" y1="190" x2="328" y2="190" stroke="#2563eb" stroke-width="2.5" marker-end="url(#b)"/>
+  <circle cx="284" cy="170" r="13" fill="#2563eb"/><text x="284" y="175" text-anchor="middle" class="num">1</text>
+  <line x1="570" y1="190" x2="658" y2="190" stroke="#2563eb" stroke-width="2.5" marker-end="url(#b)"/>
+  <circle cx="614" cy="170" r="13" fill="#2563eb"/><text x="614" y="175" text-anchor="middle" class="num">2</text>
+  <line x1="880" y1="190" x2="958" y2="190" stroke="#2563eb" stroke-width="2.5" marker-end="url(#b)"/>
+  <circle cx="919" cy="170" r="13" fill="#2563eb"/><text x="919" y="175" text-anchor="middle" class="num">3</text>
+  <!-- reply -->
+  <path d="M450,250 V290 H140 V252" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#g)"/>
+  <circle cx="295" cy="290" r="13" fill="#16a34a"/><text x="295" y="295" text-anchor="middle" class="num">4</text>
+  <text x="315" y="318" class="mono">X-Request-Id: 7f3a9c  (back to the browser)</text>
+
+  <!-- logs -->
+  <rect x="330" y="350" width="240" height="110" rx="10" fill="#0f172a"/>
+  <text x="345" y="375" class="logh">/var/log/nginx/access.log</text>
+  <text x="345" y="405" class="log">POST /api/cart/add</text>
+  <text x="345" y="430" class="log">id=</text><text x="377" y="430" class="id">7f3a9c</text><text x="435" y="430" class="log"> 200</text>
+
+  <rect x="660" y="350" width="220" height="110" rx="10" fill="#0f172a"/>
+  <text x="675" y="375" class="logh">cart log</text>
+  <text x="675" y="405" class="log">add item STAN-1</text>
+  <text x="675" y="430" class="log">id=</text><text x="707" y="430" class="id">7f3a9c</text>
+
+  <rect x="960" y="350" width="200" height="110" rx="10" fill="#0f172a"/>
+  <text x="975" y="375" class="logh">catalogue log</text>
+  <text x="975" y="405" class="log">GET product STAN-1</text>
+  <text x="975" y="430" class="log">id=</text><text x="1007" y="430" class="id">7f3a9c</text>
+
+  <rect x="40" y="350" width="240" height="110" rx="10" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="160" y="385" text-anchor="middle" class="note" font-weight="700">Same ID</text>
+  <text x="160" y="410" text-anchor="middle" class="note">in every log →</text>
+  <text x="160" y="435" text-anchor="middle" class="mono">grep 7f3a9c</text>
+
+  <!-- footer -->
+  <rect x="40" y="490" width="1120" height="86" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="60" y="520" class="mono">add_header X-Request-Id $request_id always;   → send the ID back to the browser</text>
+  <text x="60" y="543" class="mono">proxy_set_header X-Request-Id $request_id;    → send the ID to the service</text>
+  <text x="60" y="566" class="mono">proxy_hide_header X-Request-Id;               → hide the service's own ID, Nginx's ID wins</text>
+</svg>

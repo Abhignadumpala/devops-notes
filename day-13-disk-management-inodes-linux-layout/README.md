@@ -123,6 +123,49 @@ A hard link doesn't point to the file - it **is** the file, under a second name.
 ln <file> <link-name>
 ```
 
+**Is the inode of the main file and the hard link the same? Yes.**
+
+1. A hard link is not a new file - it's a second name for the same file.
+2. Both names point to the same inode → same inode number.
+
+```bash
+ln app.log backup.log
+ls -li
+```
+```text
+1234 -rw-r--r-- 2 ec2-user ec2-user 120 Oct 12 10:00 app.log
+1234 -rw-r--r-- 2 ec2-user ec2-user 120 Oct 12 10:00 backup.log
+```
+
+- Both show inode **1234** (same)
+- The `2` = link count → 2 names point to this inode
+
+**If I delete the main file, the hard link stays.**
+
+1. `rm app.log` only removes the name `app.log`.
+2. Link count goes 2 → 1.
+3. `backup.log` still opens with the full content.
+4. The content is deleted only when the link count is 0 (every name removed).
+
+```bash
+rm app.log
+cat backup.log     # still works
+```
+
+**Use - file backups:** even if someone deletes the main file by mistake, the data is not fully deleted - the hard link still has it.
+
+**Not allowed for directories:**
+
+```bash
+ln mydir mydir-link
+```
+```text
+ln: mydir: hard link not allowed for directory
+```
+
+- Hard links work only on files.
+- For a folder shortcut, use a symlink: `ln -s mydir mydir-link`.
+
 | | Symlink | Hard link |
 |---|---|---|
 | Inode number | Different from the target | Same as the target |

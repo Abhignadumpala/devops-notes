@@ -299,3 +299,59 @@ Allow **inbound TCP 8080** from `roboshop-frontend` only.
 | Dependencies stored in | `~/.m2/repository` |
 | `mvn clean package` | Creates the `target/` folder → `.jar` file inside |
 | `.jar` | **J**ava **AR**chive file → holds the bytecode |
+
+---
+
+## Interview Questions - Java
+
+**1. What is Maven?**
+
+The build tool for Java. It downloads the dependencies, compiles the code, runs the tests and packages the app into a `.jar`.
+
+**2. What is `pom.xml`?**
+
+Maven's build file. It has the project's name, version, description and dependencies - like `package.json` in Node.js.
+
+**3. Where does Maven store dependencies?**
+
+In one common folder for all projects: `~/.m2/repository`. Node.js instead keeps a `node_modules` folder inside each app.
+
+**4. What is GAV and why is it needed?**
+
+Group-id, Artifact-id, Version. It makes every component unique, so 2 versions of the same dependency can sit together in `~/.m2/repository` without clashing.
+
+**5. What is the Maven lifecycle?**
+
+A sequential process with phases that run one after another: clean → install dependencies → compile → test → package → install. If one phase fails, the next ones don't run.
+
+**6. What does `mvn clean package` do?**
+
+`clean` deletes the old build. `package` validates, installs dependencies, compiles, runs tests and packages. Result: `target/shipping.jar`.
+
+**7. What is a `.jar` file?**
+
+Java ARchive - one file that holds the compiled bytecode of the app. Run it with `java -jar app.jar`.
+
+**8. JDK vs JRE?**
+
+JRE only runs Java bytecode (lightweight). JDK = JRE + development tools like the `javac` compiler (heavy). Building needs the JDK; only running needs the JRE.
+
+**9. Is Java compiled or interpreted? How is it different from Node.js?**
+
+Java is compiled before it runs: source code → bytecode → binary language. Node.js has no compile step - it compiles at runtime.
+
+**10. Why do we set `JAVA_HOME`?**
+
+So Maven knows which Java to use and where it's installed. Saved in `/etc/profile.d/java.sh` so it stays after every login and reboot.
+
+**11. Many Java versions are installed. How do you choose the default?**
+
+`alternatives --config java` → pick the version number. Check with `java -version` and `mvn -v`.
+
+**12. Why is Java popular in enterprises, and what's the downside?**
+
+It's mature and can run many tasks at the same time (multi-threading). Downside: it uses more CPU and memory than Node.js, so the server needs more RAM.
+
+**13. Spring Boot shipping service started, but `curl` fails right away. Why?**
+
+Spring Boot takes 10-20 seconds to start. Watch `journalctl -u shipping -f` until you see `Started ShippingApplication`, then test.

@@ -25,8 +25,9 @@
 
 ## What this is / why it matters
 
-- In [Day 8](../day-08-nginx-proxy-api-status-codes/README.md) Nginx had one backend behind it.
+- In the expense app Nginx had one backend behind it.
 - Real apps split the backend into many services - e.g. `catalogue`, `user`, `cart`.
+- RoboShop is one of these - full frontend setup steps: [RoboShop Frontend setup](../roboshop-docs/11-frontend.md)
 - Nginx sits in front of all of them and:
   1. Sends each request to the right service
   2. Adds tracing, security headers and error handling to every service in one place
@@ -210,7 +211,7 @@ location / {
 - Nginx's own errors (`502`/`504`) → reshape into JSON. A service's own errors → pass through.
 - Cache time should match how the file changes: forever for hashed names, short for anything else.
 
-See also: [Day 7 - Expense App](../day-07-3tier-nodejs-expense-app/README.md) · [Day 8 - Nginx](../day-08-nginx-proxy-api-status-codes/README.md) · [Day 11 - Backend Deployment](../day-11-backend-deployment-languages/README.md) · [RoboShop setup docs](../roboshop-docs/README.md)
+See also: [Day 7 - Expense App](../day-07-3tier-nodejs-expense-app/README.md) · [RoboShop Frontend setup](../roboshop-docs/11-frontend.md) · [Day 11 - Backend Deployment](../day-11-backend-deployment-languages/README.md) · [RoboShop setup docs](../roboshop-docs/README.md)
 
 ---
 

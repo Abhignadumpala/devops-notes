@@ -326,7 +326,11 @@ free -m    # RAM usage (in MB)
 du -sh *   # size of each item in the current folder
 ```
 
-**Swap** = virtual RAM on disk. If swap usage keeps climbing, physical RAM is already full.
+**Swap** = virtual RAM (space on the disk). When our RAM is full, Linux uses swap. So if swap is being used, it means RAM is full.
+
+```
+RAM full  ──►  Linux moves data to swap (disk)  ──►  server gets slow (disk is slower than RAM)
+```
 
 ### The Linux Directory Layout
 

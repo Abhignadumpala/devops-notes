@@ -30,6 +30,21 @@ All versions come from the RHEL 9 AppStream repos, except MongoDB and RabbitMQ, 
 
 ---
 
+## Server Image (AMI)
+
+All 11 servers use the same AMI:
+
+| Field | Value |
+|-------|-------|
+| AMI name | `Redhat-9-DevOps-Practice` |
+| AMI ID | `ami-0220d79f3f480ecf5` (us-east-1) |
+| OS | RHEL 9 |
+| Instance type | t3.micro (2 vCPU) |
+
+> AMI IDs are different in every region. In another region, search for the AMI name `Redhat-9-DevOps-Practice`.
+
+---
+
 ## Setup Order
 
 Databases first, then the backend services that use them, then the frontend.

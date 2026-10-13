@@ -114,115 +114,82 @@ One checkout can be followed through frontend → shipping → cart → payment 
 
 ## Security Groups
 
-> **Legend:**
-> 🟡 SSH &nbsp;&nbsp; 🔴 Public Internet &nbsp;&nbsp; 🔵 Internal (Security Group)
+### Step 1: Create 11 security groups (SSH only)
 
----
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| SSH | 22 | My IP | your IP (auto) | SSH access |
 
-### roboshop-mongodb
+Names: `roboshop-mongodb`, `roboshop-redis`, `roboshop-mysql`, `roboshop-rabbitmq`, `roboshop-catalogue`, `roboshop-user`, `roboshop-cart`, `roboshop-shipping`, `roboshop-payment`, `roboshop-dispatch`, `roboshop-frontend`
 
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 27017 | TCP | roboshop-catalogue | Catalogue reads products, loads master data |
-| 🔵 | 27017 | TCP | roboshop-user | User reads/writes user accounts and orders |
+### Step 2: roboshop-frontend (extra rule)
 
----
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| HTTP | 80 | Anywhere-IPv4 | 0.0.0.0/0 | HTTP from internet |
 
-### roboshop-redis
+### Step 3: roboshop-mongodb
 
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 6379 | TCP | roboshop-user | Guest id counter |
-| 🔵 | 6379 | TCP | roboshop-cart | Stores the carts |
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| Custom TCP | 27017 | Custom | `roboshop-catalogue` | Catalogue reads products |
+| Custom TCP | 27017 | Custom | `roboshop-user` | User reads/writes users and orders |
 
----
+### Step 4: roboshop-redis
 
-### roboshop-mysql
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| Custom TCP | 6379 | Custom | `roboshop-user` | Guest id counter |
+| Custom TCP | 6379 | Custom | `roboshop-cart` | Stores the carts |
 
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 3306 | TCP | roboshop-shipping | Shipping reads city/distance data, loads master data |
+### Step 5: roboshop-mysql
 
----
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| MYSQL/Aurora | 3306 | Custom | `roboshop-shipping` | Shipping reads city data |
 
-### roboshop-rabbitmq
+### Step 6: roboshop-rabbitmq
 
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 5672 | TCP | roboshop-payment | Payment publishes orders |
-| 🔵 | 5672 | TCP | roboshop-dispatch | Dispatch consumes orders |
-| 🟡 | 15672 | TCP | MY-IP/32 | Management UI (optional) |
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| Custom TCP | 5672 | Custom | `roboshop-payment` | Payment publishes orders |
+| Custom TCP | 5672 | Custom | `roboshop-dispatch` | Dispatch consumes orders |
+| Custom TCP | 15672 | My IP | your IP (auto) | Management UI (optional) |
 
----
+### Step 7: roboshop-catalogue
 
-### roboshop-catalogue
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| Custom TCP | 8080 | Custom | `roboshop-frontend` | Frontend reverse proxy |
+| Custom TCP | 8080 | Custom | `roboshop-cart` | Cart checks price and stock |
 
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 8080 | TCP | roboshop-frontend | Frontend reverse proxy |
-| 🔵 | 8080 | TCP | roboshop-cart | Cart checks product price and stock |
+### Step 8: roboshop-user
 
----
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| Custom TCP | 8080 | Custom | `roboshop-frontend` | Frontend reverse proxy |
+| Custom TCP | 8080 | Custom | `roboshop-payment` | Payment checks user, saves order |
 
-### roboshop-user
+### Step 9: roboshop-cart
 
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 8080 | TCP | roboshop-frontend | Frontend reverse proxy |
-| 🔵 | 8080 | TCP | roboshop-payment | Payment checks the user and saves the order |
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| Custom TCP | 8080 | Custom | `roboshop-frontend` | Frontend reverse proxy |
+| Custom TCP | 8080 | Custom | `roboshop-shipping` | Shipping adds shipping cost |
+| Custom TCP | 8080 | Custom | `roboshop-payment` | Payment empties the cart |
 
----
+### Step 10: roboshop-shipping
 
-### roboshop-cart
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| Custom TCP | 8080 | Custom | `roboshop-frontend` | Frontend reverse proxy |
 
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 8080 | TCP | roboshop-frontend | Frontend reverse proxy |
-| 🔵 | 8080 | TCP | roboshop-shipping | Shipping adds the shipping cost to the cart |
-| 🔵 | 8080 | TCP | roboshop-payment | Payment empties the cart after the order |
+### Step 11: roboshop-payment
 
----
+| Type | Port range | Source type | Source | Description |
+|------|------------|-------------|--------|-------------|
+| Custom TCP | 8080 | Custom | `roboshop-frontend` | Frontend reverse proxy |
 
-### roboshop-shipping
+### Step 12: roboshop-dispatch
 
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 8080 | TCP | roboshop-frontend | Frontend reverse proxy |
-
----
-
-### roboshop-payment
-
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔵 | 8080 | TCP | roboshop-frontend | Frontend reverse proxy |
-
----
-
-### roboshop-dispatch
-
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-
-> Dispatch is a RabbitMQ consumer. It only makes outbound connections, so it needs no inbound ports.
-
----
-
-### roboshop-frontend
-
-| # | Port | Protocol | Source | Description |
-|---|------|----------|--------|-------------|
-| 🟡 | 22 | TCP | MY-IP/32 | SSH access |
-| 🔴 | 80 | TCP | 0.0.0.0/0 | HTTP from internet |
-
----
+No extra rule. SSH only.

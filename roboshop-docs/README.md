@@ -40,6 +40,7 @@ All 11 servers use the same AMI:
 | AMI ID | `ami-0220d79f3f480ecf5` (us-east-1) |
 | OS | RHEL 9 |
 | Instance type | t3.micro (2 vCPU) |
+| Key pair | None (the AMI uses password login for `ec2-user`) |
 
 > AMI IDs are different in every region. In another region, search for the AMI name `Redhat-9-DevOps-Practice`.
 

@@ -342,7 +342,7 @@ Every top-level folder has one job:
 | `/lib` | Shared system libraries |
 | `/media` | Where USB drives / CDs auto-mount on a desktop |
 | `/mnt` | Usual place to manually mount an extra disk |
-| `/opt` | Third-party software not installed by the package manager |
+| `/opt` | **opt = optional**. When we download and install third-party software ourselves, we choose this directory |
 | `/proc` | Virtual folder with live process and system info - `/proc/cpuinfo`, `/proc/meminfo` |
 | `/root` | Home folder of the root user |
 | `/run` | Runtime state of running programs (PID files, sockets) |

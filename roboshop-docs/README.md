@@ -30,22 +30,6 @@ All versions come from the RHEL 9 AppStream repos, except MongoDB and RabbitMQ, 
 
 ---
 
-## Server Image (AMI)
-
-All 11 servers use the same AMI:
-
-| Field | Value |
-|-------|-------|
-| AMI name | `Redhat-9-DevOps-Practice` |
-| AMI ID | `ami-0220d79f3f480ecf5` (us-east-1) |
-| OS | RHEL 9 |
-| Instance type | t3.micro (2 vCPU) |
-| Key pair | None (the AMI uses password login for `ec2-user`) |
-
-> AMI IDs are different in every region. In another region, search for the AMI name `Redhat-9-DevOps-Practice`.
-
----
-
 ## Setup Order
 
 Databases first, then the backend services that use them, then the frontend.
@@ -193,3 +177,42 @@ Names: `roboshop-mongodb`, `roboshop-redis`, `roboshop-mysql`, `roboshop-rabbitm
 ### Step 12: roboshop-dispatch
 
 No extra rule. SSH only.
+
+---
+
+## Launch EC2 Instances
+
+Launch after the security groups exist.
+
+### Step 1: Launch settings (same for all 11)
+
+| Field | Value |
+|-------|-------|
+| AMI name | `Redhat-9-DevOps-Practice` |
+| AMI ID | `ami-0220d79f3f480ecf5` (us-east-1) |
+| OS | RHEL 9 |
+| Instance type | t3.micro (2 vCPU, 1 GiB RAM) |
+| Key pair | Proceed without a key pair (password login for `ec2-user`) |
+| Network | default VPC, auto-assign public IP: Enable |
+| Firewall | Select existing security group (see Step 2) |
+| Storage | default |
+
+> AMI IDs are different in every region. In another region, search for the AMI name `Redhat-9-DevOps-Practice`.
+
+### Step 2: Name tag and security group per instance
+
+| # | Name tag | Security group |
+|---|----------|----------------|
+| 1 | `mongodb` | `roboshop-mongodb` |
+| 2 | `redis` | `roboshop-redis` |
+| 3 | `mysql` | `roboshop-mysql` |
+| 4 | `rabbitmq` | `roboshop-rabbitmq` |
+| 5 | `catalogue` | `roboshop-catalogue` |
+| 6 | `user` | `roboshop-user` |
+| 7 | `cart` | `roboshop-cart` |
+| 8 | `shipping` | `roboshop-shipping` |
+| 9 | `payment` | `roboshop-payment` |
+| 10 | `dispatch` | `roboshop-dispatch` |
+| 11 | `frontend` | `roboshop-frontend` |
+
+> 11 × t3.micro = 22 vCPUs. New AWS accounts often have a limit of 16 On-Demand vCPUs, so request 32 in Service Quotas first.

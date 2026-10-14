@@ -281,6 +281,12 @@ curl http://localhost:8080/count
 curl http://localhost:8080/codes
 ```
 
+```text
+/actuator/health → app alive + MySQL connected
+/count           → can actually READ data (number of cities)
+/codes           → the real feature works (country list on the website)
+```
+
 `/actuator/health` returns `{"status":"UP"}` and includes the database status. `/count` returns the number of cities.
 
 | Problem | Meaning |

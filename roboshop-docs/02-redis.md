@@ -101,15 +101,60 @@ redis-cli ping
 
 `redis-cli ping` should answer `PONG`.
 
-### Problem I faced: user shows `"redis":false`
+After you add something to the cart on the website, you can see it in Redis:
+
+```shell
+redis-cli keys '*'
+redis-cli get <user-id>
+```
+
+---
+
+## Problem I Faced: user shows `"redis":false`
+
+### What is happening here?
+
+The **user** service talks to Redis to create **guest ids**. When someone opens the website without logging in, user asks Redis for the next unique number (`/uniqueid`). The **cart** service also keeps the carts in Redis.
+
+```
+Website visitor ──► user server ──► Redis: "give me the next guest id" ──► 1, 2, 3 ...
+```
+
+So `/health` on user checks: **can the user server reach Redis?** (User accounts and orders are in MongoDB, not Redis.)
+
+### What went wrong
 
 | | |
 |--|--|
 | **Symptom** | User `/health` showed `{"app":"OK","mongo":true,"redis":false}` |
 | **Log** (`journalctl -u user`) | `Socket closed unexpectedly`, retrying every 2 seconds |
 | **Checked** | SG allows 6379 from user ✅, DNS resolves ✅, `bind 0.0.0.0` ✅ |
-| **Cause** | `protected-mode yes`: Redis accepted the connection, then closed it |
-| **Fix** | Set `protected-mode no` → `systemctl restart redis` → `systemctl restart user` |
+| **Cause** | No Redis password set **and** `protected-mode yes`, so Redis refused the user server |
+
+| protected-mode | Who can connect from other servers |
+|----------------|------------------------------------|
+| `yes` | Only clients **with a password** (no password set = nobody from outside) |
+| `no` | Any server, no password needed (the SG decides who gets in) |
+
+```
+No password + protected-mode yes  →  user server refused   →  "redis":false ❌
+protected-mode no + restart       →  user server connects  →  "redis":true  ✅
+```
+
+### What I did
+
+```shell
+# on redis
+sed -i 's/^protected-mode yes/protected-mode no/' /etc/redis/redis.conf
+systemctl restart redis
+redis-cli config get protected-mode      # "no" = what Redis is actually running with
+
+# on user
+systemctl restart user
+curl http://localhost:8080/health        # "redis":true
+```
+
+> After changing a config file, use `systemctl restart`. `systemctl start` does nothing if the service is already running, so the old config stays in memory.
 
 | If the problem is... | The error looks like |
 |----------------------|----------------------|
@@ -117,20 +162,7 @@ redis-cli ping
 | Redis not listening | connection refused |
 | Protected mode | connection opens, then gets closed |
 
-Check what Redis is **actually running with** (not just what the file says):
-
-```shell
-redis-cli config get protected-mode
-```
-
-> After changing a config file, use `systemctl restart`. `systemctl start` does nothing if the service is already running, so the old config stays in memory.
-
-After you add something to the cart on the website, you can see it in Redis:
-
-```shell
-redis-cli keys '*'
-redis-cli get <user-id>
-```
+> **In one line:** I didn't set a Redis password and missed turning protected mode off, so Redis refused the user server. Setting `protected-mode no` and restarting Redis fixed it.
 
 ---
 

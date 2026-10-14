@@ -202,9 +202,11 @@ The import is large (about 60 MB) and takes a minute. It is safe to run again: i
 
 ### Why do we create a service file?
 
-Without it, you'd start the app by hand:
+Without a service file, you would have to start the app by hand like this.
 
-```shell
+> ⚠️ **Example only, don't run it.** systemd runs this same command for you (the `ExecStart=` line in the file below).
+
+```text
 java -jar /app/shipping.jar
 ```
 

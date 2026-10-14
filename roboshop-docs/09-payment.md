@@ -99,9 +99,11 @@ python3.14 -m venv /app/.venv
 
 ### Why do we create a service file?
 
-Without it, you'd start the app by hand:
+Without a service file, you would have to start the app by hand like this.
 
-```shell
+> ⚠️ **Example only, don't run it.** systemd runs this same command for you (the `ExecStart=` line in the file below).
+
+```text
 /app/.venv/bin/gunicorn ... payment:app
 ```
 

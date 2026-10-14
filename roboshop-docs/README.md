@@ -184,6 +184,46 @@ No extra rule. SSH only.
 
 Launch after the security groups exist.
 
+### What is an AMI?
+
+**AMI (Amazon Machine Image)** = a **template for a server**. It holds everything the server starts with:
+
+| Inside an AMI | Example |
+|---------------|---------|
+| Operating system | RHEL 9, Ubuntu, Amazon Linux |
+| Pre-installed software | packages, tools, agents |
+| Settings | users, passwords, SSH config |
+| Disk snapshot | the root volume (where the OS lives) |
+
+```
+AMI (template) ──launch──► EC2 instance 1
+               ──launch──► EC2 instance 2
+               ──launch──► EC2 instance 3   (all identical at start)
+```
+
+**Real-life example:** an AMI is like a **Windows installation USB with your apps already on it**. Every PC you set up from it starts out the same.
+
+**Types of AMI**
+
+| Type | Who makes it | Example |
+|------|--------------|---------|
+| **AWS / Quick Start** | AWS or the OS vendor | Amazon Linux 2023, Ubuntu 24.04, RHEL 9 |
+| **Marketplace** | Companies (some are paid) | AMIs with Jenkins or Nginx pre-installed |
+| **Community / shared** | Anyone who shares one | `Redhat-9-DevOps-Practice` |
+| **Custom (your own)** | You: set up a server, then **Create Image** | your app already installed |
+
+**Our AMI: `Redhat-9-DevOps-Practice`** = RHEL 9 with a few changes for practice:
+
+- **Password login enabled** for `ec2-user`, so no key pair is needed
+- Free RHEL; normal RHEL AMIs from AWS add a license cost
+
+**Key points**
+
+- **AMI IDs are per region.** The same image has a different ID in us-east-1 and ap-south-1.
+- **Golden AMI:** in companies, teams build one AMI with security patches and tools already in it, and every server launches from it. That gives a faster setup and identical servers.
+
+> **Interview one-liner:** An AMI is a template for EC2 instances. It holds the OS, software and settings, so every instance launched from it starts identical. AMIs are region-specific.
+
 ### Step 1: Launch settings (same for all 11)
 
 | Field | Value |

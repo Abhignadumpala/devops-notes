@@ -217,6 +217,23 @@ AMI (template) ──launch──► EC2 instance 1
 - **Password login enabled** for `ec2-user`, so no key pair is needed
 - Free RHEL; normal RHEL AMIs from AWS add a license cost
 
+**Repos in this AMI**
+
+A **repo** = an online store of packages that `dnf` downloads from. RHEL 9 already has 2 repos by default. Check with `dnf repolist`.
+
+| Repo | What's in it |
+|------|--------------|
+| **BaseOS** | Core OS packages (`bash`, `systemd`, `openssh`) |
+| **AppStream** | Apps and languages (`nginx`, `nodejs`, `python3`, `java`, `golang`, `redis`, `mysql-server`) |
+
+MongoDB and RabbitMQ are **not** in these repos, so we create their repo files ourselves in `/etc/yum.repos.d/`:
+
+| Server | Repo file | Why |
+|--------|-----------|-----|
+| mongodb | `mongo.repo` | License (SSPL) not shipped by Red Hat |
+| rabbitmq | `rabbitmq.repo` | Not shipped by Red Hat, needs a newer Erlang |
+| All others | none | Packages come from AppStream |
+
 **Key points**
 
 - **AMI IDs are per region.** The same image has a different ID in us-east-1 and ap-south-1.

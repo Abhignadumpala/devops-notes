@@ -69,9 +69,10 @@ Once the frontend is up, the **System status** link at the top of the website sh
 
 ---
 
-## Troubleshooting
+## Hands-On and Troubleshooting
 
-Problems I faced and how I fixed them: [troubleshooting.md](troubleshooting.md)
+- **Hands-on:** my full lab run with screenshots, all 11 servers to a real order: [hands-on/](hands-on/README.md)
+- **Troubleshooting:** problems I faced and how I fixed them: [troubleshooting.md](troubleshooting.md)
 
 ---
 

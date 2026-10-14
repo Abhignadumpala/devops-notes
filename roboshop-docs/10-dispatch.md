@@ -62,13 +62,7 @@ go build -o dispatch .
 
 ### Why do we create a service file?
 
-Without a service file, you would have to start the app by hand like this.
-
-> ⚠️ **Example only, don't run it.** systemd runs this same command for you (the `ExecStart=` line in the file below).
-
-```text
-/app/dispatch
-```
+Without a service file, you would have to start the app by hand, and these problems happen:
 
 | Problem when running it by hand | What the service file does instead |
 |---------------------------------|------------------------------------|

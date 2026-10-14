@@ -50,12 +50,7 @@ Databases first, then the backend services that use them, then the frontend.
 | **MySQL** | SQL | Saves data in tables (rows and columns) | Cities and shipping cost data | shipping |
 | **RabbitMQ** | Message queue | Holds messages until another service picks them up | Orders waiting to be dispatched | payment (sends), dispatch (reads) |
 
-```
-catalogue, user ──► MongoDB    (products, users, orders)
-user, cart      ──► Redis      (carts)
-shipping        ──► MySQL      (cities, shipping cost)
-payment ──► RabbitMQ ──► dispatch   (order messages)
-```
+![RoboShop databases](images/roboshop-databases.svg)
 
 **Backend**
 

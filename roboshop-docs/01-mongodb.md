@@ -73,7 +73,7 @@ systemctl start mongod
 
 ## Configure
 
-By default MongoDB listens only on `localhost (127.0.0.1)`, so only applications on this same server can reach it. Catalogue and User run on other servers, so MongoDB must listen on all addresses.
+By default MongoDB listens only on `localhost (127.0.0.1)`, so only applications on this same server can reach it. Catalogue and User run on other servers, so by default they **cannot reach MongoDB**. That's why MongoDB must listen on all addresses (`0.0.0.0`).
 
 Update the listen address from `127.0.0.1` to `0.0.0.0` in `/etc/mongod.conf`:
 

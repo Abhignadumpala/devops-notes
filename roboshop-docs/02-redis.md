@@ -48,6 +48,40 @@ Or do the same with one command:
 sed -i -e 's/^bind 127.0.0.1/bind 0.0.0.0/' -e 's/^protected-mode yes/protected-mode no/' /etc/redis/redis.conf
 ```
 
+### Why both changes? (two locks)
+
+Redis has **two separate locks**. Both must be opened for other servers to connect:
+
+```
+user / cart server ──► [ Lock 1: bind ] ──► [ Lock 2: protected-mode ] ──► Redis data
+```
+
+| Lock | Question it asks | Default | We set |
+|------|------------------|---------|--------|
+| **bind** | Which door am I listening on? | `127.0.0.1` = only the inside door | `0.0.0.0` = all doors |
+| **protected-mode** | No password set and someone from outside? Then refuse them | `yes` | `no` |
+
+If only `bind` is changed, the door is open but the guard is still standing there, sending everyone away.
+
+**Real-life example:** you unlocked your front door (bind), but a security guard stands inside and says "no visitors without a pass" (protected mode). Visitors come through the door and get sent right back.
+
+**Why does Redis have this guard?** By default Redis has no password. Thousands of Redis servers on the internet got hacked because people opened them without one. So Redis added protected mode: "if there's no password, don't talk to strangers."
+
+**Is it safe to turn it off?** Here, yes, because the security group does the guard's job:
+
+```
+Internet ──✗── SG blocks 6379 ──► only roboshop-user and roboshop-cart get in
+```
+
+| Setup | Who protects Redis |
+|-------|--------------------|
+| Our practice | SG (network level), protected-mode off |
+| Real companies | SG **plus** a Redis password (`requirepass`), protected-mode stays on |
+
+**Compare with MongoDB:** MongoDB has only one lock (`bindIp`), so changing `bindIp` was enough. Redis needs both.
+
+> **Interview one-liner:** Redis protected mode refuses remote connections when no password is set. To let app servers connect, either set a password or disable protected mode and rely on the security group.
+
 Start & enable the Redis service:
 
 ```shell
@@ -66,6 +100,30 @@ redis-cli ping
 ```
 
 `redis-cli ping` should answer `PONG`.
+
+### Problem I faced: user shows `"redis":false`
+
+| | |
+|--|--|
+| **Symptom** | User `/health` showed `{"app":"OK","mongo":true,"redis":false}` |
+| **Log** (`journalctl -u user`) | `Socket closed unexpectedly`, retrying every 2 seconds |
+| **Checked** | SG allows 6379 from user ✅, DNS resolves ✅, `bind 0.0.0.0` ✅ |
+| **Cause** | `protected-mode yes`: Redis accepted the connection, then closed it |
+| **Fix** | Set `protected-mode no` → `systemctl restart redis` → `systemctl restart user` |
+
+| If the problem is... | The error looks like |
+|----------------------|----------------------|
+| SG blocking | timeout |
+| Redis not listening | connection refused |
+| Protected mode | connection opens, then gets closed |
+
+Check what Redis is **actually running with** (not just what the file says):
+
+```shell
+redis-cli config get protected-mode
+```
+
+> After changing a config file, use `systemctl restart`. `systemctl start` does nothing if the service is already running, so the old config stays in memory.
 
 After you add something to the cart on the website, you can see it in Redis:
 

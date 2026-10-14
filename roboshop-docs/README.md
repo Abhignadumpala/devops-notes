@@ -41,6 +41,22 @@ Databases first, then the backend services that use them, then the frontend.
 3. [03-mysql.md](03-mysql.md)
 4. [04-rabbitmq.md](04-rabbitmq.md)
 
+**Databases in one line**
+
+| Database | Type | In one line | What RoboShop keeps there | Used by |
+|----------|------|-------------|---------------------------|---------|
+| **MongoDB** | NoSQL | Saves data as JSON-like documents | Products, ratings, users, orders | catalogue, user |
+| **Redis** | In-memory cache | Super fast, keeps data in RAM | Carts, guest id counter | user, cart |
+| **MySQL** | SQL | Saves data in tables (rows and columns) | Cities and shipping cost data | shipping |
+| **RabbitMQ** | Message queue | Holds messages until another service picks them up | Orders waiting to be dispatched | payment (sends), dispatch (reads) |
+
+```
+catalogue, user ──► MongoDB    (products, users, orders)
+user, cart      ──► Redis      (carts)
+shipping        ──► MySQL      (cities, shipping cost)
+payment ──► RabbitMQ ──► dispatch   (order messages)
+```
+
 **Backend**
 
 5. [05-catalogue.md](05-catalogue.md)

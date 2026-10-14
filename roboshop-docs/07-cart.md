@@ -48,6 +48,24 @@ npm install
 
 ## Configure SystemD Service
 
+### Why do we create a service file?
+
+Without it, you'd start the app by hand:
+
+```shell
+node /app/server.js
+```
+
+| Problem when running it by hand | What the service file does instead |
+|---------------------------------|------------------------------------|
+| Close the terminal and the app **dies** | Runs in the **background** |
+| Server reboots and the app is **gone** | `enable` starts it **at every boot** |
+| App crashes and stays **down** | `Restart=on-failure` brings it **back in 5 seconds** |
+| Runs as **root** (unsafe) | `User=roboshop` runs it as a normal user |
+| Logs only on screen | Logs go to `journalctl -u cart` |
+
+By adding the **environment** address values, we are telling cart the address of **Redis and catalogue**, so it can connect to them.
+
 ```shell
 vim /etc/systemd/system/cart.service
 ```
@@ -70,6 +88,21 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 ```
+
+**Each line of the file**
+
+| Line | Meaning |
+|------|---------|
+| `Description=Cart Service` | Name shown in `systemctl status` |
+| `After=network-online.target` | Start only **after the network is up** (cart needs Redis and catalogue over the network) |
+| `User=roboshop` | Run as the `roboshop` user, not root |
+| `Environment=REDIS_HOST=...` | Where Redis is (to save carts) |
+| `Environment=CATALOGUE_HOST=...` | Where catalogue is (to check price and stock) |
+| `Environment=CATALOGUE_PORT=8080` | Catalogue's port |
+| `ExecStart=/bin/node /app/server.js` | The command that starts the Node.js app |
+| `SyslogIdentifier=cart` | Name shown in the logs (`journalctl -u cart`) |
+| `Restart=on-failure` + `RestartSec=5` | If it crashes, restart after 5 seconds |
+| `WantedBy=multi-user.target` | Used by `enable`, to start at boot (creates the symlink in `multi-user.target.wants/`) |
 
 > **Replace `<REDIS-SERVER-IPADDRESS>` and `<CATALOGUE-SERVER-IPADDRESS>` with the private IPs of those servers.**
 

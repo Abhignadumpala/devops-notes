@@ -97,6 +97,24 @@ python3.14 -m venv /app/.venv
 
 ## Configure SystemD Service
 
+### Why do we create a service file?
+
+Without it, you'd start the app by hand:
+
+```shell
+/app/.venv/bin/gunicorn ... payment:app
+```
+
+| Problem when running it by hand | What the service file does instead |
+|---------------------------------|------------------------------------|
+| Close the terminal and the app **dies** | Runs in the **background** |
+| Server reboots and the app is **gone** | `enable` starts it **at every boot** |
+| App crashes and stays **down** | `Restart=on-failure` brings it **back in 5 seconds** |
+| Runs as **root** (unsafe) | `User=roboshop` runs it as a normal user |
+| Logs only on screen | Logs go to `journalctl -u payment` |
+
+By adding the **environment** address values, we are telling payment the address of **cart, user and RabbitMQ**, so it can connect to them.
+
 ```shell
 vim /etc/systemd/system/payment.service
 ```
@@ -124,6 +142,23 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 ```
+
+**Each line of the file**
+
+| Line | Meaning |
+|------|---------|
+| `Description=Payment Service` | Name shown in `systemctl status` |
+| `After=network-online.target` | Start only **after the network is up** (payment needs cart, user and RabbitMQ over the network) |
+| `User=roboshop` | Run as the `roboshop` user, not root |
+| `WorkingDirectory=/app` | Run from `/app`, where `payment.py` and `gunicorn.conf.py` are |
+| `Environment=CART_HOST=...` + `CART_PORT=8080` | Where cart is (read the cart, empty it after payment) |
+| `Environment=USER_HOST=...` + `USER_PORT=8080` | Where user is (check the user, save the order) |
+| `Environment=AMQP_HOST=...` | Where RabbitMQ is (send the order to dispatch) |
+| `Environment=AMQP_USER=...` + `AMQP_PASS=...` | RabbitMQ login |
+| `ExecStart=/app/.venv/bin/gunicorn ...` | Starts the Python app with gunicorn (a web server for Python apps) |
+| `SyslogIdentifier=payment` | Name shown in the logs (`journalctl -u payment`) |
+| `Restart=on-failure` + `RestartSec=5` | If it crashes, restart after 5 seconds |
+| `WantedBy=multi-user.target` | Used by `enable`, to start at boot (creates the symlink in `multi-user.target.wants/`) |
 
 > **Replace `<CART-SERVER-IPADDRESS>`, `<USER-SERVER-IPADDRESS>` and `<RABBITMQ-SERVER-IPADDRESS>` with the private IPs of those servers.**
 

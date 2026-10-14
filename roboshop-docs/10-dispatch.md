@@ -60,6 +60,24 @@ go build -o dispatch .
 
 ## Configure SystemD Service
 
+### Why do we create a service file?
+
+Without it, you'd start the app by hand:
+
+```shell
+/app/dispatch
+```
+
+| Problem when running it by hand | What the service file does instead |
+|---------------------------------|------------------------------------|
+| Close the terminal and the app **dies** | Runs in the **background** |
+| Server reboots and the app is **gone** | `enable` starts it **at every boot** |
+| App crashes and stays **down** | `Restart=on-failure` brings it **back in 5 seconds** |
+| Runs as **root** (unsafe) | `User=roboshop` runs it as a normal user |
+| Logs only on screen | Logs go to `journalctl -u dispatch` |
+
+By adding the **environment** address values, we are telling dispatch the address of **RabbitMQ**, so it can connect to them.
+
 ```shell
 vim /etc/systemd/system/dispatch.service
 ```
@@ -82,6 +100,20 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 ```
+
+**Each line of the file**
+
+| Line | Meaning |
+|------|---------|
+| `Description=Dispatch Service` | Name shown in `systemctl status` |
+| `After=network-online.target` | Start only **after the network is up** (dispatch needs RabbitMQ over the network) |
+| `User=roboshop` | Run as the `roboshop` user, not root |
+| `Environment=AMQP_HOST=...` | Where RabbitMQ is (to read orders) |
+| `Environment=AMQP_USER=...` + `AMQP_PASS=...` | RabbitMQ login |
+| `ExecStart=/app/dispatch` | Runs the Go program (already built into one file) |
+| `SyslogIdentifier=dispatch` | Name shown in the logs (`journalctl -u dispatch`) |
+| `Restart=on-failure` + `RestartSec=5` | If it crashes, restart after 5 seconds |
+| `WantedBy=multi-user.target` | Used by `enable`, to start at boot (creates the symlink in `multi-user.target.wants/`) |
 
 > **Replace `<RABBITMQ-SERVER-IPADDRESS>` with the private IP of the RabbitMQ server.**
 

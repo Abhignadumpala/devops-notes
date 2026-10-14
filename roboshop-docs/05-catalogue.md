@@ -66,6 +66,24 @@ npm install
 
 ## Configure SystemD Service
 
+### Why do we create a service file?
+
+Without it, you'd start the app by hand:
+
+```shell
+node /app/server.js
+```
+
+| Problem when running it by hand | What the service file does instead |
+|---------------------------------|------------------------------------|
+| Close the terminal and the app **dies** | Runs in the **background** |
+| Server reboots and the app is **gone** | `enable` starts it **at every boot** |
+| App crashes and stays **down** | `Restart=on-failure` brings it **back in 5 seconds** |
+| Runs as **root** (unsafe) | `User=roboshop` runs it as a normal user |
+| Logs only on screen | Logs go to `journalctl -u catalogue` |
+
+By adding the **environment** address values, we are telling catalogue the address of **MongoDB**, so it can connect to them.
+
 ```shell
 vim /etc/systemd/system/catalogue.service
 ```
@@ -86,6 +104,19 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 ```
+
+**Each line of the file**
+
+| Line | Meaning |
+|------|---------|
+| `Description=Catalogue Service` | Name shown in `systemctl status` |
+| `After=network-online.target` | Start only **after the network is up** (catalogue needs MongoDB over the network) |
+| `User=roboshop` | Run as the `roboshop` user, not root |
+| `Environment=MONGO_URL=...` | Where MongoDB is, and the database name (`catalogue`), to read products |
+| `ExecStart=/bin/node /app/server.js` | The command that starts the Node.js app |
+| `SyslogIdentifier=catalogue` | Name shown in the logs (`journalctl -u catalogue`) |
+| `Restart=on-failure` + `RestartSec=5` | If it crashes, restart after 5 seconds |
+| `WantedBy=multi-user.target` | Used by `enable`, to start at boot (creates the symlink in `multi-user.target.wants/`) |
 
 > **Replace `<MONGODB-SERVER-IPADDRESS>` with the private IP of the MongoDB server.**
 

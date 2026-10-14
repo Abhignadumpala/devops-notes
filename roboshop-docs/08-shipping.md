@@ -200,6 +200,24 @@ The import is large (about 60 MB) and takes a minute. It is safe to run again: i
 
 ## Configure SystemD Service
 
+### Why do we create a service file?
+
+Without it, you'd start the app by hand:
+
+```shell
+java -jar /app/shipping.jar
+```
+
+| Problem when running it by hand | What the service file does instead |
+|---------------------------------|------------------------------------|
+| Close the terminal and the app **dies** | Runs in the **background** |
+| Server reboots and the app is **gone** | `enable` starts it **at every boot** |
+| App crashes and stays **down** | `Restart=on-failure` brings it **back in 5 seconds** |
+| Runs as **root** (unsafe) | `User=roboshop` runs it as a normal user |
+| Logs only on screen | Logs go to `journalctl -u shipping` |
+
+By adding the **environment** address values, we are telling shipping the address of **MySQL and cart**, so it can connect to them.
+
 ```shell
 vim /etc/systemd/system/shipping.service
 ```
@@ -223,6 +241,22 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 ```
+
+**Each line of the file**
+
+| Line | Meaning |
+|------|---------|
+| `Description=Shipping Service` | Name shown in `systemctl status` |
+| `After=network-online.target` | Start only **after the network is up** (shipping needs MySQL and cart over the network) |
+| `User=roboshop` | Run as the `roboshop` user, not root |
+| `Environment=CART_ENDPOINT=...` | Where cart is (`name:port`), to add the shipping cost to the cart |
+| `Environment=DB_HOST=...` | Where MySQL is (cities and shipping cost data) |
+| `Environment=DB_USER=shipping` | MySQL user the app logs in as |
+| `Environment=DB_PASSWORD=...` | That user's password |
+| `ExecStart=/bin/java -jar /app/shipping.jar` | The command that starts the Java app |
+| `SyslogIdentifier=shipping` | Name shown in the logs (`journalctl -u shipping`) |
+| `Restart=on-failure` + `RestartSec=5` | If it crashes, restart after 5 seconds |
+| `WantedBy=multi-user.target` | Used by `enable`, to start at boot (creates the symlink in `multi-user.target.wants/`) |
 
 > **Replace `<CART-SERVER-IPADDRESS>` and `<MYSQL-SERVER-IPADDRESS>` with the private IPs of those servers.**
 

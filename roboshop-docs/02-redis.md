@@ -101,6 +101,8 @@ redis-cli ping
 
 `redis-cli ping` should answer `PONG`.
 
+> User shows `"redis":false`? See [Troubleshooting #1](troubleshooting.md#1-user-shows-redisfalse).
+
 After you add something to the cart on the website, you can see it in Redis:
 
 ```shell

@@ -69,6 +69,12 @@ Once the frontend is up, the **System status** link at the top of the website sh
 
 ---
 
+## Troubleshooting
+
+Problems I faced and how I fixed them: [troubleshooting.md](troubleshooting.md)
+
+---
+
 ## Artifacts
 
 Each server downloads its application zip directly from GitHub:

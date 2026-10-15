@@ -148,23 +148,23 @@ Variable access uses `$VAR` or, to make the variable name's boundary explicit (e
 
 ### Special variables
 
-The shell gives us these variables for free - we don't create them. Read each one as **"`$x` → it will give us ..."**:
+The shell gives us these variables for free - we don't create them, we just use them:
 
-| Variable | It will give us | How we print it |
-|---|---|---|
-| `$@` | **all the args** passed to the script | `echo "All args passed to the script: $@"` |
-| `$#` | the **number of args** passed to the script | `echo "Number of args passed to the script: $#"` |
-| `$1`, `$2`, ... | the **first, second, ... arg** | `echo "First variable passed: $1"` |
-| `$0` | the **script name** | `echo "Script name: $0"` |
-| `$(realpath $0)` | the **full path** of the script | `echo "Realpath: $(realpath $0)"` |
-| `$USER` | **who is running** the script | `echo "Who is running current script: $USER"` |
-| `$PWD` | the **current directory** of the script | `echo "Directory of the current script: $PWD"` |
-| `$HOME` | the **home directory** of the current user | `echo "Home directory of the current user: $HOME"` |
-| `$$` | the **PID** (process id) of the current script | `echo "PID of the current script: $$"` |
-| `$!` | the **PID of the command running in the background** now | `echo "PID of the command running in background now: $!"` |
-| `$LINENO` | the **current line number** in the script | `echo "Line number: $LINENO"` |
-| `$?` | the **exit status of the previous command** | `echo "previous command exit status: $?"` |
-| `$SECONDS` | the **total time** the script has been running | `echo "Total time executed for this script: $SECONDS"` |
+| Variable | What it does |
+|---|---|
+| `$@` | Gives **all the arguments** passed to the script. Run `sh script.sh John Raheem` → `$@` = `John Raheem` |
+| `$#` | Gives **how many arguments** were passed. Same run → `$#` = `2` |
+| `$1`, `$2`, ... | Gives **one argument by its position**. `$1` = `John` (first), `$2` = `Raheem` (second) |
+| `$0` | Gives the **name of the script** that is running → `script.sh` |
+| `$(realpath $0)` | Gives the **full path** of the script → `/home/ec2-user/script.sh` |
+| `$USER` | Gives the **user who is running** the script → `ec2-user` or `root` |
+| `$PWD` | Gives the **folder you are in** right now (present working directory) → `/home/ec2-user` |
+| `$HOME` | Gives the **home folder** of the user running the script → `/home/ec2-user` |
+| `$$` | Gives the **process id (PID)** of the running script. Every running program gets a PID |
+| `$!` | Gives the **PID of the last command sent to the background** with `&`. Used with `wait $!` to wait for it to finish |
+| `$LINENO` | Gives the **line number** the script is on. Helpful to show where an error happened |
+| `$?` | Gives the **exit status of the previous command**: `0` = success, anything else = failure |
+| `$SECONDS` | Gives **how many seconds** the script has been running. Used to measure how long a script took |
 
 **Full script** (`special-variables.sh`):
 

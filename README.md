@@ -19,6 +19,7 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 11 - Backend Deployment: Node.js vs Java vs Python vs Go](day-11-backend-deployment-languages/README.md)
 - [Day 12 - Nginx: Reverse Proxy for a Multi-Service Backend](day-12-nginx-multi-service-reverse-proxy/README.md)
 - [Day 13 - Disk Management, Inodes & the Linux Directory Layout](day-13-disk-management-inodes-linux-layout/README.md)
+- [Day 14 - Shell Scripting and Version Control Basics](day-14-shell-scripting-git-basics/README.md)
 
 ## Projects
 

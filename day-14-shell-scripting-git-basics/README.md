@@ -148,25 +148,29 @@ Variable access uses `$VAR` or, to make the variable name's boundary explicit (e
 
 ### Special variables
 
-On top of the variables you define yourself, the shell provides several built in:
+The shell gives us these variables for free - we don't create them. Read each one as **"`$x` → it will give us ..."**:
 
-| Variable | Meaning |
-|---|---|
-| `$@` | All arguments passed to the script |
-| `$#` | Number of arguments passed |
-| `$1`, `$2`, ... | Individual positional arguments |
-| `$0` | The script's own name |
-| `$(realpath $0)` | The script's full path |
-| `$USER` | Who is running the script |
-| `$PWD` | Current working directory |
-| `$HOME` | Home directory of the current user |
-| `$$` | Process ID (PID) of the current script |
-| `$!` | PID of the most recent background command |
-| `$LINENO` | The current line number in the script |
-| `$?` | Exit status of the previous command |
-| `$SECONDS` | Total time the script has been running |
+| Variable | It will give us | How we print it |
+|---|---|---|
+| `$@` | **all the args** passed to the script | `echo "All args passed to the script: $@"` |
+| `$#` | the **number of args** passed to the script | `echo "Number of args passed to the script: $#"` |
+| `$1`, `$2`, ... | the **first, second, ... arg** | `echo "First variable passed: $1"` |
+| `$0` | the **script name** | `echo "Script name: $0"` |
+| `$(realpath $0)` | the **full path** of the script | `echo "Realpath: $(realpath $0)"` |
+| `$USER` | **who is running** the script | `echo "Who is running current script: $USER"` |
+| `$PWD` | the **current directory** of the script | `echo "Directory of the current script: $PWD"` |
+| `$HOME` | the **home directory** of the current user | `echo "Home directory of the current user: $HOME"` |
+| `$$` | the **PID** (process id) of the current script | `echo "PID of the current script: $$"` |
+| `$!` | the **PID of the command running in the background** now | `echo "PID of the command running in background now: $!"` |
+| `$LINENO` | the **current line number** in the script | `echo "Line number: $LINENO"` |
+| `$?` | the **exit status of the previous command** | `echo "previous command exit status: $?"` |
+| `$SECONDS` | the **total time** the script has been running | `echo "Total time executed for this script: $SECONDS"` |
+
+**Full script** (`special-variables.sh`):
 
 ```bash
+#!/bin/bash
+
 echo "All args passed to the script: $@"
 echo "Number of args passed to the script: $#"
 echo "First variable passed: $1"
@@ -178,17 +182,53 @@ echo "Home directory of the current user: $HOME"
 echo "PID of the current script: $$"
 sleep 10 &
 echo "PID of the command running in background now: $!"
-wait $!              # script pauses here until that background command finishes
+wait $!     # script waits until the $! command (sleep 10) is complete
 echo "Line number: $LINENO"
 echo "previous command exit status: $?"
 echo "Total time executed for this script: $SECONDS"
 ```
 
+**Run it:** `sh special-variables.sh John Raheem`
+
+```text
+All args passed to the script: John Raheem
+Number of args passed to the script: 2
+First variable passed: John
+Script name: special-variables.sh
+Realpath: /home/ec2-user/special-variables.sh
+Who is running current script: ec2-user
+Directory of the current script: /home/ec2-user
+Home directory of the current user: /home/ec2-user
+PID of the current script: 2345
+PID of the command running in background now: 2346
+Line number: 16
+previous command exit status: 0
+Total time executed for this script: 10
+```
+
+> `sleep 10 &` - the `&` runs `sleep` in the **background**, so the script doesn't wait. `wait $!` makes the script **wait until that background command is complete** - that's why the total time is 10 seconds.
+
 ### Exit status
 
-Every command, when it finishes, leaves behind an **exit status**, readable right after via `$?`:
-- `0` → success.
-- Any non-zero value (1–255) → some kind of failure - for example, `127` conventionally means "command not found" and `126` means "found but not executable."
+If we want to know the **status of the previous command**, we use `$?`.
+
+| `$?` value | Meaning |
+|---|---|
+| `0` | **success** |
+| `1`–`255` (anything not 0) | **failure** |
+| `127` | command not found |
+| `126` | command found but not executable |
+
+```bash
+ls /tmp
+echo $?        # 0   -> success
+
+ls /nofolder
+echo $?        # 2   -> failure
+
+abc
+echo $?        # 127 -> command not found
+```
 
 Nothing stops a shell script automatically just because one command in it failed - checking `$?` after anything that matters (installing a package, a critical step in a deployment) is the script writer's own responsibility. Example:
 ```

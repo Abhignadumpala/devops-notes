@@ -152,19 +152,21 @@ The shell gives us these variables for free - we don't create them, we just use 
 
 | Variable | What it does |
 |---|---|
-| `$@` | Gives **all the arguments** passed to the script. Run `sh script.sh John Raheem` → `$@` = `John Raheem` |
-| `$#` | Gives **how many arguments** were passed. Same run → `$#` = `2` |
-| `$1`, `$2`, ... | Gives **one argument by its position**. `$1` = `John` (first), `$2` = `Raheem` (second) |
-| `$0` | Gives the **name of the script** that is running → `script.sh` |
-| `$(realpath $0)` | Gives the **full path** of the script → `/home/ec2-user/script.sh` |
-| `$USER` | Gives the **user who is running** the script → `ec2-user` or `root` |
-| `$PWD` | Gives the **folder you are in** right now (present working directory) → `/home/ec2-user` |
-| `$HOME` | Gives the **home folder** of the user running the script → `/home/ec2-user` |
-| `$$` | Gives the **process id (PID)** of the running script. Every running program gets a PID |
-| `$!` | Gives the **PID of the last command sent to the background** with `&`. Used with `wait $!` to wait for it to finish |
-| `$LINENO` | Gives the **line number** the script is on. Helpful to show where an error happened |
-| `$?` | Gives the **exit status of the previous command**: `0` = success, anything else = failure |
-| `$SECONDS` | Gives **how many seconds** the script has been running. Used to measure how long a script took |
+| `$@` | Shows **all the args** passed to the script → `John Raheem` |
+| `$#` | Shows the **number of args** passed to the script → `2` |
+| `$1`, `$2`, ... | Shows the **first, second, ... arg** passed → `$1` = `John`, `$2` = `Raheem` |
+| `$0` | Shows the **script name** → `script.sh` |
+| `$(realpath $0)` | Shows the **full path** of the script → `/home/ec2-user/script.sh` |
+| `$USER` | Shows **who is running** the current script → `ec2-user` |
+| `$PWD` | Shows the **directory** of the current script → `/home/ec2-user` |
+| `$HOME` | Shows the **home directory** of the current user → `/home/ec2-user` |
+| `$$` | Shows the **PID** of the current script → `2345` |
+| `$!` | Shows the **PID of the command running in the background** now → `2346` |
+| `$LINENO` | Shows the **current line number** in the script → `15` |
+| `$?` | Shows the **exit status of the previous command** → `0` success, not 0 failure |
+| `$SECONDS` | Shows the **total time** the script has been running, in seconds → `10` |
+
+Examples use the run `sh script.sh John Raheem`.
 
 **Full script** (`special-variables.sh`):
 

@@ -201,7 +201,7 @@ Directory of the current script: /home/ec2-user
 Home directory of the current user: /home/ec2-user
 PID of the current script: 2345
 PID of the command running in background now: 2346
-Line number: 16
+Line number: 15
 previous command exit status: 0
 Total time executed for this script: 10
 ```

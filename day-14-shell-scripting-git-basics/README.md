@@ -5,7 +5,8 @@
 ## Table of Contents
 
 1. [What this is / why it matters](#what-this-is--why-it-matters)
-2. [How it works](#how-it-works)
+2. [Building blocks of any script](#building-blocks-of-any-script)
+3. [How it works](#how-it-works)
    - [The problem with doing things manually](#the-problem-with-doing-things-manually)
    - [Why scripts still aren't enough on their own](#why-scripts-still-arent-enough-on-their-own)
    - [VCS/SCM, and where Git fits](#vcsscm-and-where-git-fits)
@@ -17,9 +18,9 @@
    - [Shell has no real data types](#shell-has-no-real-data-types)
    - [Think before you write code: algorithm and pseudocode](#think-before-you-write-code-algorithm-and-pseudocode)
    - [Conditions](#conditions)
-3. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-4. [Key takeaways](#key-takeaways)
-5. [Interview Questions](#interview-questions)
+4. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
+5. [Key takeaways](#key-takeaways)
+6. [Interview Questions](#interview-questions)
 
 **More in this folder:** [Interview questions](interview-questions/README.md)
 
@@ -28,6 +29,24 @@
 ## What this is / why it matters
 
 Doing deployments and server changes by hand (typing commands one at a time, every time) doesn't scale and doesn't stay safe for long. Shell scripting turns a sequence of manual steps into a single, repeatable program. Version control (Git) is what makes it safe to change those scripts over time - tracking who changed what, keeping old versions recoverable, and letting more than one person work on the same code. Beyond the basics of writing and running a script, the shell also hands you built-in variables for free, remembers some variables across a whole login session, has no real data types at all, and lets a script branch based on a condition - and every command it runs leaves behind a status telling you whether it actually worked.
+
+## Building blocks of any script
+
+Almost every scripting language is learned in the same order. Learn these 6, and any new language is just new syntax:
+
+| # | Step | What it is | Shell example |
+|---|---|---|---|
+| 1 | **Variables** | Store a value under a name, write it once and reuse it | `NAME="John"` |
+| 2 | **Data types** | The kind of value (string, number, boolean, list). Shell treats everything as a string | `COUNT="5"` |
+| 3 | **Conditions** | Choose what to run based on true / false | `if [ $USER_ID -ne 0 ]; then ... fi` |
+| 4 | **Functions** | Group steps under a name, call them many times | `VALIDATE() { ... }` |
+| 5 | **Loops** | Repeat the same steps for many items | `for pkg in nginx mysql; do ... done` |
+| 6 | **Error handling** | Detect failures and stop or report them | `if [ $? -ne 0 ]; then echo "failed"; exit 1; fi` |
+
+```
+Variables ──► Data types ──► Conditions ──► Functions ──► Loops ──► Error handling
+ (store)       (what kind)    (decide)      (reuse)      (repeat)   (catch failures)
+```
 
 ## How it works
 
@@ -281,6 +300,7 @@ The actual `if`/`elif`/`else` bash syntax comes next - this stage is about getti
 - Special variables (`$@`, `$#`, `$0`, `$USER`, `$PWD`, `$$`, `$!`, `$LINENO`, `$?`, `$SECONDS`) are provided by the shell, not declared by you; `$?` specifically holds the previous command's exit status (`0` success, non-zero failure), and checking it is on the script writer since shell doesn't stop automatically on failure.
 - `export` makes a variable available for the session and to sub-processes; `~/.bashrc` persists it per-user, `/etc/profile.d/*.sh` persists it for everyone; `env` lists them all.
 - Shell has no real data types - everything is a string by default, which puts the burden of correctness on the script writer rather than a type system.
+- Any scripting language is built from the same 6 blocks: variables, data types, conditions, functions, loops, error handling.
 - Work out logic as an algorithm/pseudocode before writing real syntax, then express it as conditions (`if` / `else if` / `else`) once the steps are clear.
 
 See also: [Day 5 - Linux Administration](../day-05-users-packages-services-processes/linux-administration.md)

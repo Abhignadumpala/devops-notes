@@ -239,7 +239,7 @@ ssh ec2-user@<public-ip>
 
 #### Mental Model - Build in Reverse of the Request Flow
 
-![Setup order mental model - DB, backend, frontend](images/01-setup-order-mental-model.svg)
+![Where does a 3-tier deployment break - build order DB, backend, frontend](images/01-setup-order-mental-model.gif)
 
 - **Requests flow:** Browser → Frontend → Backend → DB.
 - **We build in reverse:** DB → Backend → Frontend.

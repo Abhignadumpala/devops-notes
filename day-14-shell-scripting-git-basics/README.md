@@ -168,6 +168,13 @@ The shell gives us these variables for free - we don't create them, we just use 
 
 Examples use the run `sh script.sh John Raheem`.
 
+**Exit status (`$?`)** - if we want to know the status of the previous command, we can use `$?`:
+
+```text
+0      -> success
+1-127  -> failure   (any value that is not 0 = failure)
+```
+
 **Full script** (`special-variables.sh`):
 
 ```bash

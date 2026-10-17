@@ -18,6 +18,7 @@
    - [Shell has no real data types](#shell-has-no-real-data-types)
    - [Think before you write code: algorithm and pseudocode](#think-before-you-write-code-algorithm-and-pseudocode)
    - [Conditions](#conditions)
+   - [Real script: sudo check + validate function](#real-script-sudo-check--validate-function)
 4. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
 5. [Key takeaways](#key-takeaways)
 6. [Interview Questions](#interview-questions)
@@ -326,7 +327,71 @@ check exit status ($?)
   0     -> success
   not 0 -> show failure
 ```
-The actual `if`/`elif`/`else` bash syntax comes next - this stage is about getting the logic right first.
+The same logic as a real bash script is below.
+
+### Real script: sudo check + validate function
+
+`11-conditions.sh` - checks for root first, then installs packages and checks every install with one reusable function:
+
+```bash
+#!/bin/bash
+
+user_id=$(id -u)
+
+if [ $user_id -ne 0 ]; then
+    echo "Please run this script with sudo access.."
+    exit 1
+fi
+
+validate(){
+    if [ $1 -ne 0 ]; then
+        echo "${2}..FAILED"
+        exit 1
+    else
+        echo "${2}..SUCCESS"
+    fi
+}
+
+echo "proceeding...."
+dnf install nginx -y
+validate $? "Nginx Installation"
+
+dnf install mysql -y
+validate $? "Mysql Installation"
+
+echo "Still proceeded..."
+```
+
+| Part | Meaning |
+|---|---|
+| `user_id=$(id -u)` | `$( )` runs a command and stores its output. `id -u` prints the user id: **root = 0** |
+| `[ $user_id -ne 0 ]` | `-ne` = **not equal**. Not root → print a message and stop |
+| `exit 1` | Stop the script right here with a failure status. Nothing below it runs |
+| `validate(){ ... }` | A **function**: write the check once, call it after every install |
+| `validate $? "Nginx Installation"` | Passes 2 values to the function: the exit status of `dnf install` and a name |
+| `$1`, `$2` (inside the function) | The 1st and 2nd values passed to the function → `$1` = exit status, `$2` = "Nginx Installation" |
+| `${2}..FAILED` | `${2}` is the same as `$2`; the `{}` separate the variable from the text after it |
+
+**Number comparisons inside `[ ]`:**
+
+| Operator | Meaning |
+|---|---|
+| `-eq` | equal |
+| `-ne` | not equal |
+| `-gt` / `-lt` | greater than / less than |
+| `-ge` / `-le` | greater or equal / less or equal |
+
+> Spaces matter: `[ $1 -ne 0 ]` works, `[$1 -ne 0]` gives an error.
+
+**What happens when you run it:**
+
+| Run as | Output |
+|---|---|
+| Normal user (`sh 11-conditions.sh`) | `Please run this script with sudo access..` → stops |
+| Root, both installs work | `Nginx Installation..SUCCESS`, `Mysql Installation..SUCCESS`, `Still proceeded...` |
+| Root, nginx install fails | `Nginx Installation..FAILED` → stops. MySQL is never installed and `Still proceeded...` never prints |
+
+> **Why a function?** Without it, the same `if [ $? -ne 0 ]` block is copied after every install. With `validate`, one line per install, and a fix in one place fixes every check.
 
 ## Common problems and how to solve them
 
@@ -349,6 +414,7 @@ The actual `if`/`elif`/`else` bash syntax comes next - this stage is about getti
 - Special variables (`$@`, `$#`, `$0`, `$USER`, `$PWD`, `$$`, `$!`, `$LINENO`, `$?`, `$SECONDS`) are provided by the shell, not declared by you; `$?` specifically holds the previous command's exit status (`0` success, non-zero failure), and checking it is on the script writer since shell doesn't stop automatically on failure.
 - `export` makes a variable available for the session and to sub-processes; `~/.bashrc` persists it per-user, `/etc/profile.d/*.sh` persists it for everyone; `env` lists them all.
 - Shell has no real data types - everything is a string by default, which puts the burden of correctness on the script writer rather than a type system.
+- A **`validate` function** (`validate $? "name"`) checks the exit status after every install in one line: `$1` = status, `$2` = name, `exit 1` on failure.
 - Any scripting language is built from the same 6 blocks: variables, data types, conditions, functions, loops, error handling.
 - Work out logic as an algorithm/pseudocode before writing real syntax, then express it as conditions (`if` / `else if` / `else`) once the steps are clear.
 

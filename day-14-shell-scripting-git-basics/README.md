@@ -18,7 +18,7 @@
    - [Shell has no real data types](#shell-has-no-real-data-types)
    - [Think before you write code: algorithm and pseudocode](#think-before-you-write-code-algorithm-and-pseudocode)
    - [Conditions](#conditions)
-   - [Real script: sudo check + validate function](#real-script-sudo-check--validate-function)
+   - [Functions](#functions)
 4. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
 5. [Key takeaways](#key-takeaways)
 6. [Interview Questions](#interview-questions)
@@ -327,11 +327,28 @@ check exit status ($?)
   0     -> success
   not 0 -> show failure
 ```
-The same logic as a real bash script is below.
+The same logic as a real bash script is in [Functions](#functions) below.
 
-### Real script: sudo check + validate function
+### Functions
 
-`11-conditions.sh` - checks for root first, then installs packages and checks every install with one reusable function:
+**Function** = a block of code with a name. Write it once, call it many times.
+
+```bash
+greet(){                     # define
+    echo "Hello $1, you are $2"
+}
+
+greet Abhi DevOps            # call → Hello Abhi, you are DevOps
+greet Ravi Cloud             # call → Hello Ravi, you are Cloud
+```
+
+| Point | Meaning |
+|---|---|
+| Define before you call | Bash reads top to bottom, so the function must be above the line that uses it |
+| `$1`, `$2` inside a function | The values passed **to the function** (not to the script) |
+| Why use one | No repeated code; fix it in one place and every call gets the fix |
+
+**Real example: sudo check + `validate` function** (`11-conditions.sh`). It checks for root first, then installs packages and checks every install with one reusable function:
 
 ```bash
 #!/bin/bash

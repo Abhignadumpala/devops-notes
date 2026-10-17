@@ -19,6 +19,7 @@
    - [Think before you write code: algorithm and pseudocode](#think-before-you-write-code-algorithm-and-pseudocode)
    - [Conditions](#conditions)
    - [Functions](#functions)
+   - [Logs and redirections](#logs-and-redirections)
 4. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
 5. [Key takeaways](#key-takeaways)
 6. [Interview Questions](#interview-questions)
@@ -410,6 +411,87 @@ echo "Still proceeded..."
 
 > **Why a function?** Without it, the same `if [ $? -ne 0 ]` block is copied after every install. With `validate`, one line per install, and a fix in one place fixes every check.
 
+### Logs and redirections
+
+**Why logs?** When a script runs `dnf install`, hundreds of lines fill the screen. Instead, send that output to a **log file**: the screen stays clean (only SUCCESS / FAILED), and if something breaks you open the log and see exactly what happened.
+
+**Redirections:**
+
+| Symbol | Sends | Into the file |
+|---|---|---|
+| `>` | normal output (stdout) | **overwrite** |
+| `>>` | normal output | **append** (add at the end) |
+| `2>` / `2>>` | error output (stderr) | overwrite / append |
+| `&>` | output **and** errors | overwrite |
+| `&>>` | output **and** errors | **append** ← used for logs |
+| `\| tee -a file` | output | shows on **screen and** appends to the file |
+
+```
+1 = stdout (normal output)     2 = stderr (errors)     & = both
+```
+
+**Example script** (`13-logs.sh`): same sudo check + `validate` function, now with a log file:
+
+```bash
+#!/bin/bash
+
+user_id=$(id -u)
+logs_folder="/var/log/shell-practice"
+logs_file="${logs_folder}/${0}.log"
+
+if [ $user_id -ne 0 ]; then
+    echo "Please run this script with sudo access.."
+    exit 1
+fi
+
+mkdir -p $logs_folder
+
+echo "Script started execution at $(date +"%F %T")"
+
+validate(){
+    if [ $1 -ne 0 ]; then
+        echo "${2}..FAILED" | tee -a $logs_file
+        exit 1
+    else
+        echo "${2}..SUCCESS" | tee -a $logs_file
+    fi
+}
+
+echo "proceeding...."
+dnf install nginx -y &>> $logs_file
+validate $? "Nginx Installation"
+
+dnf install mysql -y &>> $logs_file
+validate $? "Mysql Installation"
+
+echo "Script execution completed at $(date +"%F %T")"
+```
+
+| Line | Meaning |
+|---|---|
+| `logs_folder="/var/log/shell-practice"` | `/var/log` is where Linux keeps logs. Our own folder inside it |
+| `logs_file="${logs_folder}/${0}.log"` | `$0` = **script name** → `/var/log/shell-practice/13-logs.sh.log` |
+| `mkdir -p $logs_folder` | Create the folder. `-p` = no error if it already exists |
+| `$(date +"%F %T")` | Current date and time → `2026-10-18 00:13:45` (`%F` = date, `%T` = time) |
+| `dnf install nginx -y &>> $logs_file` | All install output **and errors** go to the log, not the screen |
+| `echo ... \| tee -a $logs_file` | SUCCESS / FAILED shows on the **screen** and is also saved in the **log** |
+
+> **Common mistake:** `${date +"%F %T"}` gives `bad substitution`. `${ }` is for **variables**; `$( )` **runs a command**. Date is a command → `$(date +"%F %T")`.
+
+**Run and check:**
+```bash
+sudo sh 13-logs.sh
+# Script started execution at 2026-10-18 00:13:45
+# proceeding....
+# Nginx Installation..SUCCESS
+# Mysql Installation..SUCCESS
+# Script execution completed at 2026-10-18 00:14:20
+
+cat /var/log/shell-practice/13-logs.sh.log     # full dnf output + SUCCESS lines
+```
+
+> **Tip:** run it as `sh 13-logs.sh` from the script's folder. If you run it with a full path (`sh /home/ec2-user/13-logs.sh`), `$0` becomes that full path and the log path breaks. `$(basename $0)` gives only the file name, whichever way it's run.
+
 ## Common problems and how to solve them
 
 - **`fatal: unable to auto-detect email address` / "Please tell me who you are"** - Git refuses to commit until it knows who's committing. Fix: run `git config --global user.email "..."` and `git config --global user.name "..."` once per machine (drop `--global` to set it for just one repository).
@@ -432,6 +514,7 @@ echo "Still proceeded..."
 - `export` makes a variable available for the session and to sub-processes; `~/.bashrc` persists it per-user, `/etc/profile.d/*.sh` persists it for everyone; `env` lists them all.
 - Shell has no real data types - everything is a string by default, which puts the burden of correctness on the script writer rather than a type system.
 - A **`validate` function** (`validate $? "name"`) checks the exit status after every install in one line: `$1` = status, `$2` = name, `exit 1` on failure.
+- **Logs:** send command output to a log file with `&>>` (output + errors, append), and use `| tee -a` to show a message on screen and save it too. `$(cmd)` runs a command, `${var}` reads a variable.
 - Any scripting language is built from the same 6 blocks: variables, data types, conditions, functions, loops, error handling.
 - Work out logic as an algorithm/pseudocode before writing real syntax, then express it as conditions (`if` / `else if` / `else`) once the steps are clear.
 

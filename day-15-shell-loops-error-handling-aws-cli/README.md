@@ -240,7 +240,37 @@ sudo sh 16-loops.sh nginx mysql python3     # run again
 
 ## Colors in output
 
-`17-colors.sh` = the same loop script, with **colored** SUCCESS / FAILED / SKIPPING, so results are easy to spot.
+**Simple example: Hello World in colors** (`colors-hello.sh`):
+
+```bash
+#!/bin/bash
+
+R="\e[31m"     # red
+G="\e[32m"     # green
+Y="\e[33m"     # yellow
+B="\e[34m"     # blue
+N="\e[0m"      # normal (reset)
+
+echo -e "${R}Hello World${N}"                     # whole line red
+echo -e "${G}Hello World${N}"                     # whole line green
+echo -e "${Y}Hello World${N}"                     # whole line yellow
+echo -e "${B}Hello World${N}"                     # whole line blue
+echo -e "${R}Hello${N} ${G}World${N}"             # Hello red, World green
+echo -e "\e[1;32mHello World\e[0m"                # bold green (1 = bold)
+```
+
+| Code | Color |
+|---|---|
+| `\e[31m` | 🔴 red |
+| `\e[32m` | 🟢 green |
+| `\e[33m` | 🟡 yellow |
+| `\e[34m` | 🔵 blue |
+| `\e[1;32m` | **bold** green |
+| `\e[0m` | reset to normal |
+
+> Pattern: `start-color` + text + `reset`. Forget `${N}` and the rest of the terminal stays colored.
+
+**In a real script:** `17-colors.sh` = the same loop script, with **colored** SUCCESS / FAILED / SKIPPING, so results are easy to spot.
 
 ```bash
 R="\e[31m"     # red

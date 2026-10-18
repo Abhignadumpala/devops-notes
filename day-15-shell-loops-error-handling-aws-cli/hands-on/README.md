@@ -4,6 +4,8 @@
 
 I launched and terminated an EC2 instance from **shell scripts** on my Ubuntu laptop using the **AWS CLI**, no console.
 
+> My AWS account ID is blacked out in the screenshots. The instance was terminated after the lab, so its IPs don't exist anymore.
+
 ## Table of Contents
 
 1. [Check AWS CLI access](#1-check-aws-cli-access)
@@ -52,6 +54,12 @@ $ aws sts get-caller-identity
 
 ## 3. Create script: ec2-creation.sh
 
+First version in Vim. It still had `--iam-instance-profile Name=roboshop-server`, a profile that doesn't exist in my account, so I removed that line (see [Problem 1](#5-problems-i-faced-and-how-i-fixed-them)).
+
+![First version of the create script](./images/create-00-script-first-version.png)
+
+Final script:
+
 ```bash
 #!/bin/bash
 
@@ -66,18 +74,17 @@ aws ec2 run-instances \
   --count 1
 ```
 
-```bash
-$ sh ec2-creation.sh
-{
-    "ReservationId": "r-0d29ab97643309fd1",
-    "Instances": [
-        {
-            ...
-            "GroupName": "roboshop-frontend",
-            "PrivateIpAddress": "172.31.4.195",
-            ...
-:
-```
+`sh ec2-creation.sh` → AWS answers with JSON: reservation ID, SG `roboshop-frontend`, private IP `172.31.4.195`, network interface "attaching" (still starting).
+
+![run-instances JSON output](./images/create-01-run-output.png)
+
+In the console: `web-server-roboshop` → **Running**, t3.micro, us-east-1a, status check "Initializing".
+
+![Instance running in the console](./images/create-02-console-running.png)
+
+Instance summary: Name tag `web-server-roboshop`, private IP `172.31.4.195`, subnet `subnet-03628f95f21fe62ce`, **IAM role: none** (no instance profile needed).
+
+![Instance summary and Name tag](./images/create-03-instance-summary.png)
 
 ✅ Instance created: `i-0c468b75e028ff1e9`, private IP `172.31.4.195`, SG `roboshop-frontend`.
 
@@ -95,6 +102,8 @@ $ sh ec2-creation.sh
 ## 4. Terminate script: ec2-termination.sh
 
 Finds the instance **by its Name tag**, terminates it and waits until it's gone. Works for one or many names.
+
+![Termination script in Vim](./images/terminate-01-script.png)
 
 ```bash
 #!/bin/bash
@@ -159,6 +168,10 @@ web-server-roboshop (i-0c468b75e028ff1e9) terminated...SUCCESS
 | 3 | `ParamValidation: the following arguments are required: --instance-ids` | Changed `run-instances` to `terminate-instances` but kept the **create options** (image-id, type, subnet...) | Separate script: look up the ID by Name tag, then `terminate-instances --instance-ids <id>` |
 | 4 | `-e Usage: bash ec2-termination.sh <server-name>` | Ran it with **`sh`**: on Ubuntu `sh` is dash, which doesn't understand `echo -e`. Also no name was passed | Run with **`bash`** and pass the name: `bash ec2-termination.sh web-server-roboshop` |
 | 5 | Couldn't copy from Vim: right-click **Copy** was greyed out | Vim's **mouse mode** made a Vim selection, not a terminal selection | Hold **Shift** while dragging → `Ctrl+Shift+C`. Permanent: `set mouse=` in `~/.vimrc` |
+
+**Problem 5, Vim copy:** the grey highlight is a **Vim** selection, so the terminal's **Copy** stays disabled.
+
+![Copy disabled in Vim](./images/problem-vim-copy-disabled.png)
 
 > **What is an instance profile?** The container that attaches an **IAM role** to an EC2 instance, so programs on it get temporary AWS credentials without stored keys. Optional: only needed when the server itself calls AWS (S3, SSM...).
 

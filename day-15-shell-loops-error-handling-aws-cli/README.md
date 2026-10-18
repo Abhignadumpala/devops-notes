@@ -23,7 +23,7 @@
 13. [Key takeaways](#key-takeaways)
 14. [Interview Questions](#interview-questions)
 
-**More in this folder:** [Interview questions](interview-questions/README.md)
+**More in this folder:** [Hands-on: create and terminate EC2 with AWS CLI scripts](hands-on/README.md) · [Interview questions](interview-questions/README.md)
 
 ---
 
@@ -394,6 +394,8 @@ aws ec2 run-instances \
 | `--tag-specifications ... Key=Name,Value=...` | Name |
 
 > Before using the CLI: `aws configure` (access key, secret key, region), or an IAM role on the server.
+
+**My run:** created and terminated an instance with my own scripts → [Hands-on](hands-on/README.md).
 
 **Order for automation:** create the security group first → give its ID to `run-instances`. With a loop, one script can launch all RoboShop servers:
 

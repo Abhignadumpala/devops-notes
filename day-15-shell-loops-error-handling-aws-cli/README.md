@@ -12,13 +12,16 @@
    - [How a for loop works (step by step)](#how-a-for-loop-works-step-by-step)
    - [Loop syntax in bash](#loop-syntax-in-bash)
 6. [Real script: install many packages with a loop](#real-script-install-many-packages-with-a-loop)
-7. [Error handling: known vs unknown errors](#error-handling-known-vs-unknown-errors)
-8. [Programming vs scripting](#programming-vs-scripting)
-9. [Programmatic access: AWS CLI](#programmatic-access-aws-cli)
-10. [Pipe `|`](#pipe-)
-11. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-12. [Key takeaways](#key-takeaways)
-13. [Interview Questions](#interview-questions)
+7. [Colors in output](#colors-in-output)
+8. [Error handling: known vs unknown errors](#error-handling-known-vs-unknown-errors)
+   - [set -e: stop on the first error](#set--e-stop-on-the-first-error)
+   - [trap: show where it failed](#trap-show-where-it-failed)
+9. [Programming vs scripting](#programming-vs-scripting)
+10. [Programmatic access: AWS CLI](#programmatic-access-aws-cli)
+11. [Pipe `|`](#pipe-)
+12. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
+13. [Key takeaways](#key-takeaways)
+14. [Interview Questions](#interview-questions)
 
 **More in this folder:** [Interview questions](interview-questions/README.md)
 
@@ -141,7 +144,18 @@ done
 
 ## Real script: install many packages with a loop
 
-`16-loops.sh` installs any number of packages passed as arguments. It **skips** a package that is already installed, and logs everything.
+**Version 1** (`15-loops.sh`): install every package passed to the script.
+```bash
+for package in $@
+do
+    echo "Going to install: ${package}"
+    dnf install $package -y &>> $logs_file
+    validate $? "Installing ${package}"
+done
+```
+Problem: it runs `dnf install` again even if the package is already there.
+
+**Version 2** (`16-loops.sh`): installs any number of packages passed as arguments. It **skips** a package that is already installed, and logs everything.
 
 ```bash
 #!/bin/bash
@@ -224,6 +238,37 @@ sudo sh 16-loops.sh nginx mysql python3     # run again
 
 > **Idempotent** = running the script again gives the **same result** without doing the work twice. Checking "already installed?" before installing makes this script safe to re-run. Ansible and Terraform work on the same idea.
 
+## Colors in output
+
+`17-colors.sh` = the same loop script, with **colored** SUCCESS / FAILED / SKIPPING, so results are easy to spot.
+
+```bash
+R="\e[31m"     # red
+G="\e[32m"     # green
+Y="\e[33m"     # yellow
+N="\e[0m"      # normal (reset the color)
+
+validate(){
+    if [ $1 -ne 0 ]; then
+        echo -e "${2}..${R}FAILED${N}" | tee -a $logs_file
+        exit 1
+    else
+        echo -e "${2}..${G}SUCCESS${N}" | tee -a $logs_file
+    fi
+}
+
+# inside the loop
+echo -e "${package} already installed...${Y}SKIPPING${N}"
+```
+
+| Part | Meaning |
+|---|---|
+| `\e[31m` | Start **red** text (32 = green, 33 = yellow, 34 = blue) |
+| `\e[0m` | **Reset** to normal, or everything after stays colored |
+| `echo -e` | `-e` = understand the `\e` codes. Without it, they print as plain text |
+
+> In the **log file** the colors show up as codes like `[31m`. That's normal: files don't show colors.
+
 ## Error handling: known vs unknown errors
 
 | Type | Example | What we do |
@@ -232,6 +277,80 @@ sudo sh 16-loops.sh nginx mysql python3     # run again
 | **Unknown errors** | Something we never expected (network drop, disk full in the middle, a bug in a tool) | Can't handle in advance. Logs help find them later |
 
 > Handle every error you can predict. For the rest, **log everything**, so you can find out what happened.
+
+### set -e: stop on the first error
+
+By default shell **keeps going** after a failed command. `set -e` changes that: the script **exits as soon as any command fails**.
+
+```bash
+#!/bin/bash
+set -e
+
+echo "starting"
+echo "step-1"
+echo "step-2"
+echo "step-3"
+faksdfhadsflkadsjfr       # not a real command → error → script stops here
+echo "proceeding"          # never runs
+```
+
+Output:
+```
+starting
+step-1
+step-2
+step-3
+18-set.sh: line 9: faksdfhadsflkadsjfr: command not found
+```
+
+| Without `set -e` | With `set -e` |
+|---|---|
+| Error is printed, script **continues** → `proceeding` prints | Script **stops** at the failed line |
+| We must check `$?` after each command | Shell checks every command for us |
+
+### trap: show where it failed
+
+`trap '...' ERR` runs a command **whenever an error happens**. Combined with `set -e`, it tells you **which line** and **which command** failed, just before the script exits.
+
+```bash
+#!/bin/bash
+set -e
+
+trap 'echo "Error at line $LINENO, command: $BASH_COMMAND"' ERR
+
+echo "step-1"
+dnf install nginxxx -y       # wrong package name
+echo "step-2"                # never runs
+```
+
+Output:
+```
+step-1
+Error: Unable to find a match: nginxxx
+Error at line 7, command: dnf install nginxxx -y
+```
+
+| Part | Meaning |
+|---|---|
+| `trap '<command>' ERR` | Run `<command>` every time a command fails |
+| `$LINENO` | Line number of the failed command |
+| `$BASH_COMMAND` | The command that failed |
+
+> **Careful with `set -e` + checks:** a plain `dnf list installed $package` line returns **not 0** when the package isn't installed, and `set -e` **exits** right there, before your `if [ $? -ne 0 ]` runs. Put the check **inside** the `if`; commands in an `if` condition don't trigger `set -e`:
+>
+> ```bash
+> if ! dnf list installed $package &>> $logs_file; then
+>     echo "Going to install: ${package}"
+>     dnf install $package -y &>> $logs_file
+> else
+>     echo -e "${package} already installed...${Y}SKIPPING${N}"
+> fi
+> ```
+
+| Approach | Use when |
+|---|---|
+| Check `$?` + `validate` function | You want **custom messages** for each step |
+| `set -e` + `trap ... ERR` | You want the script to **stop on any error** automatically and show where |
 
 ## Programming vs scripting
 
@@ -298,6 +417,8 @@ echo "Nginx..SUCCESS" | tee -a app.log   # screen + log file
 - **Loop never stops** - the condition never becomes false (for example, `i` is never increased).
 - **`aws: command not found` / `Unable to locate credentials`** - install the AWS CLI, then run `aws configure` or attach an IAM role to the server.
 - **Screen flooded with install output** - redirect it: `&>> $logs_file`.
+- **Colors print as `\e[31m` text** - use `echo -e`, not plain `echo`.
+- **Script with `set -e` exits at `dnf list installed`** - a "not installed" result counts as an error. Put the check inside `if ! ...; then`.
 
 ## Key takeaways
 
@@ -307,6 +428,8 @@ echo "Nginx..SUCCESS" | tee -a app.log   # screen + log file
 - A `for` loop: set a start value → check the condition → run the body → repeat until false.
 - `for package in $@` loops over every argument passed to the script.
 - Check before you act (`dnf list installed`) so the script is **idempotent**: safe to run again.
+- **Colors:** `\e[31m` red, `\e[32m` green, `\e[33m` yellow, `\e[0m` reset, printed with `echo -e`.
+- **`set -e`** stops the script on the first failed command; **`trap '...' ERR`** shows the line (`$LINENO`) and command (`$BASH_COMMAND`) that failed.
 - **Known errors** → handle them; **unknown errors** → log everything so you can trace them.
 - Programming builds apps (developers); scripting automates tasks (DevOps).
 - **Programmatic access** = AWS CLI or SDK instead of the console; `aws ec2 run-instances` launches a server in one command.
@@ -318,4 +441,4 @@ See also: [Day 14 - Shell Scripting and Version Control Basics](../day-14-shell-
 
 ## Interview Questions
 
-10 questions with short answers → [interview-questions/](interview-questions/README.md)
+12 questions with short answers → [interview-questions/](interview-questions/README.md)

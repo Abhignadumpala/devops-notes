@@ -41,3 +41,11 @@ Using AWS through the CLI or an SDK instead of the console. Example: `aws ec2 ru
 **10. What does the pipe `|` do?**
 
 It sends the output of one command as input to the next, for example `ls -l | grep ".sh"`.
+
+**11. What does `set -e` do?**
+
+It makes the script exit as soon as any command fails, instead of continuing. Commands inside an `if` condition don't trigger it.
+
+**12. What is `trap ... ERR` used for?**
+
+It runs a command whenever an error happens, e.g. `trap 'echo "Error at line $LINENO: $BASH_COMMAND"' ERR`, so you see exactly which line and command failed.

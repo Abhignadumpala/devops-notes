@@ -117,11 +117,31 @@ Every shell script should start with a **shebang** line:
 ```
 It has to be the very first line in the file. The shebang tells Linux which interpreter should run the rest of the file - without it, Linux has no way to know the file is a set of bash commands rather than, say, a Python script. "Shell script" and "bash script" mean the same thing here, since bash is the shell being used.
 
+**Comments** start with `#`. They are only for information; the shell doesn't run them (the shebang is the one special `#!` line).
+
+```bash
+#!/bin/bash
+
+# This is a comment, just for information. This line is not executed
+echo "Hello World!"
+```
+
 ### Variables
 
 A variable holds a value under a name, so the value only has to be written once:
 ```bash
 NAME="John"
+```
+
+> **No spaces around `=`**: `PERSON1=John` works, `PERSON1 = John` gives `command not found`.
+
+```bash
+#!/bin/bash
+PERSON1=John
+PERSON2=Raheem
+
+echo "$PERSON1:: Hi, $PERSON2. How are you?"
+echo "$PERSON2:: Hello $PERSON1. I am good. How about you?"
 ```
 This matters for the same reason **DRY (Don't Repeat Yourself)** matters in any code: if a value (a path, a username, a number used in a calculation) is typed out directly in ten places and it needs to change, all ten have to be found and fixed by hand. Held in one variable, it only has to change in one place, and that one change takes effect everywhere the variable is used - which also prevents accidental, inconsistent edits.
 
@@ -146,6 +166,43 @@ Script completed at: 08:35 AM
 Total time for execution is 1 min
 ```
 
+**Full timing script** (`05-variables.sh`), using **arithmetic** `$(( ))`:
+```bash
+#!/bin/bash
+
+START_TIME=$(date +%s)          # seconds since 1970 (epoch time)
+echo "Script started execution at: $START_TIME"
+
+sleep 10
+
+END_TIME=$(date +%s)
+echo "Script completed execution at: $END_TIME"
+
+TOTAL_TIME=$(($END_TIME-$START_TIME))
+echo "Total time taken: $TOTAL_TIME Seconds"     # 10 Seconds
+```
+
+| Syntax | Meaning |
+|---|---|
+| `$( )` | Run a **command**, use its output |
+| `$(( ))` | Do **maths**: `+ - * / %` |
+| `${ }` | Read a **variable** |
+
+**User input with `read`:** the script waits for you to type a value.
+```bash
+#!/bin/bash
+
+echo "Please enter your username::"
+read USER_NAME          # what you type goes into USER_NAME
+
+echo "Please enter your password::"
+read -s PASSWORD        # -s = silent, the typing is not shown on screen
+
+echo "Username is: $USER_NAME"
+```
+
+> Use `read -s` for passwords so nobody can see them on the screen. Never `echo` a password in a real script.
+
 Variable access uses `$VAR` or, to make the variable name's boundary explicit (e.g. right before more text), `${VAR}`.
 
 ### Special variables
@@ -155,6 +212,7 @@ The shell gives us these variables for free - we don't create them, we just use 
 | Variable | What it does |
 |---|---|
 | `$@` | Shows **all the args** passed to the script → `John Raheem` |
+| `$*` | Also shows **all the args**, but as **one single word** → `"John Raheem"` |
 | `$#` | Shows the **number of args** passed to the script → `2` |
 | `$1`, `$2`, ... | Shows the **first, second, ... arg** passed → `$1` = `John`, `$2` = `Raheem` |
 | `$0` | Shows the **script name** → `script.sh` |
@@ -183,6 +241,7 @@ Examples use the run `sh script.sh John Raheem`.
 #!/bin/bash
 
 echo "All args passed to the script: $@"
+echo "All args passed to the script as word: $*"
 echo "Number of args passed to the script: $#"
 echo "First variable passed: $1"
 echo "Script name: $0"
@@ -203,6 +262,7 @@ echo "Total time executed for this script: $SECONDS"
 
 ```text
 All args passed to the script: John Raheem
+All args passed to the script as word: John Raheem
 Number of args passed to the script: 2
 First variable passed: John
 Script name: special-variables.sh
@@ -273,6 +333,41 @@ Other languages distinguish between data types - `int`, `float`, `double`, `long
 
 Why real data types matter elsewhere: in 1996, the Ariane 5 rocket (flight 501) was destroyed about 37 seconds after launch because reused Ariane 4 guidance software converted a 64-bit floating-point velocity value into a 16-bit signed integer - the new rocket's higher velocity overflowed that integer, the conversion wasn't protected against the overflow, and the resulting error cascaded into the flight computer reading garbage as real flight data. Shell skipping data types entirely means that specific failure mode doesn't apply the same way, but it also means shell won't catch type mistakes for you - the responsibility shifts to the script writer.
 
+**Data types in practice** (`09-data-types.sh`):
+```bash
+#!/bin/bash
+
+var1=10
+var2=20
+var3=devops
+
+echo "$var1+$var2"                  # 10+20   → just text, no maths
+echo "$(($var1+$var2))"             # 30      → $(( )) does the maths
+echo "$(($var1+$var2+$var3))"       # 30      → "devops" is not a number, counted as 0
+
+declare -i COUNT=5                  # declare as integer
+COUNT=COUNT+1
+echo "Count is: $COUNT"             # 6
+
+FRUITS=("Apple" "Banana" "Papaya")  # array
+echo "All fruits: ${FRUITS[@]}"     # Apple Banana Papaya
+echo "First fruit: ${FRUITS[0]}"    # Apple  (index starts at 0)
+echo "Second fruit: ${FRUITS[1]}"   # Banana
+
+name="DevOps"
+echo "${name}Engineer"              # DevOpsEngineer
+```
+
+| Concept | Meaning |
+|---|---|
+| `"$var1+$var2"` | Shell joins **text**: `10+20` |
+| `$(( ))` | Turns the values into numbers and calculates |
+| `declare -i` | Tells shell "this variable is an **integer**", so `COUNT+1` is maths |
+| **Array** `( "a" "b" )` | Many values in one variable. `${ARR[@]}` = all, `${ARR[0]}` = first |
+| `${name}Engineer` | `{}` mark where the variable name ends |
+
+> Arrays start at index **0**: `${FRUITS[0]}` is the **first** fruit, `${FRUITS[1]}` the second.
+
 ### Think before you write code: algorithm and pseudocode
 
 Before writing any real syntax, work out the steps in plain English (the **algorithm**) and then as simple structured steps (**pseudocode**) - no particular language's syntax yet, just the logic. Roughly 90% of the effort in solving a problem is this thinking step; the actual code is the easy 10% once the steps are clear.
@@ -315,6 +410,37 @@ less than 33                      -> fail
 60 up to (not including) 75       -> first class
 75 and above                      -> distinction
 ```
+
+The grading scale as a real script (`10-condition.sh`), with `if` / `elif` / `else`:
+```bash
+#!/bin/bash
+
+echo "Please enter the marks"
+read marks
+
+if [ $marks -lt 33 ]; then          # -lt = less than
+    echo "Fail"
+elif [ $marks -lt 50 ]; then
+    echo "Third class"
+elif [ $marks -lt 60 ]; then
+    echo "Second class"
+elif [ $marks -lt 75 ]; then
+    echo "First class"
+else
+    echo "Distinction"
+fi
+
+echo "End"
+```
+
+| Keyword | Meaning |
+|---|---|
+| `if [ ... ]; then` | Check the first condition |
+| `elif [ ... ]; then` | "else if": checked only when everything above was false |
+| `else` | Runs when **no** condition was true |
+| `fi` | End of the `if` block (`if` written backwards) |
+
+Run: enter `45` → `Third class`. Enter `80` → `Distinction`. Checks go **top to bottom** and stop at the first true one.
 
 Example - combining a condition with exit status, before installing a package (`dnf install nginx -y`):
 ```
@@ -510,7 +636,8 @@ cat /var/log/shell-practice/13-logs.sh.log     # full dnf output + SUCCESS lines
 - A folder is a git repo only once it contains a `.git` subfolder - that's what's actually tracking the history.
 - `#!/bin/bash` must be the first line of a shell script - it tells Linux which interpreter runs the file.
 - Variables (including positional arguments `$1`, `$2`, ... and command substitution `$( )`) exist so a value is written once and reused - the same DRY principle behind avoiding repeated code anywhere else.
-- Special variables (`$@`, `$#`, `$0`, `$USER`, `$PWD`, `$$`, `$!`, `$LINENO`, `$?`, `$SECONDS`) are provided by the shell, not declared by you; `$?` specifically holds the previous command's exit status (`0` success, non-zero failure), and checking it is on the script writer since shell doesn't stop automatically on failure.
+- Comments start with `#`; `read` (and `read -s` for passwords) takes user input; `$(( ))` does maths; arrays start at index 0.
+- Special variables (`$@`, `$*`, `$#`, `$0`, `$USER`, `$PWD`, `$$`, `$!`, `$LINENO`, `$?`, `$SECONDS`) are provided by the shell, not declared by you; `$?` specifically holds the previous command's exit status (`0` success, non-zero failure), and checking it is on the script writer since shell doesn't stop automatically on failure.
 - `export` makes a variable available for the session and to sub-processes; `~/.bashrc` persists it per-user, `/etc/profile.d/*.sh` persists it for everyone; `env` lists them all.
 - Shell has no real data types - everything is a string by default, which puts the burden of correctness on the script writer rather than a type system.
 - A **`validate` function** (`validate $? "name"`) checks the exit status after every install in one line: `$1` = status, `$2` = name, `exit 1` on failure.

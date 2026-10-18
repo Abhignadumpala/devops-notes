@@ -20,6 +20,7 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 12 - Nginx: Reverse Proxy for a Multi-Service Backend](day-12-nginx-multi-service-reverse-proxy/README.md)
 - [Day 13 - Disk Management, Inodes & the Linux Directory Layout](day-13-disk-management-inodes-linux-layout/README.md)
 - [Day 14 - Shell Scripting and Version Control Basics](day-14-shell-scripting-git-basics/README.md)
+- [Day 15 - Shell Loops, Error Handling & AWS CLI](day-15-shell-loops-error-handling-aws-cli/README.md)
 
 ## Projects
 

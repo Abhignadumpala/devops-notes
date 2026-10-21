@@ -7,7 +7,7 @@
 1. [Big picture: what runs where](#big-picture-what-runs-where)
 2. [Files in this folder](#files-in-this-folder)
 3. [Security groups: one common SG + one SG per component](#security-groups-one-common-sg--one-sg-per-component)
-4. [roboshop.sh: create servers + DNS](#roboshsh-create-servers--dns)
+4. [roboshop.sh: create servers + DNS](#roboshopsh-create-servers--dns)
 5. [01-mongodb.sh: install MongoDB on the server](#01-mongodbsh-install-mongodb-on-the-server)
 6. [How I ran it (step by step)](#how-i-ran-it-step-by-step)
 7. [Result](#result)

@@ -28,7 +28,8 @@ Full details in [Day 4](../day-04-vim-users-permissions/README.md).
 |-----|--------|
 | `:wq` / `:q!` | Save & quit / quit without saving |
 | `:3` / `:3d` / `:4,5d` / `:%d` | Go to line 3 / delete line 3 / delete 4-5 / delete all |
-| `:%s/old/new/g` | Replace in whole file |
+| `:%s/old/new/g` | Replace in whole file (`s` = substitute, `g` = all matches) |
+| `sed -i 's/old/new/g' file` | Same replace from the shell, without opening the file |
 | `u` / `Ctrl+r` | Undo / redo |
 | `yy` / `dd` / `p` | Copy / cut / paste |
 | `gg` / `Shift+g` | Top / bottom |

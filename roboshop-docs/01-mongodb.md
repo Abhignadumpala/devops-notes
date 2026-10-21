@@ -93,6 +93,8 @@ Or do the same with one command:
 sed -i 's/127.0.0.1/0.0.0.0/' /etc/mongod.conf
 ```
 
+> `-i` = save into the file, `s` = substitute, `127.0.0.1` → `0.0.0.0`. No `g`, so only the first match on each line changes. More: [sed explained](../day-04-vim-users-permissions/README.md#same-replace-without-opening-the-file-sed)
+
 Restart the service to apply the change:
 
 ```shell

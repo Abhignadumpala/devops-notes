@@ -48,6 +48,8 @@ Or do the same with one command:
 sed -i -e 's/^bind 127.0.0.1/bind 0.0.0.0/' -e 's/^protected-mode yes/protected-mode no/' /etc/redis/redis.conf
 ```
 
+> `-i` = save into the file, `-e` = one more replace in the same command, `s` = substitute, `^` = only lines that **start** with that text. More: [sed explained](../day-04-vim-users-permissions/README.md#same-replace-without-opening-the-file-sed)
+
 ### Why both changes? (two locks)
 
 Redis has **two separate locks**. Both must be opened for other servers to connect:

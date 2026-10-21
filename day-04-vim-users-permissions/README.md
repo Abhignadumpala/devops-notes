@@ -75,6 +75,36 @@ Vim has 3 modes:
 - `%` = all lines
 - `g` = global (all matches in the line)
 
+### Same Replace Without Opening the File: `sed`
+
+**sed** = stream editor. It does the same find & replace **from the shell**, without opening the file.
+
+```text
+sed -i 's/sample/LUSV/g' /root/nautilus.xml
+```
+
+| Part | Meaning |
+|------|---------|
+| `sed` | Stream editor: edits text from the command line |
+| `-i` | **In-place**: save the change into the file (without it, sed only prints the result) |
+| `s` | **Substitute** (find & replace) |
+| `/sample/` | Text to find |
+| `/LUSV/` | Text to replace it with |
+| `g` | **Global**: every match on each line (without `g`, only the first match per line) |
+| `/root/nautilus.xml` | File to edit |
+
+| Where | Command |
+|-------|---------|
+| Inside Vim | `:%s/sample/LUSV/g` |
+| Shell (sed) | `sed -i 's/sample/LUSV/g' file` |
+
+- sed works on **every line** by default, so it needs no `%`.
+- `^` = start of line: `s/^bind 127.0.0.1/bind 0.0.0.0/` changes only lines that **start** with `bind`.
+- Preview first (file not changed): `sed 's/sample/LUSV/g' file`
+- Check after: `grep -c sample file` → `0` means all replaced.
+
+> **Interview one-liner:** in `s/old/new/g`, `s` = substitute, `g` = replace all matches on a line; `sed -i` saves it into the file.
+
 ### Esc Mode
 
 | Command | Action |

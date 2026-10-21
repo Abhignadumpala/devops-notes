@@ -165,6 +165,8 @@ Linux is case-sensitive throughout — `Devops` and `devops` are two different n
   ```
   :%s/sbin/SBIN/g
   ```
+- `s` = **substitute** (find & replace), `g` = **global** (all matches on the line)
+- Same replace from the shell, without opening the file: `sed -i 's/old/new/g' <file>` (see [Day 4: sed](../day-04-vim-users-permissions/README.md#same-replace-without-opening-the-file-sed))
 
 ## Common problems and how to solve them
 The most common early mistake is using `>` when you meant `>>` — `>` silently overwrites a file's entire contents, so redirecting output to an existing file by accident can wipe out data you needed. Default to `>>` unless you specifically want to replace the file.

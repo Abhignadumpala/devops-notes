@@ -21,6 +21,7 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 13 - Disk Management, Inodes & the Linux Directory Layout](day-13-disk-management-inodes-linux-layout/README.md)
 - [Day 14 - Shell Scripting and Version Control Basics](day-14-shell-scripting-git-basics/README.md)
 - [Day 15 - Shell Loops, Error Handling & AWS CLI](day-15-shell-loops-error-handling-aws-cli/README.md)
+- [Day 16 - RoboShop with Shell Scripts](day-16-roboshop-shell-scripts/README.md)
 
 ## Projects
 

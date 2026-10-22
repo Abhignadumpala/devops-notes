@@ -41,6 +41,9 @@ validate $? "start and enable mysql"
 mysql_secure_installation --set-root-pass RoboShop@1 &>> $logs_file
 validate $? "setup MySQL root user and password"
 
+mysql -uroot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'RoboShop@1';" &>> $logs_file
+validate $? "setting password for root@localhost"
+
 mysql -uroot -pRoboShop@1 -e "SELECT VERSION();" &>> $logs_file
 validate $? "checking root login with password"
 

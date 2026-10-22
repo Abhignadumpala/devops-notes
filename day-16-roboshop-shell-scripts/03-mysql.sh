@@ -30,16 +30,19 @@ validate(){
 
 echo "$(timestamp) [INFO] ==== Script started execution ======" | tee -a $logs_file
 
-dnf module enable mysql:8.4 -y
-dnf install mysql-server -y
+dnf module enable mysql:8.4 -y &>> $logs_file
+dnf install mysql-server -y &>> $logs_file
 validate $? "installing mysql"
 
-systemctl enable mysqld
-systemctl start mysqld
+systemctl enable mysqld &>> $logs_file
+systemctl start mysqld &>> $logs_file
 validate $? "start and enable mysql"
 
-mysql_secure_installation --set-root-pass RoboShop@1
+mysql_secure_installation --set-root-pass RoboShop@1 &>> $logs_file
 validate $? "setup MySQL root user and password"
+
+mysql -uroot -pRoboShop@1 -e "SELECT VERSION();" &>> $logs_file
+validate $? "checking root login with password"
 
 echo "$(timestamp) [INFO] script completed in  $SECONDS seconds" | tee -a $logs_file
 echo "$(timestamp) [INFO] ==== Script completed execution ======" | tee -a $logs_file

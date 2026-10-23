@@ -504,3 +504,5 @@ on server:    mongodb://mongodb.abhignadevops.store:27017/catalogue
 ## Interview Questions
 
 Practice questions with short answers → [interview-questions/](interview-questions/README.md)
+
+Something broken? → [Debugging guide: which error → what to check](../roboshop-debugging-guide/README.md) · [Problems I hit](troubleshooting.md)

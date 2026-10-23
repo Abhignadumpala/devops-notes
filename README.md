@@ -26,3 +26,4 @@ Each day has an **interview-questions/** folder for quick revision.
 ## Projects
 
 - [RoboShop - 3 tier microservices setup (MongoDB, Redis, MySQL, RabbitMQ, Nginx)](roboshop-docs/README.md)
+- [RoboShop Debugging Guide - which error → what to check (with diagrams)](roboshop-debugging-guide/README.md)

@@ -1,6 +1,6 @@
 # Day 16 - Problems I Hit and Fixes
 
-[← Back to Day 16 notes](README.md)
+[← Back to Day 16 notes](README.md) · [Debugging guide](../roboshop-debugging-guide/README.md)
 
 | # | Problem | Cause | Fix |
 |---|---------|-------|-----|

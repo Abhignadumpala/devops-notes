@@ -53,3 +53,40 @@ sed = Stream EDitor. `-i` = in-place: saves the change into the file. Without it
 **13. Where would you use Terraform and Ansible instead of these scripts?**
 
 Terraform to create servers, SGs and DNS (`roboshop.sh`); Ansible to install and configure software (`01-mongodb.sh`).
+
+**14. What is an idempotent script? Give an example.**
+
+A script that is safe to run again: it gives the same result without failing or duplicating work. Example: `id roboshop || useradd ... roboshop`, or `rabbitmqctl list_users | grep -qw roboshop` before `add_user`, which prints SKIPPING on the 2nd run.
+
+**15. What does `grep -qw` do?**
+
+`-q` = quiet, print nothing and only set the exit code (0 = found). `-w` = match the whole word only.
+
+**16. What is `$SECONDS`?**
+
+A built-in bash variable: seconds since the script started. Used to print the run time. Variable names are case-sensitive, so `$seconds` is empty.
+
+**17. A group of commands has one `validate $?` at the end. What's the risk?**
+
+`$?` holds only the last command's exit code. If an earlier command fails (e.g. `dnf module enable redis:7`) and the last one succeeds, the script says SUCCESS with the wrong setup.
+
+**18. `mysql_secure_installation` said success but `mysql -uroot -p...` gives Access denied. Why?**
+
+MySQL users are user + host. `--set-root-pass` set the password on `root@'%'` but left `root@localhost` empty. Fix with `ALTER USER 'root'@'localhost' IDENTIFIED BY '...'` and add a login check to the script.
+
+**19. Why use `script_dir=$PWD` at the top of a script?**
+
+The script later runs `cd /app`; relative paths like `catalogue.service` would then look in `/app`. Saving the start folder lets it find its own files.
+
+**20. Why put a `DOMAIN_NAME` placeholder in the service file and replace it with sed?**
+
+The domain stays in one variable, the file uses a DNS name instead of an IP, and sed edits the copied file in `/etc/systemd/system/`, so the repo file stays reusable.
+
+**21. Why `systemctl daemon-reload` after copying a service file?**
+
+systemd caches unit files. `daemon-reload` makes it read the new or changed file before `enable`/`start`.
+
+**22. Why `rm -rf /app/*` before `unzip`?**
+
+On a re-run unzip asks "replace?" and waits. With output redirected to a log, the script looks frozen. Cleaning first makes the step re-runnable.
+

@@ -154,18 +154,195 @@ Logs: `tail /var/log/nginx/error.log` shows `connect() failed (111: Connection r
 
 ## 6. Logs: where to find the exact reason
 
-| What | Command | Server |
-|------|---------|--------|
-| My install script log | `less /var/log/roboshop/<script>.log` | The server I ran it on |
-| App service (catalogue, user, cart...) | `journalctl -u catalogue -n 50` (`-f` to follow) | App server |
-| nginx errors | `tail -f /var/log/nginx/error.log` | frontend |
-| nginx requests | `tail -f /var/log/nginx/access.log` | frontend |
-| MongoDB | `tail /var/log/mongodb/mongod.log` | mongodb |
-| Redis | `journalctl -u redis` | redis |
-| MySQL | `tail /var/log/mysql/mysqld.log` | mysql |
-| RabbitMQ | `journalctl -u rabbitmq-server` | rabbitmq |
+![Which log is on which server](images/logs-map.png)
 
----
+### 6.1 Logs first, checklist second
+
+You **don't** have to test every hop one by one. The logs usually point straight to the problem:
+
+```
+① frontend:      /var/log/nginx/error.log   → WHICH service failed + WHAT kind of failure
+② that server:   journalctl -u <app>         → WHY (crashed, bad config, can't reach its DB)
+③ its DB server: the DB's own log            → why the DB refused (only if ② says DB)
+④ checklist (section 3) → only to confirm the fix
+```
+
+| Fact | Why it matters |
+|------|----------------|
+| **Each server keeps only its own logs** | nginx's log never shows why cart crashed; for that, SSH to the cart server |
+| **A log shows only what reached that server** | If the SG blocked the request, the app's log is **empty** for it |
+| **error.log = why, access.log = what** | access.log only has the status (`502`) and size; error.log has the reason |
+| Nothing collects all logs in our lab | In companies a tool collects every server's logs into one place (section 6.8) |
+
+### 6.2 Map: server → log → what you find there
+
+| Server | Log | Command | What you can find |
+|--------|-----|---------|-------------------|
+| **frontend** | nginx error log | `tail -50 /var/log/nginx/error.log` | Which backend failed and how: refused, timed out, host not found, permission denied (SELinux), bad config at start |
+| **frontend** | nginx access log | `tail -50 /var/log/nginx/access.log` | Every request: client IP, method, path, **status**, **size**, page it came from |
+| **catalogue / user / cart / payment** (Node.js) | systemd journal | `journalctl -u <app> -n 50` | `started on port 8080`, `MongoDB connected` / `Redis connected`, connection failures, crashes, each request |
+| **shipping** (Java) | systemd journal | `journalctl -u shipping -n 100` | Spring Boot start, MySQL connection errors (Java errors are long: read the **first** `Caused by:` line) |
+| **dispatch** | systemd journal | `journalctl -u dispatch -n 50` | Connected to RabbitMQ or not, orders it took from the queue |
+| **mongodb** | MongoDB log | `tail -50 /var/log/mongodb/mongod.log` | Start errors (bad `mongod.conf`), listening address, **connections from app IPs** |
+| **redis** | Redis log | `tail -50 /var/log/redis/redis.log` | Start, `Ready to accept connections`, config errors |
+| **mysql** | MySQL error log | `tail -50 /var/log/mysql/mysqld.log` | Start / crash, `ready for connections`, **Access denied** for a user |
+| **rabbitmq** | RabbitMQ log | `tail -50 /var/log/rabbitmq/rabbit@$(hostname -s).log` | Start, **login failed** for a user, connections from payment/dispatch |
+| **every server** I ran a script on | my script log | `less /var/log/roboshop/<script>.sh.log` | Full output of every step: **which step FAILED** and the real error text |
+| **every server** | dnf log | `tail /var/log/dnf.log` | Which packages were installed, repo errors |
+| **every server** | OS log | `journalctl -xe` · `tail /var/log/messages` | Why a service failed to start, system events |
+| **every server** | security log | `tail /var/log/secure` | SSH logins, `sudo` use |
+
+> Node.js apps don't write a log file. They print to the screen (stdout), and **systemd saves it in the journal**. That's why you read them with `journalctl -u <app>`, not from a file.
+
+### 6.3 frontend: nginx error.log (start here)
+
+```bash
+tail -20 /var/log/nginx/error.log
+grep upstream /var/log/nginx/error.log | tail       # only backend problems
+```
+
+Example line, and how to read it:
+
+```
+2026/10/07 08:33:52 [error] 1234#1234: *57 connect() failed (111: Connection refused)
+  while connecting to upstream, client: 58.84.62.61, server: _,
+  request: "POST /api/cart/add/gk/HPTD/1 HTTP/1.1",
+  upstream: "http://172.31.30.55:8080/add/gk/HPTD/1", host: "opsify.online"
+```
+
+| Part | Tells you |
+|------|-----------|
+| `request: "POST /api/cart/..."` | Which **service** (cart) |
+| `upstream: "http://172.31.30.55:8080/..."` | Which **IP** nginx actually used (compare with the cart server's private IP) |
+| `(111: Connection refused)` | What **kind** of failure |
+
+| Text in error.log | Meaning | Go to next |
+|-------------------|---------|------------|
+| `(111: Connection refused)` | Server reached, nothing listens on 8080 | That app server: `journalctl -u <app>` |
+| `(110: Connection timed out)` / `upstream timed out` | No answer: SG blocks, or server stopped | AWS: SG inbound / EC2 state |
+| `(113: No route to host)` | No machine at that IP | DNS record vs current private IP |
+| `host not found in upstream "cart.xxx"` | DNS name doesn't resolve (nginx won't even start) | Route 53 / typo in `roboshop.conf` |
+| `(13: Permission denied) while connecting to upstream` | SELinux blocks nginx | `setsebool -P httpd_can_network_connect 1` |
+| `[emerg] ... in /etc/nginx/default.d/roboshop.conf:12` | Bad config, nginx didn't start | Fix that line → `nginx -t` |
+
+### 6.4 frontend: nginx access.log
+
+```bash
+tail -20 /var/log/nginx/access.log
+grep '" 50[234] ' /var/log/nginx/access.log | tail     # only 502/503/504 lines
+tail -f /var/log/nginx/access.log                       # watch live while you click on the site
+```
+
+```
+58.84.62.61 - - [07/Oct/2026:08:33:52 +0000] "POST /api/cart/add/gk/HPTD/1 HTTP/1.1" 502 64 "http://opsify.online/product/HPTD" ...
+     │                       │                         │                              │   │
+  client IP                time                   method + path                   status size
+```
+
+- **Status**: 200 OK · 4xx = request problem · 502/504 = nginx ↔ backend problem · 503 = the app says "my DB is down".
+- **Size**: `64` = nginx's own 502 JSON → nginx couldn't reach the app. A different size = the **app** answered with its own error (see [8.9](#89-could-not-add-to-cart-502-on-post-apicartadd--a-typo-in-cartservice)).
+- No line at all when you click? The browser never reached nginx → frontend SG port 80, public IP, or DNS of the website.
+
+### 6.5 app servers: `journalctl -u <app>`
+
+```bash
+journalctl -u cart -n 50                  # last 50 lines
+journalctl -u cart -f                     # follow live (Ctrl+C to stop)
+journalctl -u cart --since "10 min ago"   # only recent
+journalctl -u cart -p err                 # only errors
+journalctl -u cart -b                     # since the last boot
+systemctl status cart                     # state + last 10 lines
+```
+
+What the RoboShop apps print (from the app code) and what it means:
+
+| You see | Meaning | Fix |
+|---------|---------|-----|
+| `catalogue started on port 8080` / `cart started on port 8080` | App started OK | - |
+| `MongoDB connected` / `Redis connected` | DB connection OK | - |
+| `MongoDB connection failed, retrying in 2s` | Can't reach MongoDB | `MONGO_URL` in `.service`, mongod running, `bindIp`, mongodb SG 27017 |
+| `Redis error` / `Redis initial connect failed` | Can't reach Redis | `REDIS_HOST`, redis running, `bind` + `protected-mode`, redis SG 6379 |
+| `catalogue lookup failed` + `ENOTFOUND catalog.xxx` | Cart can't **resolve** the catalogue name | Typo in `CATALOGUE_HOST` → `daemon-reload` + restart |
+| `ECONNREFUSED <ip>:<port>` | That IP answers but nothing listens there | Wrong IP (own IP?) or that service is down |
+| `ETIMEDOUT <ip>:<port>` | No answer | SG on the target server |
+| `Main process exited, code=exited, status=1/FAILURE` | App crashed at start | Read the lines **just above** it |
+| `Cannot find module` | Code or `node_modules` missing | Unzip into `/app`, `npm install` |
+| `status=203/EXEC` | `ExecStart` path wrong (`/bin/node` not there) | `which node`, fix `ExecStart` |
+| `status=217/USER` | `User=roboshop` doesn't exist | `useradd ... roboshop` |
+| `Start request repeated too quickly` | Crashed again and again, systemd gave up | Fix the real error above, then `systemctl reset-failed <app>` + restart |
+
+### 6.6 database servers
+
+**mongodb:** `tail -50 /var/log/mongodb/mongod.log` (JSON lines; search for words)
+
+```bash
+grep -i "listening on" /var/log/mongodb/mongod.log | tail -2   # 127.0.0.1 = only local, 0.0.0.0 = OK
+grep -i "connection accepted" /var/log/mongodb/mongod.log | tail   # which app IPs connected
+grep -i error /var/log/mongodb/mongod.log | tail
+```
+
+- No "connection accepted" from the catalogue IP, while catalogue says "connection failed" → the request never arrived → **SG** or **bindIp**.
+
+**redis:** `tail -50 /var/log/redis/redis.log`
+
+- `Ready to accept connections` = started OK.
+- Apps get `DENIED Redis is running in protected mode` (shown in the **app's** log) → `protected-mode no` + restart redis.
+
+**mysql:** `tail -50 /var/log/mysql/mysqld.log`
+
+- `ready for connections ... port: 3306` = started OK.
+- `Access denied for user 'shipping'@'172.31.x.x'` → wrong password, or the user doesn't exist **for that host**.
+- `ERROR 2003 (111)` is shown on the **client** side, not here: MySQL never saw that connection.
+
+**rabbitmq:** `tail -50 /var/log/rabbitmq/rabbit@$(hostname -s).log`
+
+- `Server startup complete` = started OK.
+- `user 'roboshop' - invalid credentials` / `login refused` → wrong `AMQP_USER`/`AMQP_PASS`, or the user wasn't created.
+- `accepting AMQP connection ... (172.31.x.x:...)` → payment/dispatch connected from that IP.
+
+### 6.7 Follow one request across servers (live)
+
+Open **two terminals**, then click "Add to cart" on the website:
+
+```
+terminal 1 (frontend):  tail -f /var/log/nginx/access.log /var/log/nginx/error.log
+terminal 2 (cart):      journalctl -u cart -f
+```
+
+| frontend shows | cart shows | Problem is |
+|----------------|------------|------------|
+| 200 | the request | ✅ works |
+| 502 + `refused` | nothing | cart **service down** |
+| 502/504 + `timed out` | nothing | **cart SG** (8080 from frontend SG) or server stopped |
+| 502 (app's own size) | `catalogue lookup failed` | cart → **catalogue** (go one hop deeper) |
+| 503 | `Redis error` | cart → **redis** |
+| nothing at all | nothing | browser → frontend (SG 80, public IP, website DNS) |
+
+**Rule:** the hop where the log lines **stop** is where the problem is.
+
+### 6.8 In real companies: central logging
+
+| Our lab | Companies |
+|---------|-----------|
+| SSH into each server, `tail` / `journalctl` | An agent on every server ships logs to **one place** |
+| Logs lost when a server is terminated | Logs kept for days/months |
+| Search one server at a time | Search **all servers at once** (by service, time, request id) |
+
+Tools: **ELK** (Elasticsearch + Logstash/Fluentd + Kibana), **Grafana Loki** + Promtail, **AWS CloudWatch Logs**.
+
+**Does Loki / CloudWatch / ELK replace this guide?** No. They replace the **SSH + tail on each server** part. You still need the **method**:
+
+| With central logging you still... | Because |
+|-----------------------------------|---------|
+| Follow the **request path** (frontend → app → DB) | Loki shows all logs together; you still must know which hop to read first |
+| Read the error text (refused / timeout / ENOTFOUND / Access denied) | Loki **finds** the line; **you** must understand it |
+| Notice **missing** lines | A request blocked by an **SG** never reaches the app, so there is **no log** to search |
+| Check the **agent** | Logs reach Loki only if Promtail/the agent runs on that server and is configured for that file |
+| Run commands to **fix and confirm** | Fixing a typo, an SG rule or a restart still happens on the server or in AWS |
+
+Full picture in real teams: **metrics** (Prometheus/Grafana: *something is wrong*, e.g. 5xx rate up) → **logs** (Loki: *what* and *where*) → **commands/fix** (this guide: *why* + fix).
+
+> The RoboShop nginx config sets `X-Request-Id` on every request. With central logging you search that one id and see the same request in nginx, cart and catalogue logs together.
 
 ## 7. Health check per server (copy-paste)
 
@@ -354,4 +531,6 @@ tail /var/log/nginx/error.log                      # refused / timed out / host 
 - **No route to host** = no machine answers at that IP (often a stale DNS record after a server was recreated).
 - **Read the response size** in the nginx access log: it tells you whether the error body came from nginx or from the app.
 - **NXDOMAIN** = the DNS name doesn't exist on the nameserver that was asked; check the registrar's NS list matches the Route 53 hosted zone.
+- Each server keeps **its own logs**: nginx's error.log tells you **which** service failed and **how**; that service's `journalctl -u <app>` tells you **why**.
+- If the app's log shows **no request at all**, it never arrived: suspect the **security group**.
 - **Logs** give the exact reason: `journalctl -u <svc>` for systemd apps, `/var/log/nginx/error.log` for nginx.

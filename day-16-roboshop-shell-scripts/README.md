@@ -2,6 +2,8 @@
 
 > **In short:** Same RoboShop project, now **automated with shell scripts** instead of typing every command by hand. `roboshop.sh` runs on my **laptop** and creates the EC2 servers + Route 53 records through the AWS CLI. Each component script (`01-mongodb.sh`…) runs **on its own server** and installs that service. GitHub carries the scripts from my laptop to the servers.
 
+> **Project repo:** the scripts and full project docs now live in [shellscript-roboshop-v1](https://github.com/Abhignadumpala/shellscript-roboshop-v1). This folder keeps my day-by-day learning notes.
+
 **Progress**
 
 | # | Script | Server | Status |

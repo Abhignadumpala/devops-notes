@@ -30,3 +30,4 @@ Each day has an **interview-questions/** folder for quick revision.
 - [RoboShop Debugging Guide - which error → what to check (with diagrams)](roboshop-debugging-guide/README.md)
 - [RoboShop Journey - manual → shell scripts → Git + CI/CD, every error and fix as one story](roboshop-journey/README.md)
 - [RoboShop Traffic Flow - incoming & outgoing: which address goes in which file, SG rules, side by side for every server](roboshop-traffic-flow-incoming-outgoing/README.md)
+- [Connection Check Commands - systemctl, ss -lntp, telnet, nc, curl -v, dig, journalctl: where to run each, what it checks, what each output means](connection-check-commands/README.md)

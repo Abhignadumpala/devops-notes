@@ -101,6 +101,8 @@ timeout 3 bash -c '</dev/tcp/mongodb.abhignadevops.store/27017' && echo OPEN || 
 
 It works for any port (27017, 6379, 3306, 5672) and needs no extra tool.
 
+Each command used here (`systemctl status`, `ss -lntp`, `telnet`, `nc`, `curl -v`, `dig`) explained in depth, with every output line: [Connection check commands](../connection-check-commands/README.md)
+
 ---
 
 ## 4. Config files: where they are and what to restart

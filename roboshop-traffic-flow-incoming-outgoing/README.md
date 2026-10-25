@@ -1,4 +1,4 @@
-# RoboShop Connections: Who Calls Whom
+# RoboShop Traffic Flow: Incoming & Outgoing Addresses, Files and SG Rules
 
 All the addresses and firewall rules of RoboShop in one place.
 For every server: **who it calls** (outgoing) and **who is allowed to call it** (incoming), side by side.

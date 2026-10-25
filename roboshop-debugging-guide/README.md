@@ -6,6 +6,8 @@
 
 > **In short:** Don't guess. **Follow the request path** and test **one hop at a time**. The **first hop that fails** is where the problem is. The **error message** tells you **which kind of problem**: the server or service is down, the network (SG) is blocked, or the config is wrong.
 
+![Who calls whom: every RoboShop server, its port and who it connects to](../roboshop-traffic-flow-incoming-outgoing/images/01-who-calls-whom.svg)
+
 ---
 
 ## 1. The request path (who calls whom)

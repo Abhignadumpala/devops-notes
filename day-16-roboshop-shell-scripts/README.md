@@ -4,6 +4,8 @@
 
 > **Project repo:** the scripts and full project docs now live in [shellscript-roboshop-v1](https://github.com/Abhignadumpala/shellscript-roboshop-v1). This folder keeps my day-by-day learning notes.
 
+![Who calls whom: every RoboShop server, its port and who it connects to](../roboshop-traffic-flow-incoming-outgoing/images/01-who-calls-whom.svg)
+
 **Progress**
 
 | # | Script | Server | Status |

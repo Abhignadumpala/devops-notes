@@ -4,6 +4,8 @@
 
 ![RoboShop architecture](../day-10-databases-sql-nosql-cache-queues/images/01-roboshop-3-tier-architecture.svg)
 
+![Who calls whom: every RoboShop server, its port and who it connects to](../roboshop-traffic-flow-incoming-outgoing/images/01-who-calls-whom.svg)
+
 RoboShop is an online robot store built from small services. Each service runs on its own EC2 server (RHEL 9) and is managed by `systemd`.
 
 ### Order Flow (animated)

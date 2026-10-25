@@ -5,6 +5,8 @@ Each stage showed me the problems of the one before it. This note is the full st
 
 ![Three stages](images/01-three-stages.svg)
 
+![Who calls whom: every RoboShop server, its port and who it connects to](../roboshop-traffic-flow-incoming-outgoing/images/01-who-calls-whom.svg)
+
 ## Table of Contents
 
 1. [The 3 stages at a glance](#1-the-3-stages-at-a-glance)

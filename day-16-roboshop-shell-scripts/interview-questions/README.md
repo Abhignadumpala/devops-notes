@@ -56,7 +56,7 @@ Terraform to create servers, SGs and DNS (`roboshop.sh`); Ansible to install and
 
 **14. What is an idempotent script? Give an example.**
 
-A script that is safe to run again: it gives the same result without failing or duplicating work. Example: `id roboshop || useradd ... roboshop`, or `rabbitmqctl list_users | grep -qw roboshop` before `add_user`, which prints SKIPPING on the 2nd run.
+A script that gives the **same result no matter how many times I run it or retry it**: no failures, nothing duplicated. Examples: `id roboshop` before `useradd`, `rabbitmqctl list_users | grep -qw roboshop` before `add_user`, `countDocuments()` before loading products, `mkdir -p`, `rm -rf /app/*` before unzip. A 2nd run prints SKIPPING. If a run fails halfway, I fix it and run again without cleanup.
 
 **15. What does `grep -qw` do?**
 

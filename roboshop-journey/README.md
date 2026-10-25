@@ -13,7 +13,7 @@ Each stage showed me the problems of the one before it. This note is the full st
 4. [Manual errors I hit (story + fix)](#4-manual-errors-i-hit-story--fix)
 5. [Other errors I studied](#5-other-errors-i-studied)
 6. [The real pain of manual work](#6-the-real-pain-of-manual-work)
-7. [Stage 2: Automating with shell scripts](#7-stage-2-automating-with-shell-scripts)
+7. [Stage 2: Automating with shell scripts](#7-stage-2-automating-with-shell-scripts) · [Idempotency](#idempotency)
 8. [Scripting errors I hit (story + fix)](#8-scripting-errors-i-hit-story--fix)
 9. [What scripting fixed](#9-what-scripting-fixed)
 10. [What scripting still can't solve](#10-what-scripting-still-cant-solve)
@@ -188,6 +188,36 @@ Same project, now as code. Repo: [shellscript-roboshop-v1](https://github.com/Ab
 6. **Restart at the end**: `systemctl restart <service>` + `validate $?`, so every change from this run is loaded. This is the same `start` vs `restart` lesson as the Redis bug in Stage 1.
 
 > The Redis protected-mode bug from Stage 1 **can't happen again**: the fix is a line in `02-redis.sh`.
+
+### Idempotency
+
+> **Idempotency** = the script gives the **same result** no matter how many times I run it or retry it.
+
+1st run → creates everything. 2nd, 3rd run → nothing breaks, nothing is duplicated, existing things are SKIPPED.
+
+| Step | Without a check (2nd run) | My check |
+|------|---------------------------|----------|
+| App user | `useradd` fails: user exists | `id roboshop` → SKIPPING |
+| RabbitMQ user | `add_user` fails: user exists | `list_users \| grep -qw roboshop` → SKIPPING |
+| Unzip code | `unzip` asks "replace?", script freezes | `rm -rf /app/*` first |
+| Load products | products loaded twice | `countDocuments()` → load only if `0` |
+| Service | `start` ignores changes | `restart` always |
+| Folder | `mkdir` fails: folder exists | `mkdir -p` |
+| Package | already installed | `dnf install` skips it by itself |
+
+**Pattern:** check → if missing, create → else SKIPPING.
+
+```bash
+id roboshop &>> $logs_file
+if [ $? -ne 0 ]; then
+    useradd --system --home /app --shell /sbin/nologin roboshop
+    validate $? "creating system user"
+else
+    echo -e "system user already exist...${Y}SKIPPING${N}"
+fi
+```
+
+**Why it matters:** if a script fails halfway, I fix the problem and **just run it again**. No manual cleanup.
 
 ---
 

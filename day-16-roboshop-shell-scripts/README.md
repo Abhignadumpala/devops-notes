@@ -34,7 +34,7 @@
 15. [Key takeaways](#key-takeaways)
 16. [Interview Questions](#interview-questions)
 
-**More in this folder:** [Server notes: one note per script](servers/README.md) · [Problems I hit and fixes](troubleshooting.md) · [Interview questions](interview-questions/README.md)
+**More in this folder:** Each script's explanation sits right below it: `<script>.sh.md` (e.g. [05-catalogue.sh.md](05-catalogue.sh.md)), common part in [00-common-part.md](00-common-part.md) · [Problems I hit and fixes](troubleshooting.md) · [Interview questions](interview-questions/README.md)
 
 ---
 

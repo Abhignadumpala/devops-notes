@@ -1,6 +1,6 @@
 # 05-catalogue.sh: Catalogue Server
 
-[← Server notes](README.md) · [Day 16 notes](../README.md)
+[← Day 16 notes](README.md) · [Common part of every script](00-common-part.md)
 
 ## What this server does
 
@@ -391,11 +391,11 @@ echo "$(timestamp) [INFO] ==== Script completed execution ======" | tee -a $logs
 
 ## Run + result
 
-![catalogue.service](../images/handson/05-catalogue-service.png)
+![catalogue.service](images/handson/05-catalogue-service.png)
 
 `/health` → `{"app":"OK","mongo":true}`, `/products` → all **11 products**.
 
-![05-catalogue.sh run, health and products](../images/handson/05-catalogue-run-health-products.png)
+![05-catalogue.sh run, health and products](images/handson/05-catalogue-run-health-products.png)
 
 ## Verify
 
@@ -420,7 +420,7 @@ journalctl -u catalogue -n 20              # app log
 | Re-run ignored a changed service file | `start` on a running service does nothing | `restart` + `validate` at the end |
 | Download URL broken | Long line got cut when pasting | `bash -n` + `curl -sI <url>` → 200 |
 
-More: [all problems and fixes](../troubleshooting.md) · [Traffic flow: incoming and outgoing](../../roboshop-traffic-flow-incoming-outgoing/README.md)
+More: [all problems and fixes](troubleshooting.md) · [Traffic flow: incoming and outgoing](../roboshop-traffic-flow-incoming-outgoing/README.md)
 
 ---
 

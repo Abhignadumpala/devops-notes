@@ -12,7 +12,8 @@ Each script has its explanation **right below it** in the folder (`<script>.sh.m
 | 3 | [03-mysql.sh](03-mysql.sh.md) | mysql | 3306 | ✅ 40 s |
 | 4 | [04-rabbitmq.sh](04-rabbitmq.sh.md) | rabbitmq | 5672 | ✅ 36 s |
 | 5 | [05-catalogue.sh](05-catalogue.sh.md) | catalogue | 8080 | ✅ 63 s |
-| 6–11 | user, cart, shipping, payment, dispatch, frontend | | | next |
+| 8 | [08-shipping.sh](08-shipping.sh.md) | shipping | 8080 | 📝 notes ready (Java + Maven, cities count check) |
+| 6, 7, 9–11 | user, cart, payment, dispatch, frontend | | | next |
 
 ---
 

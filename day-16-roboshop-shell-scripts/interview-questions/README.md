@@ -74,9 +74,9 @@ A built-in bash variable: seconds since the script started. Used to print the ru
 
 MySQL users are user + host. `--set-root-pass` set the password on `root@'%'` but left `root@localhost` empty. Fix with `ALTER USER 'root'@'localhost' IDENTIFIED BY '...'` and add a login check to the script.
 
-**19. Why use `script_dir=$PWD` at the top of a script?**
+**19. Why use `script_dir=$(dirname "$(realpath "$0")")` at the top of a script?**
 
-The script later runs `cd /app`; relative paths like `catalogue.service` would then look in `/app`. Saving the start folder lets it find its own files.
+The script later runs `cd /app`; relative paths like `catalogue.service` would then look in `/app`. This saves the script's own folder as a full path. `$PWD` only works if you run it from that folder; `realpath "$0"` works from anywhere.
 
 **20. Why put a `DOMAIN_NAME` placeholder in the service file and replace it with sed?**
 
@@ -90,3 +90,11 @@ systemd caches unit files. `daemon-reload` makes it read the new or changed file
 
 On a re-run unzip asks "replace?" and waits. With output redirected to a log, the script looks frozen. Cleaning first makes the step re-runnable.
 
+
+**23. How do you stop a script from loading the same data twice?**
+
+Count first: `mongosh --eval '...products.countDocuments()'`. If it's `0`, load `master-data.js`; otherwise print SKIPPING. Now a re-run doesn't duplicate products.
+
+**24. Why end an app script with `systemctl restart` and not `start`?**
+
+`start` does nothing if the service is already running, so on a re-run the new code or config is ignored. `restart` always stops and starts it, so every change is loaded. Then `validate $?` confirms it came back up.

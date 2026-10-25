@@ -34,7 +34,7 @@
 15. [Key takeaways](#key-takeaways)
 16. [Interview Questions](#interview-questions)
 
-**More in this folder:** [Problems I hit and fixes](troubleshooting.md) · [Interview questions](interview-questions/README.md)
+**More in this folder:** [Server notes: one note per script](servers/README.md) · [Problems I hit and fixes](troubleshooting.md) · [Interview questions](interview-questions/README.md)
 
 ---
 

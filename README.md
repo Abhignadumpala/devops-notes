@@ -29,3 +29,4 @@ Each day has an **interview-questions/** folder for quick revision.
 - [RoboShop with Shell Scripts - project repo (AWS CLI + Bash automation)](https://github.com/Abhignadumpala/shellscript-roboshop-v1)
 - [RoboShop Debugging Guide - which error → what to check (with diagrams)](roboshop-debugging-guide/README.md)
 - [RoboShop Journey - manual → shell scripts → Git + CI/CD, every error and fix as one story](roboshop-journey/README.md)
+- [RoboShop Connections - who calls whom: outgoing config vs incoming SG, side by side for every server](roboshop-connections/README.md)

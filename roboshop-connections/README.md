@@ -180,7 +180,11 @@ aws ec2 authorize-security-group-ingress \
 
 Plus on **every** SG: `22` from **My IP** (SSH). On `roboshop-rabbitmq`: `15672` from **My IP** (management UI, optional).
 
-**Rule to remember:** outgoing = the caller's file. Incoming = the target's SG, plus a config file only for mongodb and redis.
+> 📝 **Rule to remember**
+>
+> - **Outgoing traffic** → I add the target's address in the **caller's config file** (`.service` file or nginx `roboshop.conf`).
+> - **Incoming traffic** → I add an **SG inbound rule on every server** that receives traffic.
+> - **Config file change for incoming** → **only on mongodb and redis** (they listen on `127.0.0.1` by default). All other servers need only the SG rule.
 
 ---
 

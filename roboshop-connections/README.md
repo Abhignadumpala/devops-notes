@@ -92,25 +92,43 @@ server: /etc/systemd/system/user.service
 
 ## 3. Incoming traffic: where I allow it
 
-Incoming traffic must pass **2 doors**: first the **AWS SG** (outside the server), then the **service's listen address** (inside the server).
+Incoming needs **2 things** on the **target** server:
 
-```
-caller ──► [ Door 1: SG inbound of target ] ──► [ Door 2: service listen address ] ──► service
-            AWS console                          config file on the target server
-```
+1. **SG inbound rule** (AWS): on **every** server
+2. **Config file** (on the server): only on **mongodb** and **redis**
 
-### 3.1 Door 1: SG inbound rule (AWS)
+### 3.1 Which rule and file, on which server
+
+| Server | SG inbound rule (AWS) | Config file (path on the server) | What I change | Apply the change |
+|--------|-----------------------|----------------------------------|---------------|------------------|
+| **frontend** | `roboshop-frontend`: 80 from `0.0.0.0/0` | – | nothing | – |
+| **catalogue** | `roboshop-catalogue`: 8080 from `roboshop-frontend`, `roboshop-cart` | – | nothing | – |
+| **user** | `roboshop-user`: 8080 from `roboshop-frontend`, `roboshop-payment` | – | nothing | – |
+| **cart** | `roboshop-cart`: 8080 from `roboshop-frontend`, `roboshop-shipping`, `roboshop-payment` | – | nothing | – |
+| **shipping** | `roboshop-shipping`: 8080 from `roboshop-frontend` | – | nothing | – |
+| **payment** | `roboshop-payment`: 8080 from `roboshop-frontend` | – | nothing | – |
+| **dispatch** | none (nobody calls it) | – | nothing | – |
+| **mongodb** | `roboshop-mongodb`: 27017 from `roboshop-catalogue`, `roboshop-user` | `/etc/mongod.conf` | `bindIp: 127.0.0.1` → `0.0.0.0` | `systemctl restart mongod` |
+| **redis** | `roboshop-redis`: 6379 from `roboshop-user`, `roboshop-cart` | `/etc/redis/redis.conf` | `bind 0.0.0.0` **and** `protected-mode no` | `systemctl restart redis` |
+| **mysql** | `roboshop-mysql`: 3306 from `roboshop-shipping` | – | nothing | – |
+| **rabbitmq** | `roboshop-rabbitmq`: 5672 from `roboshop-payment`, `roboshop-dispatch` | – | nothing | – |
+
+Plus on every SG: `22` from **My IP** (SSH). On rabbitmq: `15672` from **My IP** (management UI).
+
+> Why only mongodb and redis need a file change: by default they listen on `127.0.0.1` (only the server itself). The others already listen for other servers. Check with `ss -tlnp`.
+
+### 3.2 How I add the SG rule
 
 **Console path:**
 
-1. **EC2** → left menu **Network & Security** → **Security Groups**
+1. **EC2** → **Network & Security** → **Security Groups**
 2. Select the **target's** SG, e.g. `roboshop-redis`
-3. **Inbound rules** tab → **Edit inbound rules** → **Add rule**
+3. **Inbound rules** → **Edit inbound rules** → **Add rule**
 4. Type **Custom TCP**, Port **6379**
-5. Source **Custom** → pick the **caller's SG**, e.g. `roboshop-user`
-6. Description: `user: guest id counter` → **Save rules**
+5. Source **Custom** → the **caller's SG**, e.g. `roboshop-user`
+6. **Save rules**
 
-**Same with AWS CLI:**
+**AWS CLI:**
 
 ```bash
 aws ec2 authorize-security-group-ingress \
@@ -119,27 +137,7 @@ aws ec2 authorize-security-group-ingress \
   --source-group <roboshop-user-sg-id>
 ```
 
-> **Source = an SG, not an IP.** "Any server that has `roboshop-user` attached" may connect. If the user server is recreated with a new IP, the rule still works.
-
-### 3.2 Door 2: the service's listen address (on the server)
-
-By default some services listen only on `127.0.0.1`, which means only the same server can reach them.
-
-| Server | File (path on the server) | Change | Default listen |
-|--------|---------------------------|--------|----------------|
-| **mongodb** | `/etc/mongod.conf` | `bindIp: 127.0.0.1` → `0.0.0.0` | `127.0.0.1` ❌ |
-| **redis** | `/etc/redis/redis.conf` | `bind 0.0.0.0` **and** `protected-mode no` | `127.0.0.1` + protected ❌ |
-| **mysql** | – | nothing | all interfaces ✅ |
-| **rabbitmq** | – | nothing | all interfaces ✅ |
-| **apps** (catalogue … payment) | – | nothing (the app listens on `:8080`) | all interfaces ✅ |
-| **frontend** | `/etc/nginx/nginx.conf` | nothing (`listen 80`) | all interfaces ✅ |
-
-Check from the target server:
-```bash
-ss -tlnp | grep 27017      # 0.0.0.0:27017 = open to other servers, 127.0.0.1:27017 = local only
-```
-
-After a change: `systemctl restart <service>` (not `start`).
+> **Source = the caller's SG, not its IP.** If the server is recreated with a new IP, the rule still works.
 
 ---
 
@@ -160,29 +158,29 @@ After a change: `systemctl restart <service>` (not `start`).
 
 ## 5. All connections in one table
 
-| # | From (caller) | To (target) | Port | Outgoing: set in caller's file | Incoming: SG rule on target |
-|---|---------------|-------------|------|--------------------------------|-----------------------------|
-| 1 | Internet | frontend | 80 | – | `roboshop-frontend`: 80 from `0.0.0.0/0` |
-| 2 | frontend | catalogue | 8080 | `roboshop.conf` → `/api/catalogue/` | `roboshop-catalogue`: 8080 from `roboshop-frontend` |
-| 3 | frontend | user | 8080 | `roboshop.conf` → `/api/user/` | `roboshop-user`: 8080 from `roboshop-frontend` |
-| 4 | frontend | cart | 8080 | `roboshop.conf` → `/api/cart/` | `roboshop-cart`: 8080 from `roboshop-frontend` |
-| 5 | frontend | shipping | 8080 | `roboshop.conf` → `/api/shipping/` | `roboshop-shipping`: 8080 from `roboshop-frontend` |
-| 6 | frontend | payment | 8080 | `roboshop.conf` → `/api/payment/` | `roboshop-payment`: 8080 from `roboshop-frontend` |
-| 7 | catalogue | mongodb | 27017 | `catalogue.service` → `MONGO_URL` | `roboshop-mongodb`: 27017 from `roboshop-catalogue` |
-| 8 | user | mongodb | 27017 | `user.service` → `MONGO_URL` | `roboshop-mongodb`: 27017 from `roboshop-user` |
-| 9 | user | redis | 6379 | `user.service` → `REDIS_URL` | `roboshop-redis`: 6379 from `roboshop-user` |
-| 10 | cart | redis | 6379 | `cart.service` → `REDIS_HOST` | `roboshop-redis`: 6379 from `roboshop-cart` |
-| 11 | cart | catalogue | 8080 | `cart.service` → `CATALOGUE_HOST` | `roboshop-catalogue`: 8080 from `roboshop-cart` |
-| 12 | shipping | cart | 8080 | `shipping.service` → `CART_ENDPOINT` | `roboshop-cart`: 8080 from `roboshop-shipping` |
-| 13 | shipping | mysql | 3306 | `shipping.service` → `DB_HOST` | `roboshop-mysql`: 3306 from `roboshop-shipping` |
-| 14 | payment | cart | 8080 | `payment.service` → `CART_HOST` | `roboshop-cart`: 8080 from `roboshop-payment` |
-| 15 | payment | user | 8080 | `payment.service` → `USER_HOST` | `roboshop-user`: 8080 from `roboshop-payment` |
-| 16 | payment | rabbitmq | 5672 | `payment.service` → `AMQP_HOST` | `roboshop-rabbitmq`: 5672 from `roboshop-payment` |
-| 17 | dispatch | rabbitmq | 5672 | `dispatch.service` → `AMQP_HOST` | `roboshop-rabbitmq`: 5672 from `roboshop-dispatch` |
+| # | From (caller) | To (target) | Port | Outgoing: set in caller's file | Incoming: SG rule on target | Incoming: config file on target |
+|---|---------------|-------------|------|--------------------------------|-----------------------------|---------------------------------|
+| 1 | Internet | frontend | 80 | – | `roboshop-frontend`: 80 from `0.0.0.0/0` | – |
+| 2 | frontend | catalogue | 8080 | `roboshop.conf` → `/api/catalogue/` | `roboshop-catalogue`: 8080 from `roboshop-frontend` | – |
+| 3 | frontend | user | 8080 | `roboshop.conf` → `/api/user/` | `roboshop-user`: 8080 from `roboshop-frontend` | – |
+| 4 | frontend | cart | 8080 | `roboshop.conf` → `/api/cart/` | `roboshop-cart`: 8080 from `roboshop-frontend` | – |
+| 5 | frontend | shipping | 8080 | `roboshop.conf` → `/api/shipping/` | `roboshop-shipping`: 8080 from `roboshop-frontend` | – |
+| 6 | frontend | payment | 8080 | `roboshop.conf` → `/api/payment/` | `roboshop-payment`: 8080 from `roboshop-frontend` | – |
+| 7 | catalogue | mongodb | 27017 | `catalogue.service` → `MONGO_URL` | `roboshop-mongodb`: 27017 from `roboshop-catalogue` | `/etc/mongod.conf` → `bindIp: 0.0.0.0` |
+| 8 | user | mongodb | 27017 | `user.service` → `MONGO_URL` | `roboshop-mongodb`: 27017 from `roboshop-user` | `/etc/mongod.conf` → `bindIp: 0.0.0.0` |
+| 9 | user | redis | 6379 | `user.service` → `REDIS_URL` | `roboshop-redis`: 6379 from `roboshop-user` | `/etc/redis/redis.conf` → `bind 0.0.0.0` + `protected-mode no` |
+| 10 | cart | redis | 6379 | `cart.service` → `REDIS_HOST` | `roboshop-redis`: 6379 from `roboshop-cart` | `/etc/redis/redis.conf` → `bind 0.0.0.0` + `protected-mode no` |
+| 11 | cart | catalogue | 8080 | `cart.service` → `CATALOGUE_HOST` | `roboshop-catalogue`: 8080 from `roboshop-cart` | – |
+| 12 | shipping | cart | 8080 | `shipping.service` → `CART_ENDPOINT` | `roboshop-cart`: 8080 from `roboshop-shipping` | – |
+| 13 | shipping | mysql | 3306 | `shipping.service` → `DB_HOST` | `roboshop-mysql`: 3306 from `roboshop-shipping` | – |
+| 14 | payment | cart | 8080 | `payment.service` → `CART_HOST` | `roboshop-cart`: 8080 from `roboshop-payment` | – |
+| 15 | payment | user | 8080 | `payment.service` → `USER_HOST` | `roboshop-user`: 8080 from `roboshop-payment` | – |
+| 16 | payment | rabbitmq | 5672 | `payment.service` → `AMQP_HOST` | `roboshop-rabbitmq`: 5672 from `roboshop-payment` | – |
+| 17 | dispatch | rabbitmq | 5672 | `dispatch.service` → `AMQP_HOST` | `roboshop-rabbitmq`: 5672 from `roboshop-dispatch` | – |
 
 Plus on **every** SG: `22` from **My IP** (SSH). On `roboshop-rabbitmq`: `15672` from **My IP** (management UI, optional).
 
-**Rule to remember:** every row has **2 halves**. The outgoing half on the caller, the incoming half on the target.
+**Rule to remember:** outgoing = the caller's file. Incoming = the target's SG, plus a config file only for mongodb and redis.
 
 ---
 

@@ -17,7 +17,8 @@
 | MySQL SG must allow | 3306 from `roboshop-shipping` |
 | Config file I add | `/etc/systemd/system/shipping.service` |
 | Files used | `08-shipping.sh`, `shipping.service` |
-| Status | script + service pushed, server created (`172.31.11.97`), run next |
+| Run time | **216 s** (Java + Maven install ~2 min 20 s, build 26 s, data load 34 s) |
+| Result | health `UP` (db `UP`), `/count` = **948,833** cities |
 | Data | `cities` database in MySQL (~948,833 cities) |
 
 ---
@@ -488,7 +489,48 @@ tail -f /var/log/roboshop/08-shipping.sh.log
 
 ## Run + result
 
-⏳ Server created and DNS updated. Script run: next.
+```
+2026-10-26 01:23:56 [INFO] Unzipping shipping..SUCCESS
+2026-10-26 01:24:22 [INFO] Installing dependencies..SUCCESS        ← mvn clean package: 26 s
+2026-10-26 01:24:22 [INFO] Moving shipping.jar file..SUCCESS
+2026-10-26 01:24:34 [INFO] Installing MySQL client..SUCCESS
+2026-10-26 01:25:08 [INFO] Loading shipping data..SUCCESS          ← 948,833 cities: 34 s
+2026-10-26 01:25:09 [INFO] Creating APP user..SUCCESS
+2026-10-26 01:25:09 [INFO] Copying shipping service..SUCCESS
+2026-10-26 01:25:09 [INFO] Updating domain name in shipping service..SUCCESS
+2026-10-26 01:25:10 [INFO] Restarting/Starting shipping..SUCCESS
+2026-10-26 01:25:10 [INFO] Script completed in 216 seconds
+```
+
+**Where the 216 s went:** Java + Maven install ≈ 2 min 20 s (before unzip), Maven build 26 s, data load 34 s, everything else a few seconds.
+
+```
+$ curl localhost:8080/actuator/health
+{"components":{"db":{"details":{"database":"MySQL",...},"status":"UP"}, ... "status":"UP"}
+
+$ curl localhost:8080/count
+948833
+
+$ curl localhost:8080/codes
+[{"code":"au","name":"Australia",...}, ... {"code":"us","name":"USA","uuid":49}]     ← 25 countries
+```
+
+**Reading `systemctl status shipping` / the journal:**
+
+| Log line | Meaning |
+|----------|---------|
+| `Main PID: 3816 (java)` · `/bin/java -jar /app/shipping.jar` | the jar from block 6 is running |
+| `Memory: 312.7M` | Java uses far more memory than the Node apps (t3.micro has 1 GB) |
+| `HikariPool-1 - Added connection ...` | the MySQL connection pool connected: DNS ✅ SG 3306 ✅ `shipping` DB user ✅ |
+| `jdbc:mysql://mysql.abhignadevops.store:3306/cities` | `DB_HOST` from the service file, after `sed` |
+| `Tomcat started on port 8080` | listening |
+| `Started ShippingApplication in 11.655 seconds` | Spring Boot needs ~12 s to start, so `curl` right after the script can say "connection refused" |
+
+| Check | Proves |
+|-------|--------|
+| health `db: UP` | shipping → mysql works |
+| `/count` = `948833` | the count check loaded the data, and the app can read it |
+| `/codes` | the country list comes from MySQL too |
 
 ## Verify
 

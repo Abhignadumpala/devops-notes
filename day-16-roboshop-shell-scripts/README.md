@@ -17,7 +17,7 @@
 | 05 | `05-catalogue.sh` | roboshop-catalogue | ✅ 63 s, 11 products |
 | 06 | `06-user.sh` | roboshop-user | ✅ 109 s, mongo + redis connected ([notes](06-user.sh.md)) |
 | 07 | `07-cart.sh` | roboshop-cart | ✅ 99 s, redis connected, catalogue:8080 reachable ([notes](07-cart.sh.md)) |
-| 08 | `08-shipping.sh` | roboshop-shipping | ⏳ pushed, server created (172.31.11.97), run next ([notes](08-shipping.sh.md)) |
+| 08 | `08-shipping.sh` | roboshop-shipping | ✅ 216 s, health UP, 948,833 cities ([notes](08-shipping.sh.md)) |
 | 06–10 | user, cart, shipping, payment, frontend | | ⏭️ next |
 
 ## Table of Contents

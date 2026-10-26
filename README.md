@@ -31,4 +31,4 @@ Each day has an **interview-questions/** folder for quick revision.
 - [RoboShop Journey - manual → shell scripts → Git + CI/CD, every error and fix as one story](roboshop-journey/README.md)
 - [RoboShop Traffic Flow - incoming & outgoing: which address goes in which file, SG rules, side by side for every server](roboshop-traffic-flow-incoming-outgoing/README.md)
 - [Connection Check Commands - systemctl, ss -lntp, telnet, nc, curl -v, dig, journalctl: where to run each, what it checks, what each output means](connection-check-commands/README.md)
-- [Network Commands - caller vs target, ss -lntp vs telnet side by side, ss -lntp vs ss -tnp, ip a / ip r / private vs public IP, old vs new commands](network-commands/README.md)
+- [Network Commands - caller vs target, ss -lntp vs telnet side by side, ss -lntp vs ss -tnp, ip a / ip r / private vs public IP, old vs new commands, journalctl vs log files](network-commands/README.md)

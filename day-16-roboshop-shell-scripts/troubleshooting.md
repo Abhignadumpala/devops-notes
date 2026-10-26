@@ -29,6 +29,14 @@
 | 23 | `ssh` → `Permission denied (publickey,...,password)` | Password typed wrong (case-sensitive, nothing shows while typing) | Same AMI login on every server; type slowly |
 | 24 | JAVA_HOME step always SUCCESS | `validate $?` checks the last command, `echo $JAVA_HOME`, which never fails | `[ -n "$JAVA_HOME" ]` right before `validate` |
 | 25 | MySQL password warning printed between SUCCESS lines | `mysql ... < file.sql` had no redirect | `&>> $logs_file` |
+| 26 | Payment (v4) can't use RHEL 9's `python3` | It's 3.9; gunicorn 26 needs ≥ 3.10 | `dnf install python3.14 python3.14-pip` + venv `/app/.venv` |
+| 27 | Renamed `payment.sh` → `09-payment.sh`, old file stayed on GitHub | Plain `mv` + `git add 09-payment.sh`: the delete was never staged (`git status`: `deleted: payment.sh` not staged) | `git rm payment.sh` → commit → push. Use `git mv` to rename |
+| 28 | `bash 09-payment.sh` → "Please run this script with sudo access.." | Ran it on my **laptop** | SSH to the payment server first. Never `sudo` an app script on the laptop |
+| 29 | Nearly ran `roboshop.sh payment` twice | The server already existed | `describe-instances --filters Name=tag:Name,Values=roboshop-<name>` first; every run creates a **new** server |
+| 30 | `dnf list ... \| grep -E 'python3\.1[0-9] '` printed nothing | Package names are `python3.12.x86_64` (dot after the version, not a space) | `grep -E '^python3\.1[0-9]\.'` |
+| 31 | Payment `/health` → 503 `"rabbitmq":false` once, then `true` | Idle RabbitMQ connection had dropped; the health check resets it and answers `false` once | Check again before debugging. Stays `false` → check rabbitmq-server, `rabbitmqctl list_users`, SG 5672 |
+| 32 | `10-frontend.sh` would fail at `cp roboshop.conf` | Script written, `roboshop.conf` not created yet | Write it next to the script, `git status` → both files pushed |
+| 33 | `sed` on the repo `roboshop.conf`, then `cp` | Changes a tracked file → later `git pull` refuses | `cp` first, `sed` the copy |
 
 **Find the latest AMI by name:**
 ```bash

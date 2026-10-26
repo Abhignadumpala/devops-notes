@@ -15,7 +15,9 @@ Each script has **its own folder** (`01-mongodb/`, `05-catalogue/`, ...) with th
 | 6 | [06-user.sh](06-user/README.md) | user | 8080 | ✅ 109 s |
 | 7 | [07-cart.sh](07-cart/README.md) | cart | 8080 | ✅ 99 s |
 | 8 | [08-shipping.sh](08-shipping/README.md) | shipping | 8080 | ✅ 216 s, 948,833 cities |
-| 6, 7, 9–11 | user, cart, payment, dispatch, frontend | | | next |
+| 9 | [09-payment.sh](09-payment/README.md) | payment | 8080 | ✅ 18 s, rabbitmq true |
+| 10 | [10-frontend.sh](10-frontend/README.md) | frontend | 80 | ✅ shop live, 3 orders placed |
+| 11 | dispatch | dispatch | – | next |
 
 ---
 
@@ -68,6 +70,68 @@ validate(){
 | `$SECONDS` (at the end) | Built-in: seconds since the script started | Measures run time. Must be CAPITALS |
 
 > `01-mongodb.sh` was my first script, so it has the older version: no `timestamp()` and no `[INFO]` / `[ERROR]`.
+
+---
+
+## Create the app user (every app script: catalogue, user, cart, shipping, payment ...)
+
+```bash
+id roboshop &>> $logs_file
+if [ $? -ne 0 ]; then
+    useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop &>> $logs_file
+    validate $? "Creating system user"
+else
+    echo -e "$(timestamp) [INFO] System user roboshop already exist...${Y}SKIPPING${N}"
+fi
+```
+
+**In one line:** if the `roboshop` user doesn't exist, create it. If it already exists, skip.
+
+| Line | What it does |
+|------|--------------|
+| `id roboshop &>> $logs_file` | Asks Linux: "does user `roboshop` exist?" Output and errors go to the log, not the screen |
+| `if [ $? -ne 0 ]; then` | `$?` = exit code of the last command. **0 = found**, **not 0 = not found**. `-ne 0` = "not equal to 0", so "if NOT found" |
+| `useradd ... roboshop` | Creates the user |
+| `validate $? "Creating system user"` | Prints SUCCESS or FAILED for `useradd` |
+| `else` → `echo ... SKIPPING` | User already exists, so print yellow SKIPPING and do nothing |
+| `fi` | End of the `if` (`if` backwards) |
+
+| `useradd` option | Meaning | Why |
+|------------------|---------|-----|
+| `--system` | A user for a program, not a person | The app runs as it, nobody logs in |
+| `--home /app` | Its home folder is `/app` | The app code lives there |
+| `--shell /sbin/nologin` | Nobody can log in as it | Security: no shell for an attacker |
+| `--comment "..."` | A description | Just a label |
+| `roboshop` | The username | |
+
+```
+id roboshop
+     │
+  exit code?
+   ┌─┴───────────┐
+  0 (exists)    1 (not found)
+   │              │
+ SKIPPING      useradd → SUCCESS / FAILED
+```
+
+**Why check first?** `useradd roboshop` a 2nd time fails with `user 'roboshop' already exists`, so `validate` would stop the script with **FAILED**. The check makes the script **idempotent**: run it many times, same result, no errors.
+
+> **Idempotent** = you can run it many times and get the same result, with no errors and nothing duplicated.
+>
+> | Run | Not idempotent (`useradd` only) | Idempotent (`id` check first) |
+> |-----|----------------------------------|-------------------------------|
+> | 1st | user created ✅ | user created ✅ |
+> | 2nd | `user already exists` → **FAILED**, script stops ❌ | **SKIPPING**, script continues ✅ |
+>
+> Idempotent checks in my scripts: `id roboshop` before `useradd` · `mkdir -p` · `rabbitmqctl list_users \| grep -qw` before `add_user` · count check before loading products / cities · `rm -rf /app` before unzip.
+>
+> Real tools like **Ansible** and **Terraform** are idempotent by design. In Bash I write every check myself.
+
+**Why not run the app as root?** If someone breaks into the app, they only get the limited `roboshop` user, not root. This is called **least privilege**.
+
+**Try it:** `id roboshop; echo $?` → `0` if it exists, `1` if not.
+
+**Interview one-liner:** *"I check `id user` and its exit code `$?` before `useradd`, so the script is idempotent: a re-run skips instead of failing. The app runs as a `--system` user with `/sbin/nologin` for least privilege."*
 
 ---
 

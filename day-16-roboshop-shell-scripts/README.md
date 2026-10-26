@@ -20,7 +20,9 @@
 | 06 | `06-user.sh` | roboshop-user | ✅ 109 s, mongo + redis connected ([notes](06-user/README.md)) |
 | 07 | `07-cart.sh` | roboshop-cart | ✅ 99 s, redis connected, catalogue:8080 reachable ([notes](07-cart/README.md)) |
 | 08 | `08-shipping.sh` | roboshop-shipping | ✅ 216 s, health UP, 948,833 cities ([notes](08-shipping/README.md)) |
-| 06–10 | user, cart, shipping, payment, frontend | | ⏭️ next |
+| 09 | `09-payment.sh` | roboshop-payment | ✅ 18 s, Python 3.14 + venv + gunicorn, rabbitmq true ([notes](09-payment/README.md)) |
+| 10 | `10-frontend.sh` | roboshop-frontend | ✅ Nginx reverse proxy, all 5 `/api/*/health` 200, **3 orders placed** end to end ([notes](10-frontend/README.md)) |
+| 11 | dispatch | roboshop-dispatch | ⏭️ server created, script next |
 
 ## Table of Contents
 
@@ -91,6 +93,10 @@
 | [cart.service](07-cart/cart.service) | Copied by `07-cart.sh` | `REDIS_HOST` + `CATALOGUE_HOST` with `DOMAIN_NAME` |
 | [08-shipping.sh](08-shipping/08-shipping.sh) | Shipping server | Java 25 + Maven build, cities loaded once, app DB user |
 | [shipping.service](08-shipping/shipping.service) | Copied by `08-shipping.sh` | `CART_ENDPOINT` + `DB_HOST` with `DOMAIN_NAME`, DB user |
+| [09-payment.sh](09-payment/09-payment.sh) | Payment server | Python 3.14 + venv + `pip install`, gunicorn |
+| [payment.service](09-payment/payment.service) | Copied by `09-payment.sh` | `CART_HOST`, `USER_HOST`, `AMQP_HOST` with `DOMAIN_NAME`, gunicorn from the venv |
+| [10-frontend.sh](10-frontend/10-frontend.sh) | Frontend server | Nginx 1.26, web pages, `nginx -t` before restart |
+| [roboshop.conf](10-frontend/roboshop.conf) | Copied by `10-frontend.sh` | Reverse proxy `/api/*` → apps on 8080, with `DOMAIN_NAME` |
 
 ## Security groups: one common SG + one SG per component
 

@@ -118,3 +118,35 @@ Cart calls catalogue only when a request comes in. From the cart server: `telnet
 **29. In the shipping count check, why `[ -z "$count" ] || [ "$count" -eq 0 ]` in that order?**
 
 On the 1st run the query fails and `count` is empty. `[ "" -eq 0 ]` would error, so `-z` is tested first; if it's true, `||` never runs the right side.
+
+**30. Why a virtual environment for the payment app?**
+
+It keeps the app's libraries in `/app/.venv`, away from the system Python that `dnf` uses. RHEL 9's `python3` is 3.9 and gunicorn 26 needs 3.10+, so I install `python3.14` next to it and build the venv from that.
+
+**31. What is gunicorn, and what does `payment:app` mean?**
+
+A production server for Python web apps (Flask's own server is for development). `payment:app` = file `payment.py`, object `app` inside it.
+
+**32. What is a reverse proxy? How does RoboShop use one?**
+
+A server in front of the backends. The browser only talks to nginx on the frontend; `location /api/catalogue/ { proxy_pass http://catalogue.<domain>:8080/; }` forwards each API to its server. Backends stay private.
+
+**33. Why does `proxy_pass` end with `/`?**
+
+It strips the matched prefix: `/api/catalogue/products` → `/products`. Without it the backend gets the full path and returns 404.
+
+**34. Frontend has no `.service` file. Why?**
+
+Nginx isn't my code: `dnf install nginx` ships `nginx.service`. I only add config (`roboshop.conf` in `/etc/nginx/default.d/`).
+
+**35. A request from frontend to catalogue needs which 3 things?**
+
+Nginx config (where to send it), DNS (name → private IP) and the security group (8080 allowed from `roboshop-frontend`).
+
+**36. Why run `nginx -t` before `systemctl restart nginx`?**
+
+It tests the config without applying it. A bad config stops the script before the restart, so the live site keeps working.
+
+**37. You renamed a file with `mv` and pushed, but the old one is still on GitHub. Why?**
+
+`git add <new>` stages only the new file; the delete is a separate change. `git rm <old>` (or `git add -A`) stages it. `git mv` does both in one step.

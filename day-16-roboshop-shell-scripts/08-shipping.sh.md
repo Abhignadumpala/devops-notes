@@ -17,6 +17,7 @@
 | MySQL SG must allow | 3306 from `roboshop-shipping` |
 | Config file I add | `/etc/systemd/system/shipping.service` |
 | Files used | `08-shipping.sh`, `shipping.service` |
+| Status | script + service pushed, server created (`172.31.11.97`), run next |
 | Data | `cities` database in MySQL (~948,833 cities) |
 
 ---
@@ -29,10 +30,10 @@
 4. Create the `roboshop` user (skip if it exists)
 5. Clean `/app`, download and unzip the code
 6. **Build** the app with Maven → `shipping.jar`
-7. Copy `shipping.service` and put in my domain
-8. Install the **MySQL client**
-9. **Load the cities data only if it isn't there yet** (count check)
-10. Create the app's MySQL user
+7. Install the **MySQL client**
+8. **Load the cities data only if it isn't there yet** (count check)
+9. Create the app's MySQL user
+10. Copy `shipping.service` and put in my domain
 11. Start (restart) shipping
 
 ---
@@ -101,7 +102,20 @@ dirname again               → /usr/lib/jvm/java-25-openjdk-25.0.1...         =
 
 **Why:** Maven needs `JAVA_HOME` to know **which Java** to build with.
 
-> ⚠️ `validate $?` here checks `echo $JAVA_HOME`, and `echo` always succeeds. It doesn't really prove `JAVA_HOME` is right. Better: `[ -n "$JAVA_HOME" ]` before `validate`.
+> ⚠️ `validate $?` checks **only the command right above it**: here that's `echo $JAVA_HOME`, not the `export` or `source`. `echo` always returns `0`, even when the variable is empty, so this step **always says SUCCESS**.
+>
+> ```bash
+> JAVA_HOME=""
+> echo $JAVA_HOME; echo $?         # 0  → "success" although it's empty
+> [ -n "$JAVA_HOME" ]; echo $?     # 1  → really tests the value
+> ```
+>
+> | Line before `validate` | Empty `JAVA_HOME` gives |
+> |------------------------|-------------------------|
+> | `echo $JAVA_HOME` (my script now) | ✅ SUCCESS (wrong) |
+> | `[ -n "$JAVA_HOME" ]` (`-n` = not empty) | ❌ FAILED (correct) |
+>
+> **Rule:** make the command right before `validate` the one that checks the thing I care about.
 
 ### 4. Create the app user (only if missing)
 
@@ -159,26 +173,7 @@ validate $? "Moving shipping.jar file"
 **Why:** Java must be **compiled** before it runs. Node.js doesn't need this step.
 The first build is the slowest step: Maven downloads all the libraries into `~/.m2/repository`.
 
-### 7. Install the service file with my domain
-
-```bash
-cp $scripts_dir/shipping.service /etc/systemd/system/shipping.service
-validate $? "Copying shipping service"
-
-sed -i "s/DOMAIN_NAME/$domain_name/g" /etc/systemd/system/shipping.service
-validate $? "Updating domain name in shipping service"
-```
-
-**What it does:** copies `shipping.service` to systemd's folder, then replaces **every** `DOMAIN_NAME` in the copy (`/g` = all matches on a line).
-
-```
-before:  CART_ENDPOINT=cart.DOMAIN_NAME:8080       DB_HOST=mysql.DOMAIN_NAME
-after:   CART_ENDPOINT=cart.abhignadevops.store:8080   DB_HOST=mysql.abhignadevops.store
-```
-
-**Why copy first, then `sed`:** my repo file keeps `DOMAIN_NAME`, so git stays clean and the next run works the same.
-
-### 8. Install the MySQL client
+### 7. Install the MySQL client
 
 ```bash
 dnf install mysql -y &>> $logs_file
@@ -187,12 +182,12 @@ validate $? "Installing MySQL client"
 
 **What it does:** installs only the `mysql` **command** (client), not a MySQL server. It's needed to load data into the MySQL **server**.
 
-### 9. Load the cities data only once (the count check)
+### 8. Load the cities data only once (the count check)
 
 ```bash
 count=$(mysql -h "mysql.$domain_name" -u root -p<password> -N -B -e "SELECT COUNT(*) FROM cities.cities;" 2>> $logs_file )
 if [ -z "$count" ] || [ "$count" -eq 0 ]; then
-    mysql -h "mysql.$domain_name" -uroot -p<password> < /app/db/master-data.sql
+    mysql -h "mysql.$domain_name" -uroot -p<password> < /app/db/master-data.sql &>> $logs_file
     validate $? "Loading shipping data"
 else
     echo -e "$(timestamp) [INFO] Master data already loaded...${Y}SKIPPING${N}"
@@ -222,6 +217,7 @@ fi
 | `"$count"` in quotes | an empty variable stays `""`. Without quotes `[ -eq 0 ]` gives *"unary operator expected"* |
 | `-z` test **first** | `[ "" -eq 0 ]` would error (`integer expression expected`). If `-z` is true, `\|\|` never runs the right side |
 | `mysql ... < /app/db/master-data.sql` | `<` feeds the file into `mysql` as input: it runs every SQL line inside (create the `cities` database, table, ~948k rows) |
+| `&>> $logs_file` on the load | output **and** errors go to the log. Without it, `mysql: [Warning] Using a password on the command line interface can be insecure.` prints between my SUCCESS lines |
 | `validate $? "Loading shipping data"` | here the exit code **does** matter: the load must succeed |
 | `else ... SKIPPING` | count is a number above 0 → data is already there, don't load it twice |
 
@@ -267,16 +263,37 @@ echo $?
 # 1   ← the QUERY failed (data not there). Not the script.
 ```
 
-### 10. Create the app's MySQL user
+### 9. Create the app's MySQL user
 
 ```bash
-mysql -h "mysql.$domain_name" -uroot -p<password> < /app/db/app-user.sql
+mysql -h "mysql.$domain_name" -uroot -p<password> < /app/db/app-user.sql &>> $logs_file
 validate $? "Creating APP user"
 ```
 
 **What it does:** runs the SQL file that creates the MySQL user **`shipping`**, which can use only the `cities` database.
 **Why:** the app logs in as `shipping` (see `DB_USER` in the service file), not as `root`: **least privilege**.
 It's outside the `if`, so it runs every time; the SQL must be safe to run again.
+
+### 10. Install the service file with my domain
+
+```bash
+cp $scripts_dir/shipping.service /etc/systemd/system/shipping.service
+validate $? "Copying shipping service"
+
+sed -i "s/DOMAIN_NAME/$domain_name/g" /etc/systemd/system/shipping.service
+validate $? "Updating domain name in shipping service"
+```
+
+**What it does:** copies `shipping.service` to systemd's folder, then replaces **every** `DOMAIN_NAME` in the copy (`/g` = all matches on a line).
+
+```
+before:  CART_ENDPOINT=cart.DOMAIN_NAME:8080       DB_HOST=mysql.DOMAIN_NAME
+after:   CART_ENDPOINT=cart.abhignadevops.store:8080   DB_HOST=mysql.abhignadevops.store
+```
+
+**Why copy first, then `sed`:** my repo file keeps `DOMAIN_NAME`, so git stays clean and the next run works the same.
+
+**Why here, after the MySQL steps:** the service file only has to be in place **before** `daemon-reload` (block 11). Its place among the other steps doesn't matter.
 
 ### 11. Start shipping
 
@@ -293,7 +310,7 @@ validate $? "Restarting/Starting shipping"
 | `enable` | start on every boot |
 | `restart` | works whether it's stopped or running, and always loads the latest jar + config |
 
-**Why start last:** the data (step 9) and the app user (step 10) must exist **before** shipping starts, or it fails to connect to MySQL.
+**Why start last:** the data (block 8) and the app user (block 9) must exist **before** shipping starts, or it fails to connect to MySQL.
 
 ---
 
@@ -324,11 +341,154 @@ WantedBy=multi-user.target
 | `User=roboshop` | run as the app user, not root |
 | `CART_ENDPOINT=cart.DOMAIN_NAME:8080` | **outgoing**: where cart is (`name:port`), to add the shipping cost |
 | `DB_HOST=mysql.DOMAIN_NAME` | **outgoing**: where MySQL is |
-| `DB_USER` / `DB_PASSWORD` | the MySQL app user from step 10 |
+| `DB_USER` / `DB_PASSWORD` | the MySQL app user from block 9 |
 | `ExecStart=/bin/java -jar /app/shipping.jar` | start the Java app |
 | `Restart=on-failure` + `RestartSec=5` | crashed? systemd restarts it after 5 s |
 
 ---
+
+<details>
+<summary><b>Full script in one piece</b> (click to open)</summary>
+
+```bash
+#!/bin/bash
+
+user_id=$(id -u)
+logs_folder="/var/log/roboshop"
+logs_file="${logs_folder}/${0}.log"
+domain_name="abhignadevops.store"
+scripts_dir=$(dirname "$(realpath "$0")")
+R="\e[31m"
+G="\e[32m"
+Y="\e[33m"
+N="\e[0m"
+
+if [ $user_id -ne 0 ]; then
+    echo "Please run this script with sudo access.."
+    exit 1
+fi
+
+mkdir -p $logs_folder
+
+timestamp(){
+    date +"%F %T"
+}
+
+validate(){
+    if [ $1 -ne 0 ]; then
+        echo -e "$(timestamp) [ERROR] ${2}..${R}FAILED${N}" | tee -a $logs_file
+        exit 1
+    else
+        echo -e "$(timestamp) [INFO] ${2}..${G}SUCCESS${N}" | tee -a $logs_file
+    fi
+}
+echo "$(timestamp) [INFO] ==== Script started execution ======" | tee -a $logs_file
+
+dnf module enable maven:3.9 -y &>> $logs_file
+dnf install maven java-25-openjdk-devel -y &>> $logs_file
+validate $? "Installing Java and Maven"
+
+
+alternatives --set java "/usr/lib/jvm/java-25-openjdk/bin/java"
+validate $? "Setting Java 25 as default Java version"
+
+echo "export JAVA_HOME=$(dirname $(dirname $(readlink -f /usr/bin/java)))" > /etc/profile.d/java.sh
+source /etc/profile.d/java.sh
+echo $JAVA_HOME
+validate $? "Setting JAVA_HOME for maven"
+
+id roboshop &>> $logs_file
+if [ $? -ne 0 ]; then
+    useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop &>> $logs_file
+    validate $? "Creating system user"
+else
+    echo -e "$(timestamp) [INFO] System user roboshop already exist...${Y}SKIPPING${N}"
+fi
+
+rm -rf /app
+validate $? "Removing old code"
+
+mkdir -p /app
+validate $? "Creating app directory"
+
+curl -L -o /tmp/shipping.zip https://raw.githubusercontent.com/daws-92s/roboshop-documentation/refs/heads/main/artifacts/shipping-v4.zip &>> $logs_file
+validate $? "Downloading shipping"
+
+cd /app
+unzip /tmp/shipping.zip &>> $logs_file
+validate $? "Unzipping shipping"
+
+mvn clean package &>> $logs_file
+validate $? "Installing dependencies"
+
+mv target/shipping.jar shipping.jar
+validate $? "Moving shipping.jar file"
+
+dnf install mysql -y &>> $logs_file
+validate $? "Installing MySQL client"
+
+count=$(mysql -h "mysql.$domain_name" -u root -p<password> -N -B -e "SELECT COUNT(*) FROM cities.cities;" 2>> $logs_file )
+if [ -z "$count" ] || [ "$count" -eq 0 ]; then
+    mysql -h "mysql.$domain_name" -uroot -p<password> < /app/db/master-data.sql &>> $logs_file
+    validate $? "Loading shipping data"
+else
+    echo -e "$(timestamp) [INFO] Master data already loaded...${Y}SKIPPING${N}"
+fi
+
+mysql -h "mysql.$domain_name" -uroot -p<password> < /app/db/app-user.sql &>> $logs_file
+validate $? "Creating APP user"
+
+cp $scripts_dir/shipping.service /etc/systemd/system/shipping.service
+validate $? "Copying shipping service"
+
+sed -i "s/DOMAIN_NAME/$domain_name/g" /etc/systemd/system/shipping.service
+validate $? "Updating domain name in shipping service"
+
+systemctl daemon-reload &>> $logs_file
+systemctl enable shipping &>> $logs_file
+systemctl restart shipping
+validate $? "Restarting/Starting shipping"
+
+echo "$(timestamp) [INFO] Script completed in $SECONDS seconds"
+echo "$(timestamp) [INFO] ==== Script completed Execution =====" | tee -a $logs_file
+```
+
+</details>
+
+---
+
+## How I ran it
+
+```bash
+# laptop
+git add 08-shipping.sh shipping.service
+git commit -m "Add shipping script and service"
+git push                                   # d15c83b..f011c58  main -> main
+bash roboshop.sh shipping
+```
+
+```
+Creating instance: shipping
+shipping ID: i-06c56a47daca4346b
+shipping IP: 172.31.11.97
+DNS updated: shipping.abhignadevops.store -> 172.31.11.97
+```
+
+```bash
+# shipping server
+ssh ec2-user@<shipping-public-ip>
+sudo -i
+git clone https://github.com/Abhignadumpala/shellscript-roboshop-v1.git
+cd shellscript-roboshop-v1
+bash 08-shipping.sh
+
+# 2nd terminal: watch the slow steps (Maven build, ~948k rows)
+tail -f /var/log/roboshop/08-shipping.sh.log
+```
+
+## Run + result
+
+⏳ Server created and DNS updated. Script run: next.
 
 ## Verify
 
@@ -343,6 +503,17 @@ On mysql:
 ```bash
 mysql -uroot -p<password> -e "SELECT COUNT(*) FROM cities.cities;"
 ```
+
+---
+
+## Problems I hit
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| JAVA_HOME step always SUCCESS | `validate $?` checks `echo $JAVA_HOME`, and `echo` never fails | `[ -n "$JAVA_HOME" ]` right before `validate` (optional) |
+| MySQL warning in the middle of my SUCCESS lines | The 2 load commands had no redirect | `&>> $logs_file` on both |
+| Started from a copy with another domain | `domain_name` must be my own Route 53 zone | `abhignadevops.store`, checked with `grep -n domain_name=` |
+| `sed` repo file → `cp` (other order) | Works for many runs, but the repo file is changed, so a later `git pull` on the server refuses | `cp` first, `sed` the copy |
 
 ---
 

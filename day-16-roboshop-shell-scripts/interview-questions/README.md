@@ -98,3 +98,23 @@ Count first: `mongosh --eval '...products.countDocuments()'`. If it's `0`, load 
 **24. Why end an app script with `systemctl restart` and not `start`?**
 
 `start` does nothing if the service is already running, so on a re-run the new code or config is ignored. `restart` always stops and starts it, so every change is loaded. Then `validate $?` confirms it came back up.
+
+**25. `validate $?` after `echo $JAVA_HOME` always says SUCCESS. Why?**
+
+`$?` is the exit code of only the command right before it. `echo` always returns 0, even for an empty variable. Use `[ -n "$JAVA_HOME" ]` so the last command really tests the value.
+
+**26. A variable name has a typo (`scripts_dir` vs `script_dir`). Why no error?**
+
+Bash treats an unset variable as empty, so `$scripts_dir/user.service` becomes `/user.service` and fails later. `bash -n` only checks syntax. `set -u` makes bash stop on unset variables; `grep -n` finds every use after a rename.
+
+**27. Why `sed` the copied service file and not the repo file?**
+
+Both work for many runs. But `sed` on the repo file changes a tracked file, so a later `git pull` on the server refuses ("local changes would be overwritten"). Copy first, then `sed` the copy in `/etc/systemd/system/`.
+
+**28. Health of cart shows only Redis. How do you test cart → catalogue?**
+
+Cart calls catalogue only when a request comes in. From the cart server: `telnet catalogue.<domain> 8080`. Connected = DNS, SG and port are fine.
+
+**29. In the shipping count check, why `[ -z "$count" ] || [ "$count" -eq 0 ]` in that order?**
+
+On the 1st run the query fails and `count` is empty. `[ "" -eq 0 ]` would error, so `-z` is tested first; if it's true, `||` never runs the right side.

@@ -17,6 +17,7 @@
 | 05 | `05-catalogue.sh` | roboshop-catalogue | ✅ 63 s, 11 products |
 | 06 | `06-user.sh` | roboshop-user | ✅ 109 s, mongo + redis connected ([notes](06-user.sh.md)) |
 | 07 | `07-cart.sh` | roboshop-cart | ✅ 99 s, redis connected, catalogue:8080 reachable ([notes](07-cart.sh.md)) |
+| 08 | `08-shipping.sh` | roboshop-shipping | ⏳ pushed, server created (172.31.11.97), run next ([notes](08-shipping.sh.md)) |
 | 06–10 | user, cart, shipping, payment, frontend | | ⏭️ next |
 
 ## Table of Contents
@@ -86,6 +87,8 @@
 | [user.service](user.service) | Copied by `06-user.sh` | `REDIS_URL` + `MONGO_URL` with `DOMAIN_NAME` |
 | [07-cart.sh](07-cart.sh) | Cart server | Node.js 24 app, `cart.service` (Redis + catalogue) |
 | [cart.service](cart.service) | Copied by `07-cart.sh` | `REDIS_HOST` + `CATALOGUE_HOST` with `DOMAIN_NAME` |
+| [08-shipping.sh](08-shipping.sh) | Shipping server | Java 25 + Maven build, cities loaded once, app DB user |
+| [shipping.service](shipping.service) | Copied by `08-shipping.sh` | `CART_ENDPOINT` + `DB_HOST` with `DOMAIN_NAME`, DB user |
 
 ## Security groups: one common SG + one SG per component
 

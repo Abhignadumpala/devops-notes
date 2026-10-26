@@ -21,6 +21,14 @@
 | 15 | Script looked frozen at `dnf install` | Output goes to the log; dnf was refreshing repo metadata | `tail -f /var/log/roboshop/<script>.log` in a 2nd session |
 | 16 | 2nd run of 05-catalogue.sh would load products twice | `master-data.js` runs every time | Count first with `countDocuments()`; load only if `0`, else SKIPPING |
 | 17 | Re-run didn't pick up a changed service file | `systemctl start` does nothing on a running service | End with `systemctl restart catalogue` + `validate` |
+| 18 | `cp`/`sed` would fail: "No such file" (06-user.sh) | Set as `script_dir`, used as `scripts_dir`: bash treats the typo as a new, **empty** variable → path `/user.service`. `bash -n` doesn't catch it | Same name everywhere; `grep -n "script_dir\|scripts_dir" *.sh` |
+| 19 | After renaming to `scripts_dir`, catalogue would fail at `adding mongo repo` | One `cp $script_dir/mongo.repo` line was missed in the rename | `grep` the old name after every rename |
+| 20 | `user.service` was empty on disk | Created in VS Code, never saved | `cat <file>` before `git add` |
+| 21 | Wrong domain in `07-cart.sh` / `08-shipping.sh` | Started from a copy with another domain → `redis.<other-domain>` not in my Route 53 | `domain_name="abhignadevops.store"`; `grep -n domain_name= *.sh` |
+| 22 | Server created, but `07-cart.sh` not on GitHub | Not committed yet (`git status`: modified + untracked) | `git add` → `commit` → `push`, `git status` clean, **then** clone on the server |
+| 23 | `ssh` → `Permission denied (publickey,...,password)` | Password typed wrong (case-sensitive, nothing shows while typing) | Same AMI login on every server; type slowly |
+| 24 | JAVA_HOME step always SUCCESS | `validate $?` checks the last command, `echo $JAVA_HOME`, which never fails | `[ -n "$JAVA_HOME" ]` right before `validate` |
+| 25 | MySQL password warning printed between SUCCESS lines | `mysql ... < file.sql` had no redirect | `&>> $logs_file` |
 
 **Find the latest AMI by name:**
 ```bash

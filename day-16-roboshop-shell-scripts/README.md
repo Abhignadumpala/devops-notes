@@ -17,9 +17,9 @@
 | 03 | `03-mysql.sh` | roboshop-mysql | ✅ MySQL 8.4.11, 40 s (+ root@localhost bug found and fixed) |
 | 04 | `04-rabbitmq.sh` | roboshop-rabbitmq | ✅ 36 s, re-run safe (SKIPPING) |
 | 05 | `05-catalogue.sh` | roboshop-catalogue | ✅ 63 s, 11 products |
-| 06 | `06-user.sh` | roboshop-user | ✅ 109 s, mongo + redis connected ([notes](06-user.sh.md)) |
-| 07 | `07-cart.sh` | roboshop-cart | ✅ 99 s, redis connected, catalogue:8080 reachable ([notes](07-cart.sh.md)) |
-| 08 | `08-shipping.sh` | roboshop-shipping | ✅ 216 s, health UP, 948,833 cities ([notes](08-shipping.sh.md)) |
+| 06 | `06-user.sh` | roboshop-user | ✅ 109 s, mongo + redis connected ([notes](06-user/README.md)) |
+| 07 | `07-cart.sh` | roboshop-cart | ✅ 99 s, redis connected, catalogue:8080 reachable ([notes](07-cart/README.md)) |
+| 08 | `08-shipping.sh` | roboshop-shipping | ✅ 216 s, health UP, 948,833 cities ([notes](08-shipping/README.md)) |
 | 06–10 | user, cart, shipping, payment, frontend | | ⏭️ next |
 
 ## Table of Contents
@@ -41,7 +41,7 @@
 15. [Key takeaways](#key-takeaways)
 16. [Interview Questions](#interview-questions)
 
-**More in this folder:** Each script's explanation sits right below it: `<script>.sh.md` (e.g. [05-catalogue.sh.md](05-catalogue.sh.md)), common part in [00-common-part.md](00-common-part.md) · [Problems I hit and fixes](troubleshooting.md) · [Interview questions](interview-questions/README.md)
+**More in this folder:** Each script has its own folder with the script, its config files and its explanation `README.md` (e.g. [05-catalogue/](05-catalogue/README.md)), common part in [00-common-part.md](00-common-part.md) · [Problems I hit and fixes](troubleshooting.md) · [Interview questions](interview-questions/README.md)
 
 ---
 
@@ -76,21 +76,21 @@
 
 | File | Runs on | Does |
 |------|---------|------|
-| [roboshop.sh](roboshop.sh) | Laptop (needs AWS CLI) | Creates EC2 instances + updates Route 53 |
-| [01-mongodb.sh](01-mongodb.sh) | MongoDB server (as root) | Installs and configures MongoDB 7.0 |
-| [mongo.repo](mongo.repo) | Copied by `01-mongodb.sh` and `05-catalogue.sh` | Tells `dnf` where to download MongoDB 7.0 (server, and the `mongosh` client) |
-| [02-redis.sh](02-redis.sh) | Redis server | Installs Redis 7, opens it to other servers |
-| [03-mysql.sh](03-mysql.sh) | MySQL server | Installs MySQL 8.4, sets the root password, checks the login |
-| [04-rabbitmq.sh](04-rabbitmq.sh) | RabbitMQ server | Installs RabbitMQ, creates the `roboshop` app user (skips if it exists) |
-| [rabbitmq.repo](rabbitmq.repo) | Copied by `04-rabbitmq.sh` | Erlang + RabbitMQ repos (not in RHEL) |
-| [05-catalogue.sh](05-catalogue.sh) | Catalogue server | Node.js 24 app: user, code, npm, systemd service, product data |
-| [catalogue.service](catalogue.service) | Copied by `05-catalogue.sh` | systemd unit with a `DOMAIN_NAME` placeholder |
-| [06-user.sh](06-user.sh) | User server | Node.js 24 app, `user.service` (Redis + MongoDB) |
-| [user.service](user.service) | Copied by `06-user.sh` | `REDIS_URL` + `MONGO_URL` with `DOMAIN_NAME` |
-| [07-cart.sh](07-cart.sh) | Cart server | Node.js 24 app, `cart.service` (Redis + catalogue) |
-| [cart.service](cart.service) | Copied by `07-cart.sh` | `REDIS_HOST` + `CATALOGUE_HOST` with `DOMAIN_NAME` |
-| [08-shipping.sh](08-shipping.sh) | Shipping server | Java 25 + Maven build, cities loaded once, app DB user |
-| [shipping.service](shipping.service) | Copied by `08-shipping.sh` | `CART_ENDPOINT` + `DB_HOST` with `DOMAIN_NAME`, DB user |
+| [roboshop.sh](00-roboshop/roboshop.sh) | Laptop (needs AWS CLI) | Creates EC2 instances + updates Route 53 |
+| [01-mongodb.sh](01-mongodb/01-mongodb.sh) | MongoDB server (as root) | Installs and configures MongoDB 7.0 |
+| [mongo.repo](01-mongodb/mongo.repo) | Copied by `01-mongodb.sh` and `05-catalogue.sh` | Tells `dnf` where to download MongoDB 7.0 (server, and the `mongosh` client) |
+| [02-redis.sh](02-redis/02-redis.sh) | Redis server | Installs Redis 7, opens it to other servers |
+| [03-mysql.sh](03-mysql/03-mysql.sh) | MySQL server | Installs MySQL 8.4, sets the root password, checks the login |
+| [04-rabbitmq.sh](04-rabbitmq/04-rabbitmq.sh) | RabbitMQ server | Installs RabbitMQ, creates the `roboshop` app user (skips if it exists) |
+| [rabbitmq.repo](04-rabbitmq/rabbitmq.repo) | Copied by `04-rabbitmq.sh` | Erlang + RabbitMQ repos (not in RHEL) |
+| [05-catalogue.sh](05-catalogue/05-catalogue.sh) | Catalogue server | Node.js 24 app: user, code, npm, systemd service, product data |
+| [catalogue.service](05-catalogue/catalogue.service) | Copied by `05-catalogue.sh` | systemd unit with a `DOMAIN_NAME` placeholder |
+| [06-user.sh](06-user/06-user.sh) | User server | Node.js 24 app, `user.service` (Redis + MongoDB) |
+| [user.service](06-user/user.service) | Copied by `06-user.sh` | `REDIS_URL` + `MONGO_URL` with `DOMAIN_NAME` |
+| [07-cart.sh](07-cart/07-cart.sh) | Cart server | Node.js 24 app, `cart.service` (Redis + catalogue) |
+| [cart.service](07-cart/cart.service) | Copied by `07-cart.sh` | `REDIS_HOST` + `CATALOGUE_HOST` with `DOMAIN_NAME` |
+| [08-shipping.sh](08-shipping/08-shipping.sh) | Shipping server | Java 25 + Maven build, cities loaded once, app DB user |
+| [shipping.service](08-shipping/shipping.service) | Copied by `08-shipping.sh` | `CART_ENDPOINT` + `DB_HOST` with `DOMAIN_NAME`, DB user |
 
 ## Security groups: one common SG + one SG per component
 

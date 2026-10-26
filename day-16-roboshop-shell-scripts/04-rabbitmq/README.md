@@ -1,6 +1,6 @@
 # 04-rabbitmq.sh: RabbitMQ Server
 
-[← Day 16 notes](README.md) · [Common part of every script](00-common-part.md)
+[← Day 16 notes](../README.md) · [Common part of every script](../00-common-part.md)
 
 ## What this server does
 
@@ -45,7 +45,7 @@ timestamp(){ ... }
 validate(){ ... }
 ```
 
-**What it does:** settings, root check, log folder, and the `timestamp` + `validate` helpers. Same in every script; explained line by line in the [server notes index](00-common-part.md#the-common-part-top-of-every-script).
+**What it does:** settings, root check, log folder, and the `timestamp` + `validate` helpers. Same in every script; explained line by line in the [server notes index](../00-common-part.md#the-common-part-top-of-every-script).
 
 ### 5. Add the RabbitMQ repos
 
@@ -177,11 +177,11 @@ echo "$(timestamp) [INFO] ==== Script completed execution ======" | tee -a $logs
 
 ## Run + result
 
-![04-rabbitmq.sh run and checks](images/handson/04-rabbitmq-run-verify.png)
+![04-rabbitmq.sh run and checks](../images/handson/04-rabbitmq-run-verify.png)
 
 **2nd run:** the user step says **SKIPPING**, everything else SUCCESS.
 
-![04-rabbitmq.sh 2nd run: SKIPPING](images/handson/04-rabbitmq-rerun-skipping.png)
+![04-rabbitmq.sh 2nd run: SKIPPING](../images/handson/04-rabbitmq-rerun-skipping.png)
 
 ## Verify
 

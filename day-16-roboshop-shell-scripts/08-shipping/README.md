@@ -1,10 +1,10 @@
 # 08-shipping.sh: Shipping Server
 
-[← Day 16 notes](README.md) · [Common part of every script](00-common-part.md)
+[← Day 16 notes](../README.md) · [Common part of every script](../00-common-part.md)
 
 ## What this server does
 
-![App servers 06–08: the connections I checked](images/06-08-app-connections-verified.png)
+![App servers 06–08: the connections I checked](../images/06-08-app-connections-verified.png)
 
 **Shipping** is a Java (Spring Boot) app. It looks up the city in **MySQL**, works out the distance and the shipping cost, and adds it to the cart.
 
@@ -58,7 +58,7 @@ timestamp(){ ... }
 validate(){ ... }
 ```
 
-**What it does:** settings, root check, log folder, `timestamp` + `validate`. Same as every script: [00-common-part.md](00-common-part.md).
+**What it does:** settings, root check, log folder, `timestamp` + `validate`. Same as every script: [00-common-part.md](../00-common-part.md).
 `scripts_dir` is saved **before** `cd /app`, so `shipping.service` is still found later.
 
 > ⚠️ `domain_name` must be **my** domain (`abhignadevops.store`). With another domain, `mysql.<their-domain>` doesn't resolve and the data load fails.
@@ -491,7 +491,7 @@ tail -f /var/log/roboshop/08-shipping.sh.log
 
 ## Run + result
 
-![08-shipping.sh run, status, health and count](images/handson/08-shipping-run-health-count.png)
+![08-shipping.sh run, status, health and count](../images/handson/08-shipping-run-health-count.png)
 
 ```
 2026-10-26 01:23:56 [INFO] Unzipping shipping..SUCCESS

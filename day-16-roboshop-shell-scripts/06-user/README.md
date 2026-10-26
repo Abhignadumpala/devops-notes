@@ -1,10 +1,10 @@
 # 06-user.sh: User Server
 
-[← Day 16 notes](README.md) · [Common part of every script](00-common-part.md)
+[← Day 16 notes](../README.md) · [Common part of every script](../00-common-part.md)
 
 ## What this server does
 
-![App servers 06–08: the connections I checked](images/06-08-app-connections-verified.png)
+![App servers 06–08: the connections I checked](../images/06-08-app-connections-verified.png)
 
 **User** is a Node.js app for **sign-up and login**. It stores users in **MongoDB** and login sessions in **Redis**.
 
@@ -54,7 +54,7 @@ timestamp(){ ... }
 validate(){ ... }
 ```
 
-**What it does:** settings, root check, log folder, `timestamp` + `validate`. Same as every script: [00-common-part.md](00-common-part.md).
+**What it does:** settings, root check, log folder, `timestamp` + `validate`. Same as every script: [00-common-part.md](../00-common-part.md).
 
 `scripts_dir` = the folder this script lives in, as a full path:
 
@@ -321,7 +321,7 @@ bash 06-user.sh
 
 ## Run + result
 
-![06-user.sh run, health and journal](images/handson/06-user-run-health.png)
+![06-user.sh run, health and journal](../images/handson/06-user-run-health.png)
 
 ```
 2026-10-26 00:09:25 [INFO] ==== Script started execution ======

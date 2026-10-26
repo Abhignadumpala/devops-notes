@@ -1,10 +1,10 @@
 # 07-cart.sh: Cart Server
 
-[← Day 16 notes](README.md) · [Common part of every script](00-common-part.md) · [06-user.sh](06-user.sh.md) (same pattern, explained in more detail)
+[← Day 16 notes](../README.md) · [Common part of every script](../00-common-part.md) · [06-user.sh](../06-user/README.md) (same pattern, explained in more detail)
 
 ## What this server does
 
-![App servers 06–08: the connections I checked](images/06-08-app-connections-verified.png)
+![App servers 06–08: the connections I checked](../images/06-08-app-connections-verified.png)
 
 **Cart** is a Node.js app that keeps each customer's **shopping cart**. It stores the cart in **Redis** and asks **catalogue** for the product name and price.
 
@@ -59,7 +59,7 @@ timestamp(){ ... }
 validate(){ ... }
 ```
 
-**What it does:** settings, root check, log folder, `timestamp` + `validate`: [00-common-part.md](00-common-part.md).
+**What it does:** settings, root check, log folder, `timestamp` + `validate`: [00-common-part.md](../00-common-part.md).
 `scripts_dir` remembers the repo folder (`/root/shellscript-roboshop-v1`) **before** `cd /app`, so `cart.service` is still found in block 6.
 
 > ⚠️ `domain_name` must be **my** domain. With another domain (e.g. copied from someone else's script), `sed` writes `redis.<their-domain>` into the service file. That name isn't in my Route 53, so cart can't find Redis → `redis: false`.
@@ -135,7 +135,7 @@ before:  REDIS_HOST=redis.DOMAIN_NAME          CATALOGUE_HOST=catalogue.DOMAIN_N
 after:   REDIS_HOST=redis.abhignadevops.store  CATALOGUE_HOST=catalogue.abhignadevops.store
 ```
 
-**Why copy first:** the repo file keeps `DOMAIN_NAME`, so `git pull` on the server keeps working ([06-user.sh.md block 6](06-user.sh.md#6-install-the-service-file-with-my-domain) has the comparison table).
+**Why copy first:** the repo file keeps `DOMAIN_NAME`, so `git pull` on the server keeps working ([06-user notes, block 6](../06-user/README.md#6-install-the-service-file-with-my-domain) has the comparison table).
 
 ### 7. Start, then restart
 
@@ -299,7 +299,7 @@ bash 07-cart.sh
 
 ## Run + result
 
-![07-cart.sh run, health, journal and telnet to catalogue](images/handson/07-cart-run-health-telnet.png)
+![07-cart.sh run, health, journal and telnet to catalogue](../images/handson/07-cart-run-health-telnet.png)
 
 ```
 2026-10-26 00:46:16 [INFO] ==== Script started execution ======

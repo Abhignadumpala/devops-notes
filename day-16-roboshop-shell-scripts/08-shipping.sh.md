@@ -4,6 +4,8 @@
 
 ## What this server does
 
+![App servers 06–08: the connections I checked](images/06-08-app-connections-verified.png)
+
 **Shipping** is a Java (Spring Boot) app. It looks up the city in **MySQL**, works out the distance and the shipping cost, and adds it to the cart.
 
 | Fact | Value |
@@ -488,6 +490,8 @@ tail -f /var/log/roboshop/08-shipping.sh.log
 ```
 
 ## Run + result
+
+![08-shipping.sh run, status, health and count](images/handson/08-shipping-run-health-count.png)
 
 ```
 2026-10-26 01:23:56 [INFO] Unzipping shipping..SUCCESS

@@ -4,6 +4,8 @@
 
 ## What this server does
 
+![App servers 06–08: the connections I checked](images/06-08-app-connections-verified.png)
+
 **Cart** is a Node.js app that keeps each customer's **shopping cart**. It stores the cart in **Redis** and asks **catalogue** for the product name and price.
 
 | Fact | Value |
@@ -296,6 +298,8 @@ bash 07-cart.sh
 > Push **before** cloning on the server. `roboshop.sh` doesn't need the scripts, but the clone does. `git status` must say "nothing to commit".
 
 ## Run + result
+
+![07-cart.sh run, health, journal and telnet to catalogue](images/handson/07-cart-run-health-telnet.png)
 
 ```
 2026-10-26 00:46:16 [INFO] ==== Script started execution ======

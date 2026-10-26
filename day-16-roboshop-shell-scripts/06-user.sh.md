@@ -4,6 +4,8 @@
 
 ## What this server does
 
+![App servers 06–08: the connections I checked](images/06-08-app-connections-verified.png)
+
 **User** is a Node.js app for **sign-up and login**. It stores users in **MongoDB** and login sessions in **Redis**.
 
 | Fact | Value |
@@ -318,6 +320,8 @@ bash 06-user.sh
 ```
 
 ## Run + result
+
+![06-user.sh run, health and journal](images/handson/06-user-run-health.png)
 
 ```
 2026-10-26 00:09:25 [INFO] ==== Script started execution ======

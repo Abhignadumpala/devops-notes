@@ -8,6 +8,8 @@
 
 **Progress**
 
+![App servers 06–08: the connections I checked](images/06-08-app-connections-verified.png)
+
 | # | Script | Server | Status |
 |---|--------|--------|--------|
 | 01 | `01-mongodb.sh` | roboshop-mongodb | ✅ MongoDB 7.0 |

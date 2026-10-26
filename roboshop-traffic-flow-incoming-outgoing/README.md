@@ -61,7 +61,7 @@ user.service:                                   SG roboshop-redis inbound:
 
 ```
 repo:   user.service  →  REDIS_URL="redis://redis.DOMAIN_NAME:6379"
-          │  cp $script_dir/user.service /etc/systemd/system/
+          │  cp $scripts_dir/user.service /etc/systemd/system/
           ▼
 server: /etc/systemd/system/user.service
           │  sed -i "s/DOMAIN_NAME/$domain_name/g"

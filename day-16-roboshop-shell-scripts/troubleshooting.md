@@ -14,7 +14,7 @@
 | 8 | `script completed in  seconds` (empty) | Used `$seconds`; the built-in is `$SECONDS` (case-sensitive) | `$SECONDS` |
 | 9 | 2nd run of 04-rabbitmq.sh would fail at `add_user` | User already exists → non-zero exit → validate stops | Check first: `rabbitmqctl list_users \| grep -qw roboshop`, else SKIPPING |
 | 10 | `sed: unterminated 's' command` | `"s/DOMAIN_NAME/$domain_name"`: missing the 3rd `/` | `"s/DOMAIN_NAME/$domain_name/"` |
-| 11 | `cp catalogue.service` → No such file | Ran after `cd /app`; the file is in the script folder | `script_dir=$(dirname "$(realpath "$0")")` at the top, `cp $script_dir/catalogue.service ...` |
+| 11 | `cp catalogue.service` → No such file | Ran after `cd /app`; the file is in the script folder | `scripts_dir=$(dirname "$(realpath "$0")")` at the top, `cp $scripts_dir/catalogue.service ...` |
 | 12 | `cp` still couldn't find `catalogue.service` | File was saved as `" catalogue.service"` (leading space in the name) | `mv " catalogue.service" catalogue.service` |
 | 13 | Download step would fail | Long lines got cut off when pasted (`.../refs/he-v4.zip`, `$logs_f`) | Check line ends; `bash -n script.sh` for syntax; `curl -sI <url>` → 200 |
 | 14 | Typing in VS Code deleted the next letters | Overtype mode (`OVR` in the status bar) | Press the **Insert** key |

@@ -15,6 +15,8 @@
 | 03 | `03-mysql.sh` | roboshop-mysql | ✅ MySQL 8.4.11, 40 s (+ root@localhost bug found and fixed) |
 | 04 | `04-rabbitmq.sh` | roboshop-rabbitmq | ✅ 36 s, re-run safe (SKIPPING) |
 | 05 | `05-catalogue.sh` | roboshop-catalogue | ✅ 63 s, 11 products |
+| 06 | `06-user.sh` | roboshop-user | ✅ 109 s, mongo + redis connected ([notes](06-user.sh.md)) |
+| 07 | `07-cart.sh` | roboshop-cart | ✅ 99 s, redis connected, catalogue:8080 reachable ([notes](07-cart.sh.md)) |
 | 06–10 | user, cart, shipping, payment, frontend | | ⏭️ next |
 
 ## Table of Contents
@@ -80,6 +82,10 @@
 | [rabbitmq.repo](rabbitmq.repo) | Copied by `04-rabbitmq.sh` | Erlang + RabbitMQ repos (not in RHEL) |
 | [05-catalogue.sh](05-catalogue.sh) | Catalogue server | Node.js 24 app: user, code, npm, systemd service, product data |
 | [catalogue.service](catalogue.service) | Copied by `05-catalogue.sh` | systemd unit with a `DOMAIN_NAME` placeholder |
+| [06-user.sh](06-user.sh) | User server | Node.js 24 app, `user.service` (Redis + MongoDB) |
+| [user.service](user.service) | Copied by `06-user.sh` | `REDIS_URL` + `MONGO_URL` with `DOMAIN_NAME` |
+| [07-cart.sh](07-cart.sh) | Cart server | Node.js 24 app, `cart.service` (Redis + catalogue) |
+| [cart.service](cart.service) | Copied by `07-cart.sh` | `REDIS_HOST` + `CATALOGUE_HOST` with `DOMAIN_NAME` |
 
 ## Security groups: one common SG + one SG per component
 
@@ -431,9 +437,9 @@ fi
 | 4 | Download | `curl -L -o /tmp/catalogue.zip <artifact URL>` |
 | 5 | Unzip | `cd /app` → `rm -rf /app/*` → `unzip /tmp/catalogue.zip` |
 | 6 | Libraries | `npm install` |
-| 7 | Service | `cp $script_dir/catalogue.service /etc/systemd/system/` → `sed` the domain |
+| 7 | Service | `cp $scripts_dir/catalogue.service /etc/systemd/system/` → `sed` the domain |
 | 8 | Start | `systemctl daemon-reload` → `enable` → `start catalogue` |
-| 9 | Mongo client | `cp $script_dir/mongo.repo ...` → `dnf install mongodb-mongosh -y` |
+| 9 | Mongo client | `cp $scripts_dir/mongo.repo ...` → `dnf install mongodb-mongosh -y` |
 | 10 | Products (only once) | `countDocuments()` → if `0`, `mongosh --host mongodb.$domain_name </app/db/master-data.js`, else SKIPPING |
 | 11 | Restart | `systemctl restart catalogue` → picks up every change from this run |
 
@@ -441,7 +447,7 @@ fi
 
 | Trick | Code | Why |
 |-------|------|-----|
-| Remember the script folder | `script_dir=$(dirname "$(realpath "$0")")` (at the top) | After `cd /app`, `cp catalogue.service` looks in `/app` → "No such file" |
+| Remember the script folder | `scripts_dir=$(dirname "$(realpath "$0")")` (at the top) | After `cd /app`, `cp catalogue.service` looks in `/app` → "No such file" |
 | Clean before unzip | `rm -rf /app/*` | On a re-run unzip asks "replace?"; output goes to the log, so the script **looks frozen** |
 | Skip existing user | `id roboshop` + `if` | `useradd` fails on a 2nd run |
 | Placeholder in the service file | `mongodb.DOMAIN_NAME` + `sed -i "s/DOMAIN_NAME/$domain_name/"` | Domain lives in **one** variable; DNS name, not IP |
@@ -461,9 +467,9 @@ fi
 ```
 $0                       05-catalogue.sh
 realpath "$0"            /home/ec2-user/shell-roboshop-v1/05-catalogue.sh
-dirname  ...             /home/ec2-user/shell-roboshop-v1   → script_dir
-cd /app                  script_dir does not change
-cp "$script_dir/catalogue.service" ...   ✅ full path
+dirname  ...             /home/ec2-user/shell-roboshop-v1   → scripts_dir
+cd /app                  scripts_dir does not change
+cp "$scripts_dir/catalogue.service" ...   ✅ full path
 ```
 
 - Run it at the **top**, before any `cd`: `realpath` joins the **current** folder + name.
@@ -542,7 +548,7 @@ validate $? "restarting catalogue"
 - **Idempotent** scripts check before creating (`id roboshop`, `list_users | grep -qw`, `rm -rf /app/*`, `countDocuments()`), so a re-run SKIPS instead of failing.
 - **Always `systemctl restart <service>` + `validate`** at the end of an app script: `start` ignores changes if the service is already running.
 - **Validate the result, not only the exit code:** `mysql_secure_installation` said SUCCESS but left `root@localhost` without a password; a login check caught it.
-- **`script_dir=$(dirname "$(realpath "$0")")`** before any `cd`, so the script finds its own files from any folder.
+- **`scripts_dir=$(dirname "$(realpath "$0")")`** before any `cd`, so the script finds its own files from any folder.
 - **Placeholders + sed** keep the domain in one variable; config files use **DNS names**, not IPs.
 
 ## Interview Questions

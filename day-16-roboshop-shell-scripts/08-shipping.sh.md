@@ -46,7 +46,7 @@ user_id=$(id -u)
 logs_folder="/var/log/roboshop"
 logs_file="${logs_folder}/${0}.log"
 domain_name="abhignadevops.store"
-script_dir=$(dirname "$(realpath "$0")")
+scripts_dir=$(dirname "$(realpath "$0")")
 ...
 if [ $user_id -ne 0 ]; then ... exit 1; fi
 mkdir -p $logs_folder
@@ -55,7 +55,9 @@ validate(){ ... }
 ```
 
 **What it does:** settings, root check, log folder, `timestamp` + `validate`. Same as every script: [00-common-part.md](00-common-part.md).
-`script_dir` is saved **before** `cd /app`, so `shipping.service` is still found later.
+`scripts_dir` is saved **before** `cd /app`, so `shipping.service` is still found later.
+
+> ⚠️ `domain_name` must be **my** domain (`abhignadevops.store`). With another domain, `mysql.<their-domain>` doesn't resolve and the data load fails.
 
 ### 2. Install Java 25 + Maven
 
@@ -160,7 +162,7 @@ The first build is the slowest step: Maven downloads all the libraries into `~/.
 ### 7. Install the service file with my domain
 
 ```bash
-cp $script_dir/shipping.service /etc/systemd/system/shipping.service
+cp $scripts_dir/shipping.service /etc/systemd/system/shipping.service
 validate $? "Copying shipping service"
 
 sed -i "s/DOMAIN_NAME/$domain_name/g" /etc/systemd/system/shipping.service
@@ -209,6 +211,21 @@ fi
 | `-B` | batch mode: plain text, no table borders |
 | `$( ... )` | **catch** the normal output and store it in `count` (nothing prints on screen) |
 | `2>> $logs_file` | send **error messages** to the log file |
+
+**The `if` and the load, piece by piece:**
+
+| Part | Meaning |
+|------|---------|
+| `[ -z "$count" ]` | `-z` = "is it **empty**?" True when the query failed and printed nothing (no `cities` database yet) |
+| `\|\|` | **OR**: if the left test is true, load; if not, try the right test |
+| `[ "$count" -eq 0 ]` | `-eq` = numbers equal. True when the table exists but has **0** rows |
+| `"$count"` in quotes | an empty variable stays `""`. Without quotes `[ -eq 0 ]` gives *"unary operator expected"* |
+| `-z` test **first** | `[ "" -eq 0 ]` would error (`integer expression expected`). If `-z` is true, `\|\|` never runs the right side |
+| `mysql ... < /app/db/master-data.sql` | `<` feeds the file into `mysql` as input: it runs every SQL line inside (create the `cities` database, table, ~948k rows) |
+| `validate $? "Loading shipping data"` | here the exit code **does** matter: the load must succeed |
+| `else ... SKIPPING` | count is a number above 0 → data is already there, don't load it twice |
+
+**In one line:** "ask MySQL how many cities there are. Nothing or zero → load them. Anything else → skip."
 
 **Two kinds of numbers. Don't mix them up:**
 

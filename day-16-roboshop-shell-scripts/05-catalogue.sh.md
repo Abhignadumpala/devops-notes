@@ -22,7 +22,7 @@
 
 ## Steps the script does
 
-1. Check I'm root, save the script's folder (`script_dir`)
+1. Save the script's folder (`scripts_dir`), check I'm root
 2. Install Node.js 24
 3. Create the `roboshop` system user (skip if it exists)
 4. Download and unzip the app into `/app`
@@ -45,6 +45,7 @@ user_id=$(id -u)
 logs_folder="/var/log/roboshop"
 logs_file="${logs_folder}/${0}.log"
 domain_name="abhignadevops.store"
+scripts_dir=$(dirname "$(realpath "$0")")
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
@@ -58,6 +59,7 @@ N="\e[0m"
 | `user_id` | my user ID (`0` = root) | the root check in block 2 |
 | `logs_file` | `/var/log/roboshop/05-catalogue.sh.log` (`$0` = script name) | where all output goes |
 | `domain_name` | `abhignadevops.store` | the MongoDB address in blocks 9 and 11 |
+| `scripts_dir` | the folder this script lives in, as a full path, e.g. `/root/shellscript-roboshop-v1` | finding `catalogue.service` and `mongo.repo` after `cd /app` |
 | `R` `G` `Y` `N` | red, green, yellow, normal | FAILED, SUCCESS, SKIPPING colours |
 
 ### 2. Am I root?
@@ -72,18 +74,21 @@ fi
 **What it does:** if I'm not root, it prints a message and **stops**.
 **Why:** `dnf`, `useradd` and `systemctl` only work as root. Better to stop at line 1 than fail halfway.
 
-### 3. Log folder + remember the script's folder
+### 3. Log folder
 
 ```bash
 mkdir -p $logs_folder
-script_dir=$(dirname "$(realpath "$0")")
 ```
 
-**What it does:**
-1. Creates `/var/log/roboshop` (`-p` = no error if it already exists).
-2. Saves the folder this script lives in, as a full path, e.g. `/root/shellscript-roboshop-v1`.
+**What it does:** creates `/var/log/roboshop` (`-p` = no error if it already exists).
 
-**Why:** in block 7 the script does `cd /app`. After that, `catalogue.service` and `mongo.repo` would be searched in `/app`. With `script_dir` I always use the full path.
+**Why `scripts_dir` (block 1) matters:** in block 7 the script does `cd /app`. After that, a plain `catalogue.service` or `mongo.repo` would be searched in `/app`. With `$scripts_dir` I always use the full path. It can sit anywhere **before** `cd /app`.
+
+```
+$0              05-catalogue.sh                               (what I typed)
+realpath "$0"   /root/shellscript-roboshop-v1/05-catalogue.sh (full path)
+dirname ...     /root/shellscript-roboshop-v1                 → scripts_dir
+```
 
 ### 4. Helper functions
 
@@ -179,7 +184,7 @@ validate $? "installing dependencies"
 ### 9. Install the service file with my domain
 
 ```bash
-cp $script_dir/catalogue.service /etc/systemd/system/catalogue.service
+cp $scripts_dir/catalogue.service /etc/systemd/system/catalogue.service
 validate $? "copying catalogue service"
 
 sed -i "s/DOMAIN_NAME/$domain_name/" /etc/systemd/system/catalogue.service
@@ -215,7 +220,7 @@ validate $? "starting and enabling catalogue"
 ### 11. Load the products into MongoDB (only once)
 
 ```bash
-cp $script_dir/mongo.repo /etc/yum.repos.d/mongo.repo
+cp $scripts_dir/mongo.repo /etc/yum.repos.d/mongo.repo
 validate $? "adding mongo repo"
 
 dnf install mongodb-mongosh -y &>> $logs_file
@@ -297,6 +302,7 @@ user_id=$(id -u)
 logs_folder="/var/log/roboshop"
 logs_file="${logs_folder}/${0}.log"
 domain_name="abhignadevops.store"
+scripts_dir=$(dirname "$(realpath "$0")")
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
@@ -308,7 +314,6 @@ if [ $user_id -ne 0 ]; then
 fi
 
 mkdir -p $logs_folder
-script_dir=$(dirname "$(realpath "$0")")    # folder where this script lives, saved before cd /app
 
 timestamp(){
     date +"%F %T"
@@ -351,7 +356,7 @@ validate $? "unzipping catalogue"
 npm install &>> $logs_file
 validate $? "installing dependencies"
 
-cp $script_dir/catalogue.service /etc/systemd/system/catalogue.service    # FIXED: copy first, full path
+cp $scripts_dir/catalogue.service /etc/systemd/system/catalogue.service    # FIXED: copy first, full path
 validate $? "copying catalogue service"
 
 sed -i "s/DOMAIN_NAME/$domain_name/" /etc/systemd/system/catalogue.service    # FIXED: closing / and ed
@@ -362,7 +367,7 @@ systemctl enable catalogue &>> $logs_file
 systemctl start catalogue &>> $logs_file
 validate $? "starting and enabling catalogue"
 
-cp $script_dir/mongo.repo /etc/yum.repos.d/mongo.repo    # NEW: MongoDB client + load products
+cp $scripts_dir/mongo.repo /etc/yum.repos.d/mongo.repo    # NEW: MongoDB client + load products
 validate $? "adding mongo repo"
 
 dnf install mongodb-mongosh -y &>> $logs_file
@@ -412,7 +417,7 @@ journalctl -u catalogue -n 20              # app log
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| `cp: cannot stat 'catalogue.service'` | `cp` ran after `cd /app` | `script_dir=$(dirname "$(realpath "$0")")` at the top |
+| `cp: cannot stat 'catalogue.service'` | `cp` ran after `cd /app` | `scripts_dir=$(dirname "$(realpath "$0")")` at the top |
 | `cp` still failed | File was saved as `" catalogue.service"` (leading space) | Renamed it |
 | `sed: unterminated 's' command` | Missing the 3rd `/` | `s/DOMAIN_NAME/$domain_name/` |
 | Re-run looked frozen | `unzip` asked "replace?" with output in the log | `rm -rf /app/*` first |
@@ -426,7 +431,7 @@ More: [all problems and fixes](troubleshooting.md) · [Traffic flow: incoming an
 
 ## Interview questions
 
-**1. Why `script_dir=$(dirname "$(realpath "$0")")`?**
+**1. Why `scripts_dir=$(dirname "$(realpath "$0")")`?**
 It saves the script's own folder as a full path before `cd /app`, so the script still finds its files.
 
 **2. Why `sed` the copy and not the repo file?**

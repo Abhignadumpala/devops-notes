@@ -186,7 +186,7 @@ Same project, now as code. Repo: [shellscript-roboshop-v1](https://github.com/Ab
 2. **`validate $? "step"`**: prints SUCCESS / FAILED and **stops at the first failure**.
 3. **Logs** in `/var/log/roboshop/<script>.log` with timestamps and `[INFO]` / `[ERROR]`.
 4. **Idempotent**: checks before creating (`id roboshop`, `list_users | grep -qw`, `countDocuments()` before loading products), so a re-run prints SKIPPING instead of failing.
-5. **No hard-coded values**: `DOMAIN_NAME` placeholder + `sed`, and `script_dir` to find its own files.
+5. **No hard-coded values**: `DOMAIN_NAME` placeholder + `sed`, and `scripts_dir` to find its own files.
 6. **Restart at the end**: `systemctl restart <service>` + `validate $?`, so every change from this run is loaded. This is the same `start` vs `restart` lesson as the Redis bug in Stage 1.
 
 > The Redis protected-mode bug from Stage 1 **can't happen again**: the fix is a line in `02-redis.sh`.
@@ -249,8 +249,8 @@ fi
 2. `catalogue.service` is a relative name, so it means "in the current folder", which is now `/app`. The file isn't there.
 3. Fix: save the script's own folder **at the top, before any `cd`**:
    ```bash
-   script_dir=$(dirname "$(realpath "$0")")
-   cp "$script_dir/catalogue.service" /etc/systemd/system/
+   scripts_dir=$(dirname "$(realpath "$0")")
+   cp "$scripts_dir/catalogue.service" /etc/systemd/system/
    ```
 4. **My confusion while testing it:** I ran `realpath 05-catalogue.sh` from `interview-questions/` and got a path to a file that doesn't exist. `realpath` just joins the **current folder** + the name; it doesn't search. That's why it has to run at the top, while still in the right folder.
 
@@ -377,9 +377,9 @@ The MySQL script exited 0, but `root@localhost` had no password. Exit code only 
 
 Running the script again gives the same result without errors. I check before creating (`id roboshop`), so a 2nd run says SKIPPING.
 
-**7. Why `script_dir=$(dirname "$(realpath "$0")")`?**
+**7. Why `scripts_dir=$(dirname "$(realpath "$0")")`?**
 
-It saves the script's own folder as a full path at the start. A later `cd /app` can't break `cp $script_dir/catalogue.service`.
+It saves the script's own folder as a full path at the start. A later `cd /app` can't break `cp $scripts_dir/catalogue.service`.
 
 **8. Scripts work. Why do you need Git and CI/CD?**
 

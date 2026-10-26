@@ -74,7 +74,7 @@ A built-in bash variable: seconds since the script started. Used to print the ru
 
 MySQL users are user + host. `--set-root-pass` set the password on `root@'%'` but left `root@localhost` empty. Fix with `ALTER USER 'root'@'localhost' IDENTIFIED BY '...'` and add a login check to the script.
 
-**19. Why use `script_dir=$(dirname "$(realpath "$0")")` at the top of a script?**
+**19. Why use `scripts_dir=$(dirname "$(realpath "$0")")` at the top of a script?**
 
 The script later runs `cd /app`; relative paths like `catalogue.service` would then look in `/app`. This saves the script's own folder as a full path. `$PWD` only works if you run it from that folder; `realpath "$0"` works from anywhere.
 

@@ -182,7 +182,7 @@ grep bindIp /etc/mongod.conf     # bindIp: 0.0.0.0
 | Problem | Cause | Fix |
 |---------|-------|-----|
 | MongoDB 8.0 crashes on this AMI | Version not compatible with the practice AMI | Use the **7.0** repo |
-| `cp: cannot stat 'mongo.repo'` | This first script uses a relative path | Run it from inside the repo folder (later scripts use `script_dir`) |
+| `cp: cannot stat 'mongo.repo'` | This first script uses a relative path | Run it from inside the repo folder (later scripts use `scripts_dir`) |
 | `Unit mongodb.service not found` | Wrong service name | It's `mongod` |
 | Others get `connection refused` | Still on `127.0.0.1` | `sed` bindIp + **restart** |
 

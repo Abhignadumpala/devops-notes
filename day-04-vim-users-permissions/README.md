@@ -13,7 +13,8 @@
 9. [SSH Password Login](#ssh-password-login)
 10. [Key-Based Authentication](#key-based-authentication)
 11. [Command Cheat Sheet](#command-cheat-sheet)
-12. [Interview Questions](#interview-questions)
+12. [Quick revision](#quick-revision)
+13. [Interview Questions](#interview-questions)
 
 **Topic notes (detailed):**
 
@@ -382,6 +383,22 @@ ssh -i ramesh-private-key ramesh@<public-ip>
 | `visudo -c` | Check sudoers syntax |
 | `sshd -t` | Check SSH config syntax |
 | `systemctl restart sshd` | Restart SSH |
+
+---
+
+## Quick revision
+
+What I learned in this class:
+
+- **Vim:** `:%s/old/new/g` replaces everywhere; `sed -i 's/old/new/g' file` does it **without opening** the file.
+- **Authentication** = who are you; **authorization** = what are you allowed to do.
+- **Users and groups:** `useradd` also makes a same-name group; one primary group, many secondary.
+- **`usermod -aG`** adds a secondary group. **Always `-a`**: `-G` alone removes the other groups.
+- **Important files:** `/etc/passwd` (users), `/etc/group` (groups), `/etc/ssh/sshd_config` (SSH), `/etc/sudoers` + `/etc/sudoers.d/` (sudo).
+- **Permissions:** `r=4 w=2 x=1` for owner / group / others; `chmod 751`. Only owner or root changes permissions.
+- **Ownership:** `chown user:group file`; only **root** can change the owner.
+- **Sudo:** add to `wheel`, or a file in `/etc/sudoers.d/` (recommended); check with `visudo -c`.
+- **SSH config change:** `sshd -t` to check, then `systemctl restart sshd`.
 
 ---
 

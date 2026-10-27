@@ -17,7 +17,8 @@
 13. [Archives (tar)](#archives-tar)
 14. [Vim Editor](#vim-editor)
 15. [Command Cheat Sheet](#command-cheat-sheet)
-16. [Interview Questions](#interview-questions)
+16. [Quick revision](#quick-revision)
+17. [Interview Questions](#interview-questions)
 
 **Topic notes (detailed):**
 
@@ -521,6 +522,22 @@ Other ways to create/edit files: `cat >`, `nano`.
 | `echo` | Print text |
 | `clear` | Clear screen |
 | `vim` | Edit files |
+
+---
+
+## Quick revision
+
+What I learned in this class:
+
+- **SSH to EC2:** `ssh -i <key.pem> ec2-user@<ip>`; SG must allow 22 from my IP; `chmod 400` the key.
+- **Keys:** public key on the server (`authorized_keys`), private key only with me. AWS gives the `.pem` **once**; lost it → EC2 Instance Connect.
+- **Paths:** absolute starts at `/`, relative starts where I am. Linux is **case sensitive**.
+- **Command shape:** `command -option input`.
+- **CRUD:** `touch`/`mkdir` create, `cat`/`head`/`tail` read, `cp`/`mv` copy/rename, `rm` delete (**no recycle bin**).
+- **Download:** `wget` saves a file, `curl` shows the response.
+- **Search and pipes:** `grep` finds text; `|` sends output to the next command; `cut -d -f` and `awk -F '{print $1}'` split text.
+- **Users by UID** in `/etc/passwd`: `0` root, `1-999` system, `1000+` normal.
+- **Archives:** `tar -czf` create, `-xzf` extract, `-tzf` list. **Vim:** `i` insert, `Esc`, `:wq` save, `:q!` quit.
 
 ---
 

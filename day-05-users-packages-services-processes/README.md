@@ -12,7 +12,8 @@
 8. [Process Management](#process-management)
 9. [Troubleshooting Checklist](#troubleshooting-checklist)
 10. [Command Cheat Sheet](#command-cheat-sheet)
-11. [Interview Questions](#interview-questions)
+11. [Quick revision](#quick-revision)
+12. [Interview Questions](#interview-questions)
 
 **Topic notes (detailed):**
 
@@ -296,6 +297,20 @@ App not working? Check in this order:
 | `ps -ef` | All processes |
 | `sleep 60 &` | Background process |
 | `kill PID` | Stop process |
+
+---
+
+## Quick revision
+
+What I learned in this class:
+
+- **Key-based login:** user makes keys with `ssh-keygen`; admin puts the public key in `~/.ssh/authorized_keys` (`.ssh` = 700, `authorized_keys` = 600, or SSH refuses).
+- **Offboarding:** expire (`usermod -e 1`), kill processes (`pkill -u`), back up (`tar -czvf`), find files (`find / -user`), then `userdel`.
+- **Packages:** `dnf install / remove / update / search`.
+- **Services:** `systemctl start / stop / restart / status`; `enable` = start at boot. Linux = physical server, nginx = logical server.
+- **Network:** `netstat -lntp` (or `ss -lntp`) shows which ports are listening.
+- **Processes:** everything is a process (PID, PPID). `ps -ef`; `&` runs in background; `kill PID`.
+- **Troubleshooting order:** service running → port open → process running → logs.
 
 ---
 

@@ -71,6 +71,47 @@ validate(){
 
 > `01-mongodb.sh` was my first script, so it has the older version: no `timestamp()` and no `[INFO]` / `[ERROR]`.
 
+### validate: what are `$1` and `$2`?
+
+Inside a function, `$1` and `$2` are **the values I pass when I call the function**, not the script's arguments.
+
+```bash
+dnf install mysql-server -y &>> $logs_file
+validate $? "installing mysql"
+#        ↑    ↑
+#        $1   $2
+```
+
+| Inside validate | Gets | Value |
+|-----------------|------|-------|
+| `$1` | `$?` = exit code of the **previous command** (`dnf install`) | `0` = worked, anything else = failed |
+| `$2` | the message | `"installing mysql"` |
+
+**Both cases:**
+
+```
+dnf worked → $? = 0 → validate 0 "installing mysql"
+           → [ 0 -ne 0 ] false → else → "installing mysql..SUCCESS"
+
+dnf failed → $? = 1 → validate 1 "installing mysql"
+           → [ 1 -ne 0 ] true  → "installing mysql..FAILED" + exit 1 (script stops)
+```
+
+**Call validate right after the command.** `$?` holds only the **last** command's exit code. Anything in between overwrites it:
+
+```bash
+dnf install xyz -y        # fails, $? = 1
+echo "done"               # now $? = 0  ❌
+validate $? "installing"  # wrongly says SUCCESS
+```
+
+| Where | `$1` means |
+|-------|-----------|
+| script body | 1st argument to the **script**: `bash roboshop.sh mongodb` → `mongodb` |
+| inside a function | 1st argument to the **function**: `validate $? "msg"` → the exit code |
+
+> **Interview one-liner:** "In my validate function, `$1` is the exit code I pass with `$?` and `$2` is the step message. If `$1` isn't 0 it prints FAILED and exits; otherwise SUCCESS."
+
 ---
 
 ## Create the app user (every app script: catalogue, user, cart, shipping, payment ...)

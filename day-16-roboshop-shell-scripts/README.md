@@ -40,9 +40,8 @@
 12. [05-catalogue.sh: first app service](#05-cataloguesh-first-app-service)
 13. [sed quick recap](#sed-quick-recap)
 14. [Shell scripts vs real-time tools](#shell-scripts-vs-real-time-tools)
-15. [Key takeaways](#key-takeaways)
-16. [What I learned](#what-i-learned)
-17. [Interview Questions](#interview-questions)
+15. [What I learned](#what-i-learned)
+16. [Interview Questions](#interview-questions)
 
 **More in this folder:** Each script has its own folder with the script, its config files and its explanation `README.md` (e.g. [05-catalogue/](05-catalogue/README.md)), common part in [00-common-part.md](00-common-part.md) · [Problems I hit and fixes](troubleshooting.md) · [Interview questions](interview-questions/README.md)
 
@@ -549,7 +548,7 @@ validate $? "restarting catalogue"
 
 > Shell is still used daily for small automation, CI/CD steps, EC2 user data and troubleshooting. Those tools automate these same steps.
 
-## Key takeaways
+## What I learned
 
 - **Laptop** creates servers (AWS API); **each server** installs its own software.
 - **GitHub** moves scripts from the laptop to the servers.
@@ -563,18 +562,6 @@ validate $? "restarting catalogue"
 - **`scripts_dir=$(dirname "$(realpath "$0")")`** before any `cd`, so the script finds its own files from any folder.
 - **Placeholders + sed** keep the domain in one variable; config files use **DNS names**, not IPs.
 - **Check values, not only exit codes:** a failed `run-instances` leaves `$instance_id` empty, and `describe-instances` with an empty ID returns **every** instance. Stop with `[ -z "$instance_id" ]` (or `${instance_id:?}`); `set -euo pipefail` is the safety net ([Day 15](../day-15-shell-loops-error-handling-aws-cli/README.md#exit-code-0-is-not-enough-check-empty-values)).
-
-## What I learned
-
-- **Laptop** creates servers + DNS (`roboshop.sh`); **each server** runs its own install script, pulled from **GitHub**.
-- **SGs:** `roboshop-common` for SSH + one SG per component for its app port. SG **names** must exist, or `groupId` is empty.
-- **frontend** → public IP + root domain; the rest → private IP + `<name>.domain` (Route 53 UPSERT).
-- **validate + logs** (`/var/log/roboshop/`, timestamps, `[INFO]`/`[ERROR]`) on every step.
-- **Idempotent** re-runs: check first (`id roboshop`, `list_users`, `countDocuments()`), else SKIPPING.
-- End app scripts with **`systemctl restart` + `validate`**; validate the **result**, not only the exit code.
-- `scripts_dir=$(dirname "$(realpath "$0")")` + placeholders with `sed` for the domain.
-
----
 
 ## Interview Questions
 

@@ -25,9 +25,8 @@
 10. [Programmatic access: AWS CLI](#programmatic-access-aws-cli)
 11. [Pipe `|`](#pipe-)
 12. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-13. [Key takeaways](#key-takeaways)
-14. [What I learned](#what-i-learned)
-15. [Interview Questions](#interview-questions)
+13. [What I learned](#what-i-learned)
+14. [Interview Questions](#interview-questions)
 
 **More in this folder:** [Hands-on: create and terminate EC2 with AWS CLI scripts](hands-on/README.md) · [Interview questions](interview-questions/README.md)
 
@@ -487,7 +486,7 @@ echo "Nginx..SUCCESS" | tee -a app.log   # screen + log file
 - **Script with `set -e` exits at `dnf list installed`** - a "not installed" result counts as an error. Put the check inside `if ! ...; then`.
 - **`Value () for parameter groupId is invalid. The value cannot be empty`** - `run-instances --security-groups "roboshop-common" "roboshop-$instance"` uses SG **names**; one of them doesn't exist (e.g. no `roboshop-rabbitmq` SG yet), or it's not in the default VPC / same region. Check: `aws ec2 describe-security-groups --group-names roboshop-common roboshop-rabbitmq`. No instance is created, the instance ID is empty, `describe-instances` then returns **all** IPs, the unquoted `'$IP'` in the Route 53 JSON gets split (`Unknown options: ...`), and "Updated R53 record" still prints. Fix: create the SG, add `validate $?` after `run-instances`, check `[ -z "$instance_id" ]`, quote `"'"$IP"'"`.
 
-## Key takeaways
+## What I learned
 
 - Fewer lines, more clarity: use **functions** for repeated code and **loops** for repeated actions.
 - A function does one task: input `$1`, `$2` ... in, result out.
@@ -506,18 +505,6 @@ echo "Nginx..SUCCESS" | tee -a app.log   # screen + log file
 - `|` sends one command's output into the next command.
 
 See also: [Day 14 - Shell Scripting and Version Control Basics](../day-14-shell-scripting-git-basics/README.md)
-
----
-
-## What I learned
-
-- **Functions** for repeated code, **loops** for repeated actions: `for package in $@`.
-- **Redirections:** `1>` output, `2>` errors, `&>` both, `>>` append. **Colors** with `echo -e "\e[32m...\e[0m"`.
-- **Idempotent:** check first (`dnf list installed`), install only if missing.
-- **Error handling:** `validate` for clear steps + `set -euo pipefail` and `trap ... ERR` as a safety net. Production uses both.
-- **`trap`** signals: ERR (failure), EXIT (cleanup), INT (Ctrl+C), TERM (kill).
-- **Exit code 0 isn't enough:** check values aren't empty (`[ -z "$x" ]`, `${x:?}`).
-- **AWS CLI** = programmatic access: `aws ec2 run-instances` launches a server from a script.
 
 ---
 

@@ -48,9 +48,8 @@ A complete 3-tier app on 3 Linux servers, set up step by step.
 7. [Troubleshooting](#troubleshooting)
 8. [Hands-On](#hands-on)
 9. [Concepts Learned](#concepts-learned)
-10. [Summary](#summary)
-11. [What I learned](#what-i-learned)
-12. [Interview Questions](#interview-questions)
+10. [What I learned](#what-i-learned)
+11. [Interview Questions](#interview-questions)
 
 **More in this folder:**
 
@@ -885,7 +884,7 @@ System user, build tools, service files, package vs service, server vs client, p
 
 ---
 
-## Summary
+## What I learned
 
 ### Key Topics
 
@@ -908,17 +907,6 @@ System user, build tools, service files, package vs service, server vs client, p
 - Run apps as a **system user**.
 - Custom apps need a **systemd service file** + `daemon-reload`.
 - Troubleshoot: service → port → process → logs → security group.
-
----
-
-## What I learned
-
-- Built the **Expense app** on 3 servers: MySQL (3306) → Node.js backend (8080) → Nginx frontend (80).
-- Build in **reverse of the request flow**: DB first, then backend, then frontend.
-- Apps run as a **system user** (not a human user) from `/app`.
-- Custom apps need a **systemd service file** + `systemctl daemon-reload`.
-- Servers talk over **private IPs**; only the frontend is public. The DB SG must allow 3306 from the backend.
-- Troubleshoot in order: service → port → process → logs → security group.
 
 ---
 

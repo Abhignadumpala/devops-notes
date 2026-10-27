@@ -13,9 +13,8 @@
 9. [Client-Server Architecture](#client-server-architecture)
 10. [Authentication](#authentication)
 11. [SSH - Connecting to a Linux Server](#ssh---connecting-to-a-linux-server)
-12. [Summary](#summary)
-13. [What I learned](#what-i-learned)
-14. [Interview Questions](#interview-questions)
+12. [What I learned](#what-i-learned)
+13. [Interview Questions](#interview-questions)
 
 **Topic notes (detailed):**
 
@@ -277,7 +276,7 @@ Connecting to the server: see [Day 3](../day-03-linux-basics/README.md#connectin
 
 ---
 
-## Summary
+## What I learned
 
 - **Cloud** = servers in minutes, pay as you go, no hardware maintenance.
 - **Region** = location; **AZ** = data center; region has ≥ 2 AZs.
@@ -286,17 +285,7 @@ Connecting to the server: see [Day 3](../day-03-linux-basics/README.md#connectin
 - **Linux** = free Unix-like OS by Linus Torvalds (1991); he also created Git.
 - **Security Group** = firewall; inbound (ingress) / outbound (egress).
 - **SSH** = secure terminal access using key pairs.
-
----
-
-## What I learned
-
-- **Cloud** = servers in minutes, pay as you go, no hardware to look after.
-- **Region** = a location; **AZ** = a data center in it; every region has 2+ AZs.
-- **Computer** = CPU + RAM + storage + OS. **OS** = kernel + shell + applications.
-- **Linux** = free, Unix-like OS by Linus Torvalds (1991), who also made Git. Many distros (RHEL, Ubuntu, Amazon Linux).
-- **Security group** = firewall: inbound (ingress) and outbound (egress) rules.
-- **Client-server**: the client asks, the server answers. **SSH** = secure terminal login with a key pair.
+- **Client-server:** the client asks, the server answers.
 
 ---
 

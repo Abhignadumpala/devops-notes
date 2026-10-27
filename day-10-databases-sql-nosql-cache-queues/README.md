@@ -11,9 +11,8 @@
 5. [Redis: Caching](#redis-caching)
 6. [Message Queues: Sync vs Async](#message-queues-sync-vs-async)
 7. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-8. [Key takeaways](#key-takeaways)
-9. [What I learned](#what-i-learned)
-10. [Interview Questions](#interview-questions)
+8. [What I learned](#what-i-learned)
+9. [Interview Questions](#interview-questions)
 
 **More in this folder:** [Interview questions](interview-questions/README.md)
 
@@ -173,7 +172,7 @@ Without invalidation, users see the **old (stale)** value until the TTL ends.
 | **Wrong database for the data** | Flexible data (catalog) forced into rigid SQL tables, or payments in a schema-less NoSQL store | Match the DB type to the data's shape and consistency needs |
 | **Expecting a queue to act like HTTP** | A queue never promises an immediate response | If you need an answer right now, use HTTP, not a queue |
 
-## Key takeaways
+## What I learned
 
 - **SQL** - tables, rows/columns, mandatory primary/foreign keys. Best for orders and payments.
 - **NoSQL** (e.g. MongoDB) - flexible JSON documents in collections, optional relationships. Best for varying data and fast scaling.
@@ -181,15 +180,6 @@ Without invalidation, users see the **old (stale)** value until the TTL ends.
 - **Message queue** (e.g. RabbitMQ) - sender doesn't wait; for async, fire-and-forget work that HTTP isn't built for.
 
 See also: [Day 6 - 3-Tier Architecture & Databases](../day-06-3-tier-architecture-databases/README.md) · [Day 7 - Expense App](../day-07-3tier-nodejs-expense-app/README.md)
-
----
-
-## What I learned
-
-- **SQL** (MySQL): tables with keys, best for orders and payments.
-- **NoSQL** (MongoDB): flexible JSON documents, best for varying data and fast scaling.
-- **Cache** (Redis): in RAM in front of the DB for fast reads; TTL decides how long a value is trusted.
-- **Message queue** (RabbitMQ): the sender doesn't wait; for async, fire-and-forget work.
 
 ---
 

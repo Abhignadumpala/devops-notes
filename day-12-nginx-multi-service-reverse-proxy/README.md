@@ -16,9 +16,8 @@
    - [Caching Static Assets](#caching-static-assets)
    - [Serving a Single-Page App (React)](#serving-a-single-page-app-react)
 3. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-4. [Key takeaways](#key-takeaways)
-5. [What I learned](#what-i-learned)
-6. [Interview Questions](#interview-questions)
+4. [What I learned](#what-i-learned)
+5. [Interview Questions](#interview-questions)
 
 **Diagrams:** [Multi-Service Routing](images/01-multi-service-routing.svg) · [Request ID Tracing](images/02-request-id-tracing.svg) · [Nginx vs Service Errors](images/03-nginx-errors-vs-service-errors.svg)
 
@@ -213,7 +212,7 @@ location / {
 | **Wrong cache time** | Hashed assets re-downloaded too often, or old images stuck in the browser | Hashed filenames → cache forever; unhashed images → short cache |
 | **Missing trailing slash in `proxy_pass`** | Service gets `/api/catalogue/products` instead of `/products` → `404` | Keep the slash on both the `location` path and the `proxy_pass` URL |
 
-## Key takeaways
+## What I learned
 
 - One Nginx fronts many services, routing by path (`/api/<service>/`) - the browser never knows any service's real address.
 - `X-Request-Id` traces one request across every service it touches.
@@ -221,15 +220,6 @@ location / {
 - Cache time should match how the file changes: forever for hashed names, short for anything else.
 
 See also: [Day 7 - Expense App](../day-07-3tier-nodejs-expense-app/README.md) · [RoboShop Frontend setup](../roboshop-docs/11-frontend.md) · [Day 11 - Backend Deployment](../day-11-backend-deployment-languages/README.md) · [RoboShop setup docs](../roboshop-docs/README.md)
-
----
-
-## What I learned
-
-- One **Nginx** in front of many services, routing by path (`/api/<service>/`); the browser never sees the real addresses.
-- `X-Request-Id` traces one request across every service.
-- Nginx's own errors (502 / 504) → return as JSON; a service's own errors → pass through.
-- **Cache time** matches how files change: forever for hashed file names, short for the rest.
 
 ---
 

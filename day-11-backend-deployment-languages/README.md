@@ -14,9 +14,8 @@
 8. [Go](#go)
 9. [Compiled vs Interpreted](#compiled-vs-interpreted)
 10. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-11. [Key takeaways](#key-takeaways)
-12. [What I learned](#what-i-learned)
-13. [Interview Questions](#interview-questions)
+11. [What I learned](#what-i-learned)
+12. [Interview Questions](#interview-questions)
 
 **More in this folder:** [Interview questions](interview-questions/README.md)
 
@@ -220,7 +219,7 @@ dnf install python3.14 python3.14-pip -y
 | **Wrong language version used in the build** | Many Java / Python versions installed; the first one on `PATH` wins | Set `JAVA_HOME`, or use the venv's Python (`/app/.venv/bin/...`) |
 | **`Unit <name>.service not found`** | Forgot `systemctl daemon-reload` after creating/editing the service file | Run `systemctl daemon-reload` every time - same for every language ([Day 7](../day-07-3tier-nodejs-expense-app/README.md)) |
 
-## Key takeaways
+## What I learned
 
 - **Same steps for every language:** runtime → `/app` + system user → code → dependencies → systemd service → start.
 - **Dependencies:**
@@ -231,14 +230,6 @@ dnf install python3.14 python3.14-pip -y
 - **Compiled:** only Java (→ bytecode, needs JRE) and Go (→ native binary, needs nothing). Node.js and Python run the source directly.
 
 See also: [Day 7 - Expense App](../day-07-3tier-nodejs-expense-app/README.md) · [Day 8 - Nginx](../day-08-nginx-proxy-api-status-codes/README.md) · [RoboShop setup docs](../roboshop-docs/README.md)
-
----
-
-## What I learned
-
-- **Same steps for every language:** runtime → `/app` + system user → code → dependencies → systemd service → start.
-- **Dependencies:** Node.js per app (`node_modules`), Python per app with a `venv`, Java in `~/.m2`, Go in a module cache.
-- **Compiled:** Java (bytecode, needs a JRE) and Go (native binary, needs nothing). Node.js and Python run the source.
 
 ---
 

@@ -14,9 +14,8 @@
    - [Checking Disk and Memory Usage](#checking-disk-and-memory-usage)
    - [The Linux Directory Layout](#the-linux-directory-layout)
 3. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-4. [Key takeaways](#key-takeaways)
-5. [What I learned](#what-i-learned)
-6. [Interview Questions](#interview-questions)
+4. [What I learned](#what-i-learned)
+5. [Interview Questions](#interview-questions)
 
 **Diagrams:** [Inode, Symlink & Hard Link](images/01-inode-symlink-hardlink.svg) · [Add a New Disk](images/02-add-a-new-disk-steps.svg) · [Resize a Disk](images/03-resize-disk-layers.svg)
 
@@ -366,7 +365,7 @@ Every top-level folder has one job:
 | **Server won't boot after editing fstab** | No `nofail`, and the disk wasn't ready at boot | Add `nofail`; always test with `mount -a` first |
 | **Grew the EBS volume but no extra space on the server** | Resizing the volume doesn't resize anything on top | `growpart` → `lvextend` (if LVM) → `xfs_growfs` |
 
-## Key takeaways
+## What I learned
 
 - **Inode** = a file's metadata (owner, permissions, timestamps, size) - never the content.
 - **Symlink** = points at a file (different inode, breaks if the target goes). **Hard link** = the same file under another name (same inode, files only, lives until every link is gone).
@@ -377,17 +376,6 @@ Every top-level folder has one job:
 - `/etc` = config, `/var` = logs and changing data, `/opt` = third-party installs, `/mnt` = manual mounts.
 
 See also: [Day 3 - Linux Basics](../day-03-linux-basics/README.md) · [Day 5 - Linux Administration](../day-05-users-packages-services-processes/README.md)
-
----
-
-## What I learned
-
-- **Inode** = a file's metadata, never its content. **Symlink** = shortcut (own inode); **hard link** = same inode.
-- Keep app data on a **separate EBS volume** in the **same AZ**.
-- **Add a disk:** `lsblk` → `parted` → `mkfs.xfs` → `mount` → `blkid` → `/etc/fstab` (UUID + `nofail`) → `mount -a`.
-- **Grow a disk:** resize EBS → `growpart` → `lvextend` → `xfs_growfs`.
-- Checks: `df -hT` disk, `free -m` RAM, `du -sh *` folder sizes.
-- `/etc` config, `/var` logs and data, `/opt` third-party, `/mnt` manual mounts.
 
 ---
 

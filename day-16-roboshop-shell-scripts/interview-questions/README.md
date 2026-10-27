@@ -150,3 +150,7 @@ It tests the config without applying it. A bad config stops the script before th
 **37. You renamed a file with `mv` and pushed, but the old one is still on GitHub. Why?**
 
 `git add <new>` stages only the new file; the delete is a separate change. `git rm <old>` (or `git add -A`) stages it. `git mv` does both in one step.
+
+**38. `run-instances` failed, but the script printed "Updated R53 record". What went wrong?**
+
+Nothing checked the result. The instance ID was empty, `describe-instances` with no ID returned every instance's IP, and the echo runs whatever happens. Fix: `validate $?` after `run-instances`, stop if `$instance_id` is empty, and quote `$IP` in the JSON.

@@ -281,6 +281,7 @@ fi
 | 16 | CLI stuck on `:` | AWS CLI pager | `q`, or `cli_pager =` in config |
 | 17 | 2nd run would load products twice | `master-data.js` ran every time | `countDocuments()` → load only if `0` |
 | 18 | Re-run ignored a changed service file | `systemctl start` does nothing on a running service | End every app script with `systemctl restart` + `validate` |
+| 19 | `groupId ... cannot be empty`, then "Updated R53 record" anyway (classmate's run) | SG `roboshop-rabbitmq` didn't exist → no instance → empty ID → all IPs → JSON split | Create the SG; `validate` after `run-instances`; check the ID isn't empty; quote `$IP` |
 
 Full table: [Day 16 troubleshooting](../day-16-roboshop-shell-scripts/troubleshooting.md)
 

@@ -561,6 +561,7 @@ validate $? "restarting catalogue"
 - **Validate the result, not only the exit code:** `mysql_secure_installation` said SUCCESS but left `root@localhost` without a password; a login check caught it.
 - **`scripts_dir=$(dirname "$(realpath "$0")")`** before any `cd`, so the script finds its own files from any folder.
 - **Placeholders + sed** keep the domain in one variable; config files use **DNS names**, not IPs.
+- **Check values, not only exit codes:** a failed `run-instances` leaves `$instance_id` empty, and `describe-instances` with an empty ID returns **every** instance. Stop with `[ -z "$instance_id" ]` (or `${instance_id:?}`); `set -euo pipefail` is the safety net ([Day 15](../day-15-shell-loops-error-handling-aws-cli/README.md#exit-code-0-is-not-enough-check-empty-values)).
 
 ## Interview Questions
 

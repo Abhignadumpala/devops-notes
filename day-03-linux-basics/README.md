@@ -81,6 +81,37 @@ ssh -i /c/devops/practice/devops-key ec2-user@<public-ip>    # absolute path to 
 |-------|-------|-----|
 | `Permissions are too open` | Key file readable by others | `chmod 400 devops-key` |
 | `Permission denied (publickey)` | Wrong key, wrong username, or wrong IP | Check all three |
+| `Warning: Identity file vscode.pem not accessible: No such file or directory` | The `.pem` isn't in the folder I'm in (or the name is wrong). SSH ignores `-i` and tries `~/.ssh/` keys → then `Permission denied (publickey)` | `ls *.pem`; `find ~ -name "*.pem"`; use the full path in `-i` |
+| `chmod: cannot access 'vscode.pem'` | Same: file not here | Find the file first, then `chmod 400` |
+| `Host key verification failed` | Saved the server in `known_hosts` as the DNS name, connected with the IP (or the server was recreated) | Use the same name, or `ssh-keygen -R <host>` to remove the old entry |
+
+### Lost the .pem? (real case, 2026-10-27)
+
+My `Ansible` EC2 used key pair `vscode` (made months ago); `vscode.pem` was nowhere on my laptop. AWS gives the private key **once**, so it can't be downloaded again.
+
+**1. Which key does the server want?**
+```bash
+aws ec2 describe-instances --filters "Name=ip-address,Values=<public-ip>" \
+  --query "Reservations[].Instances[].KeyName" --output text      # → vscode
+```
+
+**2. Get in with EC2 Instance Connect** (pushes **my own** public key to the server for **60 seconds**):
+```bash
+aws ec2-instance-connect send-ssh-public-key --region us-east-1 \
+  --instance-id <instance-id> --instance-os-user ec2-user \
+  --ssh-public-key file://~/.ssh/id_ed25519.pub
+ssh -i ~/.ssh/id_ed25519 ec2-user@<public-dns>          # within 60 s
+```
+
+**3. Make it permanent:** on the server, add my public key (`cat ~/.ssh/id_ed25519.pub` on the laptop) to `~/.ssh/authorized_keys`.
+
+| Option | When |
+|--------|------|
+| EC2 Instance Connect | Amazon Linux / Ubuntu AMIs (agent preinstalled), port 22 open |
+| Session Manager (SSM) | no port 22 at all; needs the SSM agent + an IAM role |
+| Terminate and relaunch with a key I **have** | lab server with nothing on it yet |
+
+> Keep `.pem` files in one folder (e.g. `~/.ssh/`), never only in Downloads.
 
 > **Interview one-liner:** Public key sits on the server in `authorized_keys`, private key stays with me; `ssh -i` tells SSH which private key to use to prove who I am.
 
@@ -495,4 +526,4 @@ Other ways to create/edit files: `cat >`, `nano`.
 
 ## Interview Questions
 
-15 questions with short answers → [interview-questions/](interview-questions/README.md)
+16 questions with short answers → [interview-questions/](interview-questions/README.md)

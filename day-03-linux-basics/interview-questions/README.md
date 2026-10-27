@@ -61,3 +61,7 @@ Create: `tar -czf backup.tar.gz files`. Extract: `tar -xzf backup.tar.gz`. List:
 **15. Vim modes? How to save and quit, or quit without saving?**
 
 Normal (Esc), Insert (`i`), Command (`:`). `:wq` = save and quit, `:q!` = quit without saving.
+
+**16. You lost the `.pem` for a running EC2. How do you get in?**
+
+AWS gives the private key only once, so it can't be downloaded again. Use EC2 Instance Connect (`aws ec2-instance-connect send-ssh-public-key` pushes my own public key for 60 seconds), log in, and add my key to `~/.ssh/authorized_keys`. Or use Session Manager, or relaunch with a key I have.

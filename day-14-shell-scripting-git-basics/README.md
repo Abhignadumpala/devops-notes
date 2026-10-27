@@ -205,6 +205,20 @@ echo "Username is: $USER_NAME"
 
 Variable access uses `$VAR` or, to make the variable name's boundary explicit (e.g. right before more text), `${VAR}`.
 
+**Quote your variables: `"$VAR"`**
+
+```bash
+rm "$FILE"      # correct: quotes around the whole variable, including $
+rm $"FILE"      # wrong: $"..." is a different bash feature (translated text), not a variable
+```
+
+| Problem | Example | Fix |
+|---|---|---|
+| **Spaces** in a value | `FILE="my report.txt"` → `rm $FILE` tries to delete `my` and `report.txt` | `rm "$FILE"` |
+| **Empty** value | `DIR=""` → `rm -rf "$DIR"/*` = `rm -rf /*` (quotes **don't** help here) | `rm -rf "${DIR:?DIR is empty}"/*` → script stops, nothing deleted |
+
+> `${VAR:?message}` = stop the script with `message` if `VAR` is empty or unset.
+
 ### Special variables
 
 The shell gives us these variables for free - we don't create them, we just use them:
@@ -626,6 +640,7 @@ cat /var/log/shell-practice/13-logs.sh.log     # full dnf output + SUCCESS lines
 - **Mixing up `$@` and `$#`** - `$@` is every argument's value; `$#` is just the count of how many were passed.
 - **A script keeps going after a command fails** - shell doesn't stop on failure by itself; check `$?` right after any command whose success actually matters.
 - **An exported variable "disappears"** - `export` only lasts for the current session. For something that needs to survive a logout, put it in `~/.bashrc` (one user) or a script under `/etc/profile.d/` (all users).
+- **Unquoted variable breaks on spaces** - `rm $FILE` with `FILE="my report.txt"` deletes two wrong files. Always write `"$FILE"`. For values that must not be empty (like a folder before `rm -rf`), use `"${DIR:?}"`.
 - **Treating a shell variable like a typed value** - e.g. assuming a variable "is a number" and relying on that for arithmetic or comparisons. Shell stores it as a string regardless; validate or convert it explicitly instead of assuming.
 
 ## Key takeaways
@@ -636,6 +651,7 @@ cat /var/log/shell-practice/13-logs.sh.log     # full dnf output + SUCCESS lines
 - A folder is a git repo only once it contains a `.git` subfolder - that's what's actually tracking the history.
 - `#!/bin/bash` must be the first line of a shell script - it tells Linux which interpreter runs the file.
 - Variables (including positional arguments `$1`, `$2`, ... and command substitution `$( )`) exist so a value is written once and reused - the same DRY principle behind avoiding repeated code anywhere else.
+- **Quote variables** (`"$VAR"`, not `$"VAR"`): quotes fix spaces; `${VAR:?}` stops the script if a value is empty.
 - Comments start with `#`; `read` (and `read -s` for passwords) takes user input; `$(( ))` does maths; arrays start at index 0.
 - Special variables (`$@`, `$*`, `$#`, `$0`, `$USER`, `$PWD`, `$$`, `$!`, `$LINENO`, `$?`, `$SECONDS`) are provided by the shell, not declared by you; `$?` specifically holds the previous command's exit status (`0` success, non-zero failure), and checking it is on the script writer since shell doesn't stop automatically on failure.
 - `export` makes a variable available for the session and to sub-processes; `~/.bashrc` persists it per-user, `/etc/profile.d/*.sh` persists it for everyone; `env` lists them all.
@@ -651,4 +667,4 @@ See also: [Day 5 - Linux Administration](../day-05-users-packages-services-proce
 
 ## Interview Questions
 
-10 questions with short answers → [interview-questions/](interview-questions/README.md)
+11 questions with short answers → [interview-questions/](interview-questions/README.md)

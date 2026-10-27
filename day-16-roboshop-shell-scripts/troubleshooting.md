@@ -37,6 +37,7 @@
 | 31 | Payment `/health` → 503 `"rabbitmq":false` once, then `true` | Idle RabbitMQ connection had dropped; the health check resets it and answers `false` once | Check again before debugging. Stays `false` → check rabbitmq-server, `rabbitmqctl list_users`, SG 5672 |
 | 32 | `10-frontend.sh` would fail at `cp roboshop.conf` | Script written, `roboshop.conf` not created yet | Write it next to the script, `git status` → both files pushed |
 | 33 | `sed` on the repo `roboshop.conf`, then `cp` | Changes a tracked file → later `git pull` refuses | `cp` first, `sed` the copy |
+| 34 | Classmate's run: `Value () for parameter groupId is invalid. The value cannot be empty`, then `Unknown options: 172.31.x.x, ...`, then "Updated R53 record" anyway | No `roboshop-rabbitmq` SG (SG **names** must exist in the default VPC, same region) → no instance → empty instance ID → `describe-instances` returned **all** IPs → unquoted `'$IP'` split in the JSON. No error check, so the script kept going | Create the SG (check: `aws ec2 describe-security-groups --group-names roboshop-common roboshop-rabbitmq`). In the script: `validate $?` after `run-instances`, `[ -z "$instance_id" ] && exit 1`, quote `"'"$IP"'"` |
 
 **Find the latest AMI by name:**
 ```bash

@@ -41,3 +41,7 @@ No. It keeps running. Check `$?` after important commands (like a package instal
 **10. What data types does shell have?**
 
 None, really - shell treats everything as a string by default. The script writer must validate values before using them as numbers.
+
+**11. Why quote variables, and does `"$DIR"` make `rm -rf "$DIR"/*` safe?**
+
+Quotes stop a value with spaces from being split into several words (`rm "$FILE"`). They don't help an **empty** value: `DIR=""` still gives `rm -rf /*`. Use `"${DIR:?}"` so the script stops if it's empty.

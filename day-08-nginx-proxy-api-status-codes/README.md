@@ -46,7 +46,8 @@
 11. [Troubleshooting](#troubleshooting)
     - [Hands-On: Rebuilding the App + Two DB Bugs](#hands-on-rebuilding-the-app--two-db-bugs)
 12. [Summary](#summary)
-13. [Interview Questions](#interview-questions)
+13. [What I learned](#what-i-learned)
+14. [Interview Questions](#interview-questions)
 
 **Diagrams:** [Why Nginx](images/01-why-nginx-is-popular.svg) · [Forward vs Reverse Proxy](images/02-forward-vs-reverse-proxy.svg) · [Request Flow & REST API](images/03-request-flow-and-rest-api.svg) · [Status Codes](images/04-http-status-codes.svg) · [User → LB → Frontend → Backend → DB](images/05-user-lb-frontend-backend-db.svg) · [API Request Flow](images/06-api-request-flow.svg) · [What Causes Each Status Code](images/07-what-causes-each-status-code.svg) · [MySQL Account = User + Host](images/08-mysql-accounts-user-host.svg)
 
@@ -1021,6 +1022,17 @@ Screenshots and fixes: [hands-on/README.md](hands-on/README.md). Detailed debug 
 - Browser address bar = GET only. Use Postman / HTTPie / curl to test POST, PUT and DELETE. Frontend URL: `<frontend-ip>/api/transaction`; backend URL: `<backend-ip>:8080/transaction`; `/health` → `{"status":"ok","db":"up"}`.
 - Status codes: 2XX success, 3XX redirect (not an error - 301 new location, 304 use cache), 4XX our mistake (400, 401, 403, 404, 405), 5XX server side (500, 502 backend down, 503 DB down, 504 too slow - Nginx waits 60s by default, 30s in our config).
 - Troubleshoot from the logs: Nginx `access.log` → `journalctl -u backend` → status/ps/netstat → `/health`.
+
+## What I learned
+
+- **Nginx** = web server + reverse proxy + load balancer + SSL termination + cache.
+- **Forward proxy** hides the client; **reverse proxy** hides the server.
+- `location /api/` + `proxy_pass` sends API calls from the frontend to the backend on 8080.
+- **REST API:** GET read, POST create, PUT update, DELETE delete, data as JSON. Test with curl / Postman, not only the browser.
+- **Status codes:** 2XX ok, 3XX redirect, 4XX my mistake (404, 403), 5XX server side (502 backend down, 503 DB down, 504 too slow).
+- Debug from the logs: nginx `access.log` → `journalctl -u backend` → `/health`.
+
+---
 
 ## Interview Questions
 

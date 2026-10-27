@@ -26,7 +26,8 @@
 11. [Pipe `|`](#pipe-)
 12. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
 13. [Key takeaways](#key-takeaways)
-14. [Interview Questions](#interview-questions)
+14. [What I learned](#what-i-learned)
+15. [Interview Questions](#interview-questions)
 
 **More in this folder:** [Hands-on: create and terminate EC2 with AWS CLI scripts](hands-on/README.md) · [Interview questions](interview-questions/README.md)
 
@@ -505,6 +506,18 @@ echo "Nginx..SUCCESS" | tee -a app.log   # screen + log file
 - `|` sends one command's output into the next command.
 
 See also: [Day 14 - Shell Scripting and Version Control Basics](../day-14-shell-scripting-git-basics/README.md)
+
+---
+
+## What I learned
+
+- **Functions** for repeated code, **loops** for repeated actions: `for package in $@`.
+- **Redirections:** `1>` output, `2>` errors, `&>` both, `>>` append. **Colors** with `echo -e "\e[32m...\e[0m"`.
+- **Idempotent:** check first (`dnf list installed`), install only if missing.
+- **Error handling:** `validate` for clear steps + `set -euo pipefail` and `trap ... ERR` as a safety net. Production uses both.
+- **`trap`** signals: ERR (failure), EXIT (cleanup), INT (Ctrl+C), TERM (kill).
+- **Exit code 0 isn't enough:** check values aren't empty (`[ -z "$x" ]`, `${x:?}`).
+- **AWS CLI** = programmatic access: `aws ec2 run-instances` launches a server from a script.
 
 ---
 

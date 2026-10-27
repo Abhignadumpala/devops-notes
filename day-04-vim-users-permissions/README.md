@@ -13,7 +13,7 @@
 9. [SSH Password Login](#ssh-password-login)
 10. [Key-Based Authentication](#key-based-authentication)
 11. [Command Cheat Sheet](#command-cheat-sheet)
-12. [Quick revision](#quick-revision)
+12. [What I learned](#what-i-learned)
 13. [Interview Questions](#interview-questions)
 
 **Topic notes (detailed):**
@@ -386,9 +386,7 @@ ssh -i ramesh-private-key ramesh@<public-ip>
 
 ---
 
-## Quick revision
-
-What I learned in this class:
+## What I learned
 
 - **Vim:** `:%s/old/new/g` replaces everywhere; `sed -i 's/old/new/g' file` does it **without opening** the file.
 - **Authentication** = who are you; **authorization** = what are you allowed to do.

@@ -17,7 +17,7 @@
 13. [Archives (tar)](#archives-tar)
 14. [Vim Editor](#vim-editor)
 15. [Command Cheat Sheet](#command-cheat-sheet)
-16. [Quick revision](#quick-revision)
+16. [What I learned](#what-i-learned)
 17. [Interview Questions](#interview-questions)
 
 **Topic notes (detailed):**
@@ -525,9 +525,7 @@ Other ways to create/edit files: `cat >`, `nano`.
 
 ---
 
-## Quick revision
-
-What I learned in this class:
+## What I learned
 
 - **SSH to EC2:** `ssh -i <key.pem> ec2-user@<ip>`; SG must allow 22 from my IP; `chmod 400` the key.
 - **Keys:** public key on the server (`authorized_keys`), private key only with me. AWS gives the `.pem` **once**; lost it → EC2 Instance Connect.

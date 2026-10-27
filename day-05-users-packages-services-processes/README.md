@@ -12,7 +12,7 @@
 8. [Process Management](#process-management)
 9. [Troubleshooting Checklist](#troubleshooting-checklist)
 10. [Command Cheat Sheet](#command-cheat-sheet)
-11. [Quick revision](#quick-revision)
+11. [What I learned](#what-i-learned)
 12. [Interview Questions](#interview-questions)
 
 **Topic notes (detailed):**
@@ -300,9 +300,7 @@ App not working? Check in this order:
 
 ---
 
-## Quick revision
-
-What I learned in this class:
+## What I learned
 
 - **Key-based login:** user makes keys with `ssh-keygen`; admin puts the public key in `~/.ssh/authorized_keys` (`.ssh` = 700, `authorized_keys` = 600, or SSH refuses).
 - **Offboarding:** expire (`usermod -e 1`), kill processes (`pkill -u`), back up (`tar -czvf`), find files (`find / -user`), then `userdel`.

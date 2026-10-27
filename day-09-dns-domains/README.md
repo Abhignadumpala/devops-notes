@@ -13,7 +13,8 @@
 7. [Domain Transfer to AWS (Route 53)](#domain-transfer-to-aws-route-53)
 8. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
 9. [Key takeaways](#key-takeaways)
-10. [Interview Questions](#interview-questions)
+10. [What I learned](#what-i-learned)
+11. [Interview Questions](#interview-questions)
 
 **More in this folder:** [Hands-on: my own domain + Route 53 + load balancer (screenshots)](hands-on/README.md) · [Troubleshooting: DNS caching step by step](troubleshooting/README.md) · [Interview questions](interview-questions/README.md)
 
@@ -317,6 +318,17 @@ Step by step with `dig` outputs → [troubleshooting/](troubleshooting/README.md
 - Picking a registrar: check renewal price, not just year one. Long-term domain → e.g. GoDaddy (higher initial price); short-term / practice → e.g. Hostinger (cheap first year, costly renewals).
 
 See also: [Day 7 - 3-Tier Expense App](../day-07-3tier-nodejs-expense-app/README.md) (the frontend public IP a domain's A record points to)
+
+---
+
+## What I learned
+
+- **DNS** turns a name into an IP; computers route by IP, not names.
+- Lookup: caches → resolver → root → TLD → my nameservers → IP.
+- **Registry** keeps the TLD records (Verisign for `.com`); **registrar** sells the domain (GoDaddy, Hostinger).
+- **Records:** A → IP, CNAME → another name, NS → who manages the records, MX → email.
+- Change the **NS records** at the registrar to let Route 53 manage the domain.
+- **TTL:** lower it before an IP change; DNS also caches "not found", so create records first.
 
 ---
 

@@ -12,7 +12,8 @@
 8. [What Problems DevOps Solves](#what-problems-devops-solves)
 9. [How to Bring Improvements into a Company](#how-to-bring-improvements-into-a-company)
 10. [Summary](#summary)
-11. [Interview Questions](#interview-questions)
+11. [What I learned](#what-i-learned)
+12. [Interview Questions](#interview-questions)
 
 ---
 
@@ -246,6 +247,17 @@ Competition example: WhatsApp vs Arattai - the app that ships features and fixes
 - **Waterfall** = one pass, can't go back, defects found late.
 - **Agile** = small sprints, continuous feedback.
 - **DevOps** = Agile + automation → faster releases, fewer defects, highly available, scalable, secure, cost-optimised.
+
+---
+
+## What I learned
+
+- **Stakeholders** = everyone affected by the system (customers, business, developers, testers, ops).
+- **SDLC** = Requirements → Planning → Design → Development → Testing → Deployment → Maintenance.
+- **Waterfall** = one pass, no going back, bugs found late. **Agile** = short sprints with feedback every time.
+- Separate **environments** (dev → test → prod) so nothing untested reaches users.
+- **DevOps** = Agile + automation: faster releases, fewer defects, available, scalable, secure, cost-optimised.
+- To improve a company: understand their process → find improvements → small **POC** → DEV, SIT, UAT → PROD.
 
 ---
 

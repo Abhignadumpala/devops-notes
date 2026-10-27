@@ -10,7 +10,8 @@
 6. [Types of Data](#types-of-data)
 7. [DBMS vs RDBMS](#dbms-vs-rdbms)
 8. [Summary](#summary)
-9. [Interview Questions](#interview-questions)
+9. [What I learned](#what-i-learned)
+10. [Interview Questions](#interview-questions)
 
 ---
 
@@ -210,6 +211,16 @@ Institute ─1:many→ Courses ─1:many→ Batches ─1:many→ Students
 - Separate tiers → security, scalability, maintainability, fault isolation, technology freedom.
 - **Data types**: structured (tables), semi-structured (logs, JSON), unstructured (images, videos).
 - **RDBMS** = tables related by IDs (primary key ↔ foreign key).
+
+---
+
+## What I learned
+
+- **3-tier** = load balancer → frontend → backend → database (restaurant: captain, waiter, chef, raw materials).
+- **Stateless** tiers (frontend, backend) scale easily; the **stateful** database is hard to scale.
+- Separate tiers give security, scaling, easier maintenance, fault isolation and freedom of technology.
+- **Data types:** structured (tables), semi-structured (JSON, logs), unstructured (images, videos).
+- **RDBMS** = tables linked by primary key ↔ foreign key.
 
 ---
 

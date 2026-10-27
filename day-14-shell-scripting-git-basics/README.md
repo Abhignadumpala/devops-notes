@@ -22,7 +22,8 @@
    - [Logs and redirections](#logs-and-redirections)
 4. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
 5. [Key takeaways](#key-takeaways)
-6. [Interview Questions](#interview-questions)
+6. [What I learned](#what-i-learned)
+7. [Interview Questions](#interview-questions)
 
 **More in this folder:** [Interview questions](interview-questions/README.md)
 
@@ -662,6 +663,18 @@ cat /var/log/shell-practice/13-logs.sh.log     # full dnf output + SUCCESS lines
 - Work out logic as an algorithm/pseudocode before writing real syntax, then express it as conditions (`if` / `else if` / `else`) once the steps are clear.
 
 See also: [Day 5 - Linux Administration](../day-05-users-packages-services-processes/linux-administration.md)
+
+---
+
+## What I learned
+
+- Manual work = no record, slow, mistakes, no rollback, no accountability. **Scripts** fix the first three; **Git** fixes the rest.
+- `#!/bin/bash` on line 1. **Variables:** no spaces around `=`; `$1 $2` arguments; `$( )` runs a command; `$(( ))` maths.
+- **Quote variables** `"$VAR"` (not `$"VAR"`); `${VAR:?}` stops if empty.
+- **Special variables:** `$@ $# $0 $? $$ $LINENO $SECONDS`. `$?` = last exit status (`0` = success).
+- Everything is a **string**; `export` + `~/.bashrc` keeps a variable.
+- **`validate $? "msg"`** after each step; logs with `&>>` and `tee -a`.
+- Think in pseudocode first, then write `if / elif / else`.
 
 ---
 

@@ -17,7 +17,8 @@
    - [Serving a Single-Page App (React)](#serving-a-single-page-app-react)
 3. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
 4. [Key takeaways](#key-takeaways)
-5. [Interview Questions](#interview-questions)
+5. [What I learned](#what-i-learned)
+6. [Interview Questions](#interview-questions)
 
 **Diagrams:** [Multi-Service Routing](images/01-multi-service-routing.svg) · [Request ID Tracing](images/02-request-id-tracing.svg) · [Nginx vs Service Errors](images/03-nginx-errors-vs-service-errors.svg)
 
@@ -220,6 +221,15 @@ location / {
 - Cache time should match how the file changes: forever for hashed names, short for anything else.
 
 See also: [Day 7 - Expense App](../day-07-3tier-nodejs-expense-app/README.md) · [RoboShop Frontend setup](../roboshop-docs/11-frontend.md) · [Day 11 - Backend Deployment](../day-11-backend-deployment-languages/README.md) · [RoboShop setup docs](../roboshop-docs/README.md)
+
+---
+
+## What I learned
+
+- One **Nginx** in front of many services, routing by path (`/api/<service>/`); the browser never sees the real addresses.
+- `X-Request-Id` traces one request across every service.
+- Nginx's own errors (502 / 504) → return as JSON; a service's own errors → pass through.
+- **Cache time** matches how files change: forever for hashed file names, short for the rest.
 
 ---
 

@@ -49,3 +49,19 @@ It makes the script exit as soon as any command fails, instead of continuing. Co
 **12. What is `trap ... ERR` used for?**
 
 It runs a command whenever an error happens, e.g. `trap 'echo "Error at line $LINENO: $BASH_COMMAND"' ERR`, so you see exactly which line and command failed.
+
+**13. `validate` function or `set -euo pipefail`?**
+
+"I learned error handling with a `validate` function that checks `$?` after each step, which gives clear logs and lets me allow expected failures. In production I'd add `set -euo pipefail` as a safety net, so nothing slips through if I forget a check."
+
+**14. What does `trap` do, and which signals do you use?**
+
+It runs a command when something happens: `ERR` when a command fails (print `$LINENO`), `EXIT` when the script ends (cleanup), `INT` on Ctrl+C, `TERM` when killed.
+
+**15. Does quoting `"$DIR"` make `rm -rf "$DIR"/*` safe?**
+
+No. Quoting fixes spaces, not empty values: an empty `DIR` still gives `rm -rf /*`. Use `"${DIR:?}"` so the script stops if it's empty.
+
+**16. A command succeeded (`$?` is 0) but the script still did the wrong thing. How?**
+
+Some commands succeed but return nothing, e.g. `describe-instances` with an empty instance ID returns every instance. Check important values aren't empty (`[ -z "$x" ]` or `${x:?}`), not just the exit code.

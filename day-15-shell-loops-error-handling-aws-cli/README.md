@@ -16,6 +16,11 @@
 8. [Error handling: known vs unknown errors](#error-handling-known-vs-unknown-errors)
    - [set -e: stop on the first error](#set--e-stop-on-the-first-error)
    - [trap: show where it failed](#trap-show-where-it-failed)
+   - [trap signals: ERR, EXIT, INT, TERM](#trap-signals-err-exit-int-term)
+   - [set -euo pipefail](#set--euo-pipefail)
+   - [Why we learned validate first](#why-we-learned-validate-first)
+   - [Exit code 0 is not enough: check empty values](#exit-code-0-is-not-enough-check-empty-values)
+   - [Quoting vs empty values](#quoting-vs-empty-values)
 9. [Programming vs scripting](#programming-vs-scripting)
 10. [Programmatic access: AWS CLI](#programmatic-access-aws-cli)
 11. [Pipe `|`](#pipe-)
@@ -358,6 +363,58 @@ Error at line 7, command: dnf install nginxxx -y
 | Check `$?` + `validate` function | You want **custom messages** for each step |
 | `set -e` + `trap ... ERR` | You want the script to **stop on any error** automatically and show where |
 
+### trap signals: ERR, EXIT, INT, TERM
+
+`trap` is a built-in command: **"when X happens, run this"**.
+
+| Name | Short for | Fires when | Use |
+|---|---|---|---|
+| `ERR` | error | a command fails (exit code not 0) | print the failed line: `$LINENO`, `$BASH_COMMAND` |
+| `EXIT` | exit | the script ends, for any reason | cleanup: `trap 'rm -f /tmp/lockfile' EXIT` |
+| `INT` | interrupt | I press **Ctrl+C** | clean up before stopping |
+| `TERM` | terminate | the script is killed (`kill <pid>`) | clean up before stopping |
+
+`ERR` follows the same rules as `set -e`: it does **not** fire for failures inside `if`, `&&` or `||`, because those failures are being handled on purpose.
+
+### set -euo pipefail
+
+| Flag | Meaning |
+|---|---|
+| `-e` | exit at the first failed command |
+| `-u` | error on an **unset** variable (typo like `$DIR` vs `$dir`) |
+| `-o pipefail` | a pipe fails if **any** command in it fails, not just the last |
+
+### Why we learned validate first
+
+| | `validate` | `set -e` |
+|---|---|---|
+| For learning | you see how `$?` and exit codes work | hides it in one line |
+| Messages | clear SUCCESS / FAILED per step | needs `trap` |
+| Expected failures (`id roboshop`) | easy, I decide what stops the script | stops the script unless inside `if` |
+| Forgot to check a command | missed | caught automatically |
+| Tricky rules | none | ignored inside `if`, `&&`, `\|\|` |
+
+> **In production: use both.** `set -euo pipefail` + `trap` at the top as the safety net, `validate` / log messages for clear steps, `if` around commands that are allowed to fail.
+
+### Exit code 0 is not enough: check empty values
+
+Some commands **succeed but return nothing**. Example: `aws ec2 describe-instances --instance-ids $instance_id` with an **empty** `$instance_id` exits OK and returns **all** instances' IPs.
+
+```bash
+[ -z "$instance_id" ] && { echo "No instance ID"; exit 1; }
+# or: stop if empty or unset
+echo "${instance_id:?run-instances failed}"
+```
+
+### Quoting vs empty values
+
+| Problem | Example | Fix |
+|---|---|---|
+| spaces in a value | `rm $FILE` with `FILE="my report.txt"` → deletes `my` and `report.txt` | `rm "$FILE"` |
+| empty value | `rm -rf "$DIR"/*` with `DIR=""` → `rm -rf /*` (quotes **don't** help) | `rm -rf "${DIR:?DIR is empty}"/*` |
+
+> Write `"$DIR"`, not `$"DIR"` (`$"..."` is a different bash feature: translated text).
+
 ## Programming vs scripting
 
 | | Programming | Scripting |
@@ -427,6 +484,7 @@ echo "Nginx..SUCCESS" | tee -a app.log   # screen + log file
 - **Screen flooded with install output** - redirect it: `&>> $logs_file`.
 - **Colors print as `\e[31m` text** - use `echo -e`, not plain `echo`.
 - **Script with `set -e` exits at `dnf list installed`** - a "not installed" result counts as an error. Put the check inside `if ! ...; then`.
+- **`Value () for parameter groupId is invalid. The value cannot be empty`** - `run-instances --security-groups "roboshop-common" "roboshop-$instance"` uses SG **names**; one of them doesn't exist (e.g. no `roboshop-rabbitmq` SG yet), or it's not in the default VPC / same region. Check: `aws ec2 describe-security-groups --group-names roboshop-common roboshop-rabbitmq`. No instance is created, the instance ID is empty, `describe-instances` then returns **all** IPs, the unquoted `'$IP'` in the Route 53 JSON gets split (`Unknown options: ...`), and "Updated R53 record" still prints. Fix: create the SG, add `validate $?` after `run-instances`, check `[ -z "$instance_id" ]`, quote `"'"$IP"'"`.
 
 ## Key takeaways
 
@@ -438,6 +496,9 @@ echo "Nginx..SUCCESS" | tee -a app.log   # screen + log file
 - Check before you act (`dnf list installed`) so the script is **idempotent**: safe to run again.
 - **Colors:** `\e[31m` red, `\e[32m` green, `\e[33m` yellow, `\e[0m` reset, printed with `echo -e`.
 - **`set -e`** stops the script on the first failed command; **`trap '...' ERR`** shows the line (`$LINENO`) and command (`$BASH_COMMAND`) that failed.
+- **`set -euo pipefail`**: `-u` catches unset variables, `pipefail` catches failures in the middle of a pipe. `trap` also has `EXIT` (cleanup), `INT` (Ctrl+C), `TERM` (kill).
+- **Production = both:** `set -euo pipefail` + `trap` as the safety net, `validate` for clear per-step messages.
+- **Exit code 0 isn't enough:** check values the script needs aren't empty (`[ -z "$x" ]`, `${x:?}`). Quoting fixes spaces, not empty values.
 - **Known errors** → handle them; **unknown errors** → log everything so you can trace them.
 - Programming builds apps (developers); scripting automates tasks (DevOps).
 - **Programmatic access** = AWS CLI or SDK instead of the console; `aws ec2 run-instances` launches a server in one command.
@@ -449,4 +510,4 @@ See also: [Day 14 - Shell Scripting and Version Control Basics](../day-14-shell-
 
 ## Interview Questions
 
-12 questions with short answers → [interview-questions/](interview-questions/README.md)
+16 questions with short answers → [interview-questions/](interview-questions/README.md)

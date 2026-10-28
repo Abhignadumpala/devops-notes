@@ -12,7 +12,12 @@
 | 02 | `02-redis.sh` | roboshop-redis | ✅ `0.0.0.0:6379` listening, `redis.abhignadevops.store → 172.31.8.36` |
 | 03 | `03-mysql.sh` | roboshop-mysql | ✅ all SUCCESS, **25 s**, `mysqld` on `3306`, `mysql.abhignadevops.store → 172.31.1.79` |
 | 04 | `04-rabbitmq.sh` | roboshop-rabbitmq | ✅ all SUCCESS, **181 s** (after fixing a missing `rabbitmq.repo`), `rabbitmq.abhignadevops.store → 172.31.10.202` |
-| 05–10 | catalogue … frontend | | ⏳ |
+| 05 | `05-catalogue.sh` | roboshop-catalogue | ✅ **58 s** (after pushing the missed `.service` files), products loaded |
+| 06 | `06-user.sh` | roboshop-user | ✅ **26 s** |
+| 07 | `07-cart.sh` | roboshop-cart | ✅ **29 s**, `*:8080`, → redis:6379 |
+| 08 | `08-shipping.sh` | roboshop-shipping | ✅ **33 s** final run, health `UP` (after a Java TLS error chain: [story](hands-on/README.md#08---shipping-the-long-one)) |
+| 09 | `09-payment.sh` | roboshop-payment | ✅ **94 s**, `{"app":"OK","rabbitmq":true}` |
+| 10 | frontend | | ⏳ |
 
 Day 1 ended with mongodb, redis and mysql **stopped** (not terminated). Day 2 (2026-10-28): started them again, ran `03-mysql.sh`, created rabbitmq with `bash roboshop.sh rabbitmq` and ran `04-rabbitmq.sh`.
 
@@ -20,7 +25,8 @@ Day 1 ended with mongodb, redis and mysql **stopped** (not terminated). Day 2 (2
 
 | Folder | What's inside |
 |---|---|
-| [troubleshooting/](troubleshooting/README.md) | Real errors: `cannot stat rabbitmq.repo` + how `validate` stopped the script, `mysql.service` not found, `images/` not in `git status`, `git rm`, shipping `mvn` TLS error (`X25519MLKEM768`) |
+| [hands-on/](hands-on/README.md) | The full day-2 run, mysql → payment, with 24 screenshots and the shipping story |
+| [troubleshooting/](troubleshooting/README.md) | Real errors: `cannot stat rabbitmq.repo` + how `validate` stopped the script, `mysql.service` not found, `images/` not in `git status`, `git rm`, shipping `mvn` + app TLS error (`X25519MLKEM768`), MySQL `ERROR 1129` blocked host, local root without password |
 | [interview-questions/](interview-questions/README.md) | Short answers for interview prep |
 
 ## Table of Contents
@@ -330,6 +336,9 @@ git push
 | 9 | Trial image already pushed | - | `git rm images/<file>` + commit + push |
 | 10 | `catalogue.service: No such file` | `.service` files not pushed (same as #6) | add all 4 `.service` files, push, `git pull` |
 | 11 | Shipping `Installing dependencies..FAILED`: `Could not generate keypair for algorithm: X25519MLKEM768` | new RHEL crypto policy makes Java offer a post-quantum TLS lock it can't make | `export MAVEN_OPTS="-Djdk.tls.namedGroups=x25519,secp256r1,secp384r1"` in `08-shipping.sh` ([details](troubleshooting/README.md#7-shipping-mvn-fails-x25519mlkem768-keypair-not-available)) |
+| 12 | Shipping running but 8080 never opens; log: `Communications link failure` … `X25519MLKEM768` | same TLS lock, now in the app's MySQL connection (`MAVEN_OPTS` only covers Maven) | `-Djdk.tls.namedGroups=...` before `-jar` in `shipping.service` `ExecStart` |
+| 13 | `ERROR 1129: Host '172.31.14.32' is blocked` | app crash-looped (`Restart=on-failure`) → 100 failed connects | `systemctl stop shipping`; on mysql `TRUNCATE TABLE performance_schema.host_cache;` |
+| 14 | `Access denied for user 'root'@'localhost'` on mysql server | local root has **no password** (separate from `root@'%'`) | `mysql -uroot` |
 
 ## Troubleshooting
 
@@ -350,10 +359,13 @@ Step-by-step write-ups of the errors above, including how my `validate` function
 - **Idempotent:** `rabbitmqctl list_users | grep -qw roboshop` before `add_user`, so a rerun prints SKIPPING instead of failing.
 - **Service ≠ client:** `mysqld` is the service, `mysql` the client. `systemctl list-units | grep <app>` finds the real name.
 - **Same script, new packages:** shipping `mvn` broke on a new server because a RHEL crypto-policy update made Java offer a post-quantum TLS lock (`X25519MLKEM768`) it can't make. Fix scoped to one app: `MAVEN_OPTS` with `jdk.tls.namedGroups`.
+- **Two Java processes, two fixes:** Maven's Java (build) and the app's Java (systemd) don't share settings: `MAVEN_OPTS` vs `ExecStart` options.
+- **Crash loops have side effects:** a failing app restarting every 5 s got its IP blocked by MySQL (`max_connect_errors`); stop it, fix it, clear `host_cache`.
+- **MySQL users = user + host:** `root@localhost` and `root@'%'` are different accounts.
 - **Git tracks files, not folders**; images go in `images/` and show in a README with `![alt](images/file.png)`.
 
 ---
 
 ## Interview Questions
 
-15 questions with short answers → [interview-questions/](interview-questions/README.md)
+19 questions with short answers → [interview-questions/](interview-questions/README.md)

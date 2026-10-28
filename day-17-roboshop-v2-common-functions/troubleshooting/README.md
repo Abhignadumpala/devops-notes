@@ -2,7 +2,9 @@
 
 [← Back to Day 17 notes](../README.md)
 
-Real problems I hit while building RoboShop v2 (`03-mysql.sh`, `04-rabbitmq.sh`), what each error meant, and how I fixed it.
+Real problems I hit while building RoboShop v2 (`03` to `09`), what each error meant, and how I fixed it. The full run with screenshots is in [hands-on/](../hands-on/README.md).
+
+![Shipping error chain](../images/01-shipping-error-chain.svg)
 
 ## Table of Contents
 
@@ -13,7 +15,11 @@ Real problems I hit while building RoboShop v2 (`03-mysql.sh`, `04-rabbitmq.sh`)
 5. [`images/` folder not showing in `git status`](#5-images-folder-not-showing-in-git-status)
 6. [Removing a file I already pushed](#6-removing-a-file-i-already-pushed)
 7. [Shipping `mvn` fails: `X25519MLKEM768` keypair not available](#7-shipping-mvn-fails-x25519mlkem768-keypair-not-available)
-8. [Quick Checklist](#quick-checklist)
+8. [`cannot stat ... catalogue.service`: same mistake, second time](#8-cannot-stat--catalogueservice-same-mistake-second-time)
+9. [Shipping app: 8080 never opens, same TLS error to MySQL](#9-shipping-app-8080-never-opens-same-tls-error-to-mysql)
+10. [MySQL `ERROR 1129`: host is blocked](#10-mysql-error-1129-host-is-blocked)
+11. [`Access denied for root@localhost` on the mysql server](#11-access-denied-for-rootlocalhost-on-the-mysql-server)
+12. [Quick Checklist](#quick-checklist)
 
 ---
 
@@ -283,6 +289,8 @@ export MAVEN_OPTS="-Djdk.tls.namedGroups=x25519,secp256r1,secp384r1"    # FIX: X
 | `-Djdk.tls.namedGroups=` | which locks Java offers in TLS |
 | `x25519,secp256r1,secp384r1` | classic locks every HTTPS server supports |
 
+![MAVEN_OPTS in 08-shipping.sh](../hands-on/images/08-shipping-mysql-part-maven-opts.png)
+
 Test by hand first:
 ```bash
 cd /app
@@ -299,9 +307,119 @@ ls target/*.jar
 | Change the crypto policy | affects every program on the server |
 | Downgrade packages | breaks again on the next update |
 
+**Result (confirmed):** next run → `Installing dependencies..SUCCESS`, `Moving shipping.jar file..SUCCESS`. But the app still failed at run time → [#9](#9-shipping-app-8080-never-opens-same-tls-error-to-mysql).
+
 **Later:** when Red Hat fixes the packages, plain `mvn clean package` works again. The line stays harmless; test without it and remove it.
 
 **Real-world fix:** build the `.jar` **once in CI** (Jenkins / GitHub Actions), store it (Nexus / S3), and servers only download and run it. Then a build problem fails in CI, never on a production server.
+
+## 8. `cannot stat ... catalogue.service`: same mistake, second time
+
+```text
+cp: cannot stat '/root/shellscript-roboshop-v2/catalogue.service': No such file or directory
+copying catalogue service..FAILED
+```
+Same as [#1](#1-cannot-stat-rabbitmqrepo-validate-stopped-the-script): I pushed `05`-`08` scripts but the four `.service` files were still **untracked** (red in `git status`). `common.sh` line 71 copies `$scripts_dir/$app_name.service`, so catalogue and user stopped there.
+
+Fix: `git add catalogue.service user.service cart.service shipping.service` → push → `git pull` → rerun. Catalogue **58 s**, user **26 s**, all SUCCESS. The first 7 steps ran again without problems (`roboshop` user → SKIPPING, `/app` removed and recreated).
+
+**Habit now:** `git status` before every push. Anything a script uses (`.repo`, `.service`, `.conf`) must not be red.
+
+## 9. Shipping app: 8080 never opens, same TLS error to MySQL
+
+**What I saw** after the Maven fix:
+```text
+systemctl status shipping    → active (running), java -jar /app/shipping.jar
+ss -lntp                     → only :22, no :8080
+curl localhost:8080/...      → Connection refused
+journalctl -u shipping       → last line: HikariPool-1 - Starting...
+```
+
+**Definition:** *HikariCP* = the app's database connection pool. Spring Boot opens port 8080 only **after** the DB connection works.
+
+**The real error** (`journalctl -u shipping -n 30`, bottom of the stack trace):
+```text
+CommunicationsException: Communications link failure
+  at com.mysql.cj.protocol.a.NativeProtocol.negotiateSSLConnection
+Caused by: javax.net.ssl.SSLException: Could not generate keypair for algorithm: X25519MLKEM768
+```
+
+| Clue | Meaning |
+|---|---|
+| `com.mysql.cj` | the MySQL driver inside `shipping.jar` |
+| `negotiateSSLConnection` | the app connects to MySQL with TLS by default |
+| `X25519MLKEM768` | the **same** lock as [#7](#7-shipping-mvn-fails-x25519mlkem768-keypair-not-available) |
+
+**Why my Maven fix didn't cover it:** `MAVEN_OPTS` is read only by `mvn`. The running app is a **different Java process**, started by systemd.
+
+| Java process | Started by | Fix goes in |
+|---|---|---|
+| `mvn clean package` | my script | `MAVEN_OPTS` in `08-shipping.sh` |
+| `java -jar shipping.jar` | systemd | `ExecStart` in `shipping.service` |
+
+**Fix:** `shipping.service` line 11. Java options go **before `-jar`** (after `-jar` = the app's own arguments):
+```ini
+ExecStart=/bin/java -Djdk.tls.namedGroups=x25519,secp256r1,secp384r1 -jar /app/shipping.jar
+```
+![ExecStart fix](../hands-on/images/08-shipping-service-execstart-fix.png)
+
+**Why the `mysql` command in my script worked:** the `mysql` client uses **OpenSSL**, which handles the new lock. Only Java had the problem.
+
+## 10. MySQL `ERROR 1129`: host is blocked
+
+```text
+ERROR 1129 (HY000): Host '172.31.14.32' is blocked because of many connection errors; unblock with 'mysqladmin flush-hosts'
+Loading shipping data..FAILED
+```
+
+**Definition:** `max_connect_errors` (default **100**) = how many failed connection attempts MySQL allows from one IP before it **blocks** that IP. Blocked IPs live in `performance_schema.host_cache`.
+
+**How it happened:**
+```text
+app TLS fails → exit → systemd restarts after 5 s (Restart=on-failure) → fails again → ...
+each failure = 1 connection error on MySQL → 100 errors → 172.31.14.32 (shipping) blocked
+```
+After that even a **correct** connection is refused, and fixing the code doesn't help: the block is **on the MySQL server**.
+
+Why the script failed at "Loading shipping data": the `count` check got no answer (blocked), so it thought `cities` was empty and tried to load → blocked → FAILED.
+
+**Fix, in this order:**
+```bash
+# 1. shipping: stop the restart loop
+systemctl stop shipping
+
+# 2. mysql server: empty the block list (works on MySQL 8.4)
+mysql -uroot -e "TRUNCATE TABLE performance_schema.host_cache;"
+
+# 3. shipping: run again
+bash 08-shipping.sh
+```
+Result: `Master data already loaded...SKIPPING` (data was loaded in the first run), all SUCCESS in **33 s**, `/actuator/health` → `"db":{"status":"UP"}`.
+
+![blocked then success](../hands-on/images/08-shipping-blocked-then-success.png)
+
+**Interview one-liner:** a crash-looping app can get its host blocked by MySQL (`max_connect_errors`); fix the app, stop the loop, then clear `performance_schema.host_cache`.
+
+## 11. `Access denied for root@localhost` on the mysql server
+
+While unblocking:
+```text
+mysql -uroot -p<mysql-root-password> -e "..."    → ERROR 1045: Access denied for user 'root'@'localhost' (using password: YES)
+mysql -uroot -e "SELECT 1;"           → works
+```
+
+**Cause:** MySQL users are **user + host**. `root@localhost` (on the server) and `root@'%'` (from other servers) are **separate accounts** with separate passwords. On this server local root has **no password**, so sending one is rejected. `<mysql-root-password>` is what shipping uses from its own server.
+
+| Login | Where | Password |
+|---|---|---|
+| `root@localhost` | on the mysql server | none → `mysql -uroot` |
+| `root@'%'` | from shipping | `<mysql-root-password>` |
+
+![root no password](../hands-on/images/08-mysql-root-no-password-unblock.png)
+
+Check all accounts: `mysql -uroot -e "SELECT user, host, plugin FROM mysql.user;"`
+
+Also seen: `mysql -uroot -p<mysql-root-password> -e` with nothing after `-e` → `option '-e' requires an argument`. `-e` needs the SQL in quotes right after it.
 
 ## Quick Checklist
 
@@ -314,3 +432,6 @@ When a RoboShop script fails:
 5. `Unit ... could not be found` → wrong service name: `systemctl list-units | grep <name>`.
 6. FAILED but the screen shows nothing → the command's output went to the log: `grep -n ERROR` in it.
 7. Before pushing: `git status`. Every file the script uses must be committed.
+8. Service `active (running)` but port not listening → the app is stuck starting: `journalctl -u <app> -n 30`, read the **last `Caused by:`**.
+9. Same error in a build **and** at run time → fix both processes (`MAVEN_OPTS` and `ExecStart`).
+10. `ERROR 1129 ... blocked` → stop the failing app, then `TRUNCATE TABLE performance_schema.host_cache;` on the DB server.

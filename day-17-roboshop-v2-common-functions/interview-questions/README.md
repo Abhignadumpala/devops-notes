@@ -61,3 +61,19 @@ Running the script again gives the same result without new errors. Before `rabbi
 **15. `systemctl status mysql` says the unit could not be found, but MySQL works. Why?**
 
 On RHEL the service is `mysqld`; `mysql` is the client. I find real names with `systemctl list-units --type=service | grep -i mysql`.
+
+**16. A Java app's systemd service is `active (running)` but the port isn't listening. How do you debug it?**
+
+Spring Boot opens the port only after startup finishes, so the app is stuck. I read `journalctl -u <app> -n 30` and go to the last `Caused by:`. In my case it was a TLS error connecting to MySQL, so the DB pool never started.
+
+**17. You fixed a TLS problem with `MAVEN_OPTS`, but the app still fails with the same error. Why?**
+
+`MAVEN_OPTS` is only read by Maven. The running app is a separate Java process started by systemd, so the option must go in the service file's `ExecStart`, before `-jar`.
+
+**18. What does `ERROR 1129: Host is blocked because of many connection errors` mean and how do you fix it?**
+
+MySQL counts failed connections per IP; after `max_connect_errors` (100) it blocks that host. I stop the failing app, fix the cause, and clear the block on the DB server with `TRUNCATE TABLE performance_schema.host_cache;` (or `mysqladmin flush-hosts`).
+
+**19. `mysql -uroot -p` says Access denied on the DB server, but the app logs in as root from another server. How?**
+
+MySQL accounts are user + host. `root@localhost` and `root@'%'` are separate accounts with separate passwords; here local root had no password, so `mysql -uroot` worked.

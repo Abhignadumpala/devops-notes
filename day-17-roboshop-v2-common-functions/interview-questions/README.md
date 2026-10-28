@@ -37,3 +37,27 @@ No. Listening is one layer; the security group is the other. `roboshop-redis` al
 **9. Stop vs terminate an EC2 instance?**
 
 Stop keeps the server, its disk and private IP (I pay only for the disk); the public IP changes on start. Terminate deletes it.
+
+**10. Your script printed `cp: cannot stat 'rabbitmq.repo'` and stopped. What does it mean and how do you fix it?**
+
+`cp` couldn't find the source file. I check `pwd` and `ls`; here the file was never committed. I add it on my laptop, push, `git pull` on the server and run again. I fix it in Git, not only on the server, so every new server gets it.
+
+**11. How does your `validate` function work?**
+
+I pass it `$?` and a step name. If `$?` isn't 0 it prints FAILED, logs it and runs `exit 1`, so the script stops at the first failure. Otherwise it prints SUCCESS and the script continues.
+
+**12. Why stop a script at the first failure?**
+
+The first error is the real cause. If the script carries on, every later step fails too (no repo → install fails → service not found), and the real error gets buried.
+
+**13. What is `$?`?**
+
+The exit status of the last command: 0 = success, anything else = failure. It changes after every command, so I read it immediately (`validate $? "..."`).
+
+**14. What does idempotent mean? Give an example from your scripts.**
+
+Running the script again gives the same result without new errors. Before `rabbitmqctl add_user roboshop` I check `rabbitmqctl list_users | grep -qw roboshop`; if the user exists I print SKIPPING.
+
+**15. `systemctl status mysql` says the unit could not be found, but MySQL works. Why?**
+
+On RHEL the service is `mysqld`; `mysql` is the client. I find real names with `systemctl list-units --type=service | grep -i mysql`.

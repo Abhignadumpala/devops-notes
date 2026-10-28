@@ -10,10 +10,18 @@
 |---|--------|--------|--------|
 | 01 | `01-mongodb.sh` | roboshop-mongodb | ✅ first v2 run, 5/5 SUCCESS, **105 s**, `mongodb.abhignadevops.store → 172.31.6.250` |
 | 02 | `02-redis.sh` | roboshop-redis | ✅ `0.0.0.0:6379` listening, `redis.abhignadevops.store → 172.31.8.36` |
-| 03 | `03-mysql.sh` | roboshop-mysql | ⏭️ server created (`172.31.1.79`), script next |
-| 04–10 | rabbitmq … frontend | | ⏳ |
+| 03 | `03-mysql.sh` | roboshop-mysql | ✅ all SUCCESS, **25 s**, `mysqld` on `3306`, `mysql.abhignadevops.store → 172.31.1.79` |
+| 04 | `04-rabbitmq.sh` | roboshop-rabbitmq | ✅ all SUCCESS, **181 s** (after fixing a missing `rabbitmq.repo`), `rabbitmq.abhignadevops.store → 172.31.10.202` |
+| 05–10 | catalogue … frontend | | ⏳ |
 
-All 3 servers **stopped** at the end of the day (not terminated).
+Day 1 ended with mongodb, redis and mysql **stopped** (not terminated). Day 2 (2026-10-28): started them again, ran `03-mysql.sh`, created rabbitmq with `bash roboshop.sh rabbitmq` and ran `04-rabbitmq.sh`.
+
+**More in this folder**
+
+| Folder | What's inside |
+|---|---|
+| [troubleshooting/](troubleshooting/README.md) | Real errors: `cannot stat rabbitmq.repo` + how `validate` stopped the script, `mysql.service` not found, `images/` not in `git status`, `git rm` |
+| [interview-questions/](interview-questions/README.md) | Short answers for interview prep |
 
 ## Table of Contents
 
@@ -25,10 +33,13 @@ All 3 servers **stopped** at the end of the day (not terminated).
 6. [Git: first push, and servers only pull](#git-first-push-and-servers-only-pull)
 7. [SSH login (password)](#ssh-login-password)
 8. [Checks on a target server](#checks-on-a-target-server)
+   - [Service name vs app name](#service-name-vs-app-name)
 9. [Stop vs terminate](#stop-vs-terminate)
-10. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-11. [What I learned](#what-i-learned)
-12. [Interview Questions](#interview-questions)
+10. [Images in a repo and README](#images-in-a-repo-and-readme)
+11. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
+12. [Troubleshooting](#troubleshooting)
+13. [What I learned](#what-i-learned)
+14. [Interview Questions](#interview-questions)
 
 ---
 
@@ -183,12 +194,12 @@ SSH only works from my home IP in `roboshop-common`. Timeout → `curl checkip.a
 
 MongoDB and Redis are **targets** (others connect to them). On a target I check the service and how it listens:
 
-| # | Check | MongoDB | Redis |
-|---|---|---|---|
-| 1 | Running? | `systemctl status mongod` | `systemctl status redis` |
-| 2 | Listening for other servers? | `ss -lntp \| grep 27017` → `0.0.0.0:27017` | `ss -lntp \| grep 6379` → `0.0.0.0:6379` |
-| 3 | Answers locally? | `mongosh --eval 'db.runCommand({ping:1})'` | `redis-cli ping` → `PONG` |
-| 4 | Errors? | `journalctl -u mongod` | `journalctl -u redis` |
+| # | Check | MongoDB | Redis | MySQL | RabbitMQ |
+|---|---|---|---|---|---|
+| 1 | Running? | `systemctl status mongod` | `systemctl status redis` | `systemctl status mysqld` | `systemctl status rabbitmq-server` |
+| 2 | Listening for other servers? | `ss -lntp \| grep 27017` → `0.0.0.0:27017` | `ss -lntp \| grep 6379` → `0.0.0.0:6379` | `ss -lntp \| grep 3306` | `ss -lntp \| grep 5672` |
+| 3 | Answers locally? | `mongosh --eval 'db.runCommand({ping:1})'` | `redis-cli ping` → `PONG` | `mysql -u root -p` → `show databases;` | `rabbitmqctl list_users` → `roboshop` listed |
+| 4 | Errors? | `journalctl -u mongod` | `journalctl -u redis` | `journalctl -u mysqld` | `journalctl -u rabbitmq-server` |
 
 **Two layers decide who can reach it:**
 
@@ -219,6 +230,19 @@ dig +short user.abhignadevops.store
 ```
 `nslookup <private-ip>` only gives `ip-172-31-x-x.ec2.internal`, not the RoboShop name.
 
+### Service name vs app name
+
+**Definition:** the *service* (daemon) is the background process `systemctl` manages; the *client* is the command I use to talk to it. Their names often differ.
+
+| App | Service (`systemctl`) | Client |
+|---|---|---|
+| MySQL | `mysqld` | `mysql` |
+| MongoDB | `mongod` | `mongosh` |
+| Redis | `redis` | `redis-cli` |
+| RabbitMQ | `rabbitmq-server` | `rabbitmqctl` |
+
+`systemctl status mysql` → `Unit mysql.service could not be found` (MySQL was fine, the name was wrong). Find the real name: `systemctl list-units --type=service | grep -i <app>`.
+
 ## Stop vs terminate
 
 | | Stop | Terminate |
@@ -233,6 +257,29 @@ aws ec2 stop-instances --instance-ids <id> ...
 aws ec2 start-instances --instance-ids <id> ...
 ```
 
+## Images in a repo and README
+
+**Definition:** an image in GitHub is just a file in the repo; the README shows it with a Markdown link relative to the README.
+
+```bash
+# from the repo root: copy + rename in one step
+cp ~/Pictures/Screenshots/<file>.png images/03-mysql-running.png
+git add images/
+git commit -m "Add MySQL screenshot"
+git push
+```
+
+```markdown
+![MySQL running](images/03-mysql-running.png)
+```
+
+| Rule | Why |
+|---|---|
+| Git tracks **files**, not folders | empty `images/` never shows in `git status` (use `.gitkeep` to keep one) |
+| Path is relative to the **README** | wrong path → broken image icon |
+| Names: no spaces, lowercase, start with the script number | `03-mysql-error-refused.png`; GitHub is case-sensitive |
+| Remove a pushed file: `git rm <file>` + commit + push | still in history; fine for a trial file |
+
 ## Common problems and how to solve them
 
 | # | Problem | Cause | Fix |
@@ -242,6 +289,14 @@ aws ec2 start-instances --instance-ids <id> ...
 | 3 | `git log`: no commits after `git commit` | no `-m`; editor closed without saving → commit cancelled | `git commit -m "..."` |
 | 4 | `mongo.repo` not in v2 | copied only the scripts | copy every file the script uses; `git status` before push |
 | 5 | Moved both repos into `~/repos`, then wanted them back | trying the trainer's layout | `mv ~/repos/* ~/`; Git doesn't care where the folder is (`.git` moves with it) |
+| 6 | `cp: cannot stat 'rabbitmq.repo'` → `adding rabbitmq repo..FAILED` | `rabbitmq.repo` never pushed to v2 | add it on the laptop, push, `git pull` on the server, run again ([details](troubleshooting/README.md#1-cannot-stat-rabbitmqrepo-validate-stopped-the-script)) |
+| 7 | `Unit mysql.service could not be found` | service is `mysqld`, not `mysql` | `systemctl status mysqld` |
+| 8 | New `images/` folder not in `git status` | Git ignores empty folders | add a file (or `.gitkeep`) |
+| 9 | Trial image already pushed | - | `git rm images/<file>` + commit + push |
+
+## Troubleshooting
+
+Step-by-step write-ups of the errors above, including how my `validate` function stopped the script at the first failure → [troubleshooting/](troubleshooting/README.md)
 
 ## What I learned
 
@@ -253,9 +308,14 @@ aws ec2 start-instances --instance-ids <id> ...
 - **Target checks:** `systemctl status` + `ss -lntp` (`0.0.0.0` = open to the network). `ss -tnp` shows who is connected; names come from AWS tags or DNS.
 - **Two layers:** the server listening (`ss`) **and** the security group allowing the caller.
 - **Stop** keeps everything (private IP too); public IP changes on start.
+- **`validate` + `exit 1`** stops the script at the **first** failure, so the real cause is the only error on screen (`cannot stat rabbitmq.repo`), not 4 follow-on errors.
+- **Fix at the source:** missing file → add on the laptop, push, `git pull` on the server. Found and fixed in ~2 minutes.
+- **Idempotent:** `rabbitmqctl list_users | grep -qw roboshop` before `add_user`, so a rerun prints SKIPPING instead of failing.
+- **Service ≠ client:** `mysqld` is the service, `mysql` the client. `systemctl list-units | grep <app>` finds the real name.
+- **Git tracks files, not folders**; images go in `images/` and show in a README with `![alt](images/file.png)`.
 
 ---
 
 ## Interview Questions
 
-9 questions with short answers → [interview-questions/](interview-questions/README.md)
+15 questions with short answers → [interview-questions/](interview-questions/README.md)

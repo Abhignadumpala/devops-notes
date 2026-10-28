@@ -12,7 +12,8 @@ Real problems I hit while building RoboShop v2 (`03-mysql.sh`, `04-rabbitmq.sh`)
 4. [`Unit mysql.service could not be found`](#4-unit-mysqlservice-could-not-be-found)
 5. [`images/` folder not showing in `git status`](#5-images-folder-not-showing-in-git-status)
 6. [Removing a file I already pushed](#6-removing-a-file-i-already-pushed)
-7. [Quick Checklist](#quick-checklist)
+7. [Shipping `mvn` fails: `X25519MLKEM768` keypair not available](#7-shipping-mvn-fails-x25519mlkem768-keypair-not-available)
+8. [Quick Checklist](#quick-checklist)
 
 ---
 
@@ -212,6 +213,96 @@ git push
 
 `git rm` vs `rm`: `rm` only deletes from disk, then I still need `git add`. `git rm` does both.
 
+## 7. Shipping `mvn` fails: `X25519MLKEM768` keypair not available
+
+**Definition:** *TLS handshake* = the first step of every HTTPS connection, where both sides agree on an encryption method (a "lock") before any data moves.
+
+**What I saw:**
+```text
+Setting JAVA_HOME for maven..SUCCESS
+Installing dependencies..FAILED
+```
+The screen only says FAILED because `mvn` output goes to the log. The real error:
+```bash
+grep -n "ERROR\|FATAL" /var/log/roboshop/08-shipping.sh.log | tail
+```
+```text
+[FATAL] Non-resolvable parent POM ... spring-boot-starter-parent:pom:4.1.1
+Could not transfer artifact ... from/to central (https://repo.maven.apache.org/maven2):
+(internal_error) Could not generate keypair for algorithm: X25519MLKEM768
+... ML-KEM-768 KeyPairGenerator not available
+```
+
+**Reading it:**
+
+| Part | Meaning |
+|---|---|
+| `Could not transfer ... https://` | Maven couldn't download from the internet |
+| `X25519MLKEM768` | a new **post-quantum** TLS lock |
+| `KeyPairGenerator not available` | Java was told to offer it but **can't make it** → handshake fails before the download starts |
+
+Not my code (same as v1, which worked), not memory, not internet.
+
+**Why the server offers the new lock:**
+
+**Definition:** *crypto policy* = RHEL's system-wide rulebook for which encryption all programs (Java, curl, ssh, dnf) may use. Java reads `/etc/crypto-policies/back-ends/java.config`.
+
+```text
+crypto-policies update (el9_8)  →  rulebook: "offer X25519MLKEM768"   ✅ updated
+java-25-openjdk                 →  can't generate that key            ❌ not ready
+                                →  every HTTPS download from Java fails
+```
+
+Why post-quantum locks: future quantum computers could break today's locks, so attackers can save traffic now and decrypt it later ("harvest now, decrypt later"). Vendors are adding new locks early.
+
+```bash
+update-crypto-policies --show                               # DEFAULT
+grep -i mlkem /etc/crypto-policies/back-ends/java.config    # the new lock in Java's rulebook
+rpm -q crypto-policies java-25-openjdk-headless             # package versions
+```
+
+**Why it worked in v1:** same script, **different packages**. Every new server runs `dnf install` and gets the **latest** versions. v1 (2 weeks earlier) had the older rulebook without the new lock.
+
+| | v1 | v2 (2026-10-28) |
+|---|---|---|
+| Script | same | same |
+| Packages | older | newer `el9_8` |
+| Result | ✅ BUILD SUCCESS | ❌ BUILD FAILURE |
+
+**Who else hits it:** anyone building shipping on a new server with these packages (it's in the Maven step, so by script or by hand). Not npm (catalogue/user/cart) or pip (payment): they use OpenSSL, and those builds worked the same day.
+
+**Fix:** tell Maven's Java to offer only the normal locks. I didn't touch `common.sh`; the fix sits next to the one app that needs it, in `08-shipping.sh`, after `check_root` and before `java_setup`:
+```bash
+export MAVEN_OPTS="-Djdk.tls.namedGroups=x25519,secp256r1,secp384r1"    # FIX: X25519MLKEM768 keypair error in mvn
+```
+
+| Part | Meaning |
+|---|---|
+| `export` | puts the variable in the script's environment, so `mvn` inside `java_setup` sees it |
+| `MAVEN_OPTS` | extra options for the Java that runs Maven (`mvn` reads it automatically) |
+| `-Djdk.tls.namedGroups=` | which locks Java offers in TLS |
+| `x25519,secp256r1,secp384r1` | classic locks every HTTPS server supports |
+
+Test by hand first:
+```bash
+cd /app
+MAVEN_OPTS="-Djdk.tls.namedGroups=x25519,secp256r1,secp384r1" mvn clean package
+ls target/*.jar
+```
+
+**Options I considered:**
+
+| Option | Why not |
+|---|---|
+| Change line 97 in `common.sh` | works, but I want the fix next to the app that needs it |
+| `/etc/mavenrc` on the server | hidden setting on the server; nobody remembers it later |
+| Change the crypto policy | affects every program on the server |
+| Downgrade packages | breaks again on the next update |
+
+**Later:** when Red Hat fixes the packages, plain `mvn clean package` works again. The line stays harmless; test without it and remove it.
+
+**Real-world fix:** build the `.jar` **once in CI** (Jenkins / GitHub Actions), store it (Nexus / S3), and servers only download and run it. Then a build problem fails in CI, never on a production server.
+
 ## Quick Checklist
 
 When a RoboShop script fails:
@@ -221,4 +312,5 @@ When a RoboShop script fails:
 3. `cannot stat` / `No such file` → `pwd`, `ls`: is the file in the repo?
 4. Missing file → add it on the **laptop**, push, `git pull` on the server, run again.
 5. `Unit ... could not be found` → wrong service name: `systemctl list-units | grep <name>`.
-6. Before pushing: `git status`. Every file the script uses must be committed.
+6. FAILED but the screen shows nothing → the command's output went to the log: `grep -n ERROR` in it.
+7. Before pushing: `git status`. Every file the script uses must be committed.

@@ -11,6 +11,7 @@
 5. [Loops](#loops)
    - [How a for loop works (step by step)](#how-a-for-loop-works-step-by-step)
    - [Loop syntax in bash](#loop-syntax-in-bash)
+   - [for vs while](#for-vs-while)
 6. [Real script: install many packages with a loop](#real-script-install-many-packages-with-a-loop)
 7. [Colors in output](#colors-in-output)
 8. [Error handling: known vs unknown errors](#error-handling-known-vs-unknown-errors)
@@ -146,6 +147,56 @@ done
 | `for x in list` | Take each value of the list into `x`, one by one |
 | `do ... done` | The body: runs once per value |
 | `$@` | **All arguments** given to the script: `sh script.sh nginx mysql` → `nginx mysql` |
+
+### for vs while
+
+- **for** = "do this **for each thing in my list**". I already have the list (like a shopping list).
+- **while** = "keep doing this **until something changes**". I don't know how many rounds (like waiting for a bus).
+
+```bash
+# for: a known list
+for fruit in apple banana mango
+do
+    echo "Buy $fruit"
+done
+
+# while: repeat while the condition is true
+count=1
+while [ $count -le 3 ]
+do
+    echo "Attempt $count"
+    count=$((count+1))      # forget this → infinite loop
+done
+
+# while read: a file, one full line at a time
+while read line
+do
+    echo "Server: $line"
+done < servers.txt
+```
+
+| | `for` | `while` |
+|---|---|---|
+| Runs | once per item in a list | as long as a condition is true |
+| Number of rounds | known | not known |
+| Risk | low | **infinite loop** if the condition never changes |
+
+**In DevOps scripts:**
+
+| `for` (I have a list) | `while` (wait / retry / read a file) |
+|---|---|
+| install packages: `for pkg in nginx git mysql` | wait for the app: `while ! curl -s localhost:8080/health; do sleep 5; done` |
+| create servers: `for instance in $@` (my `roboshop.sh`) | retry a command a few times |
+| create users, run a command on many IPs | read a server list: `while read ip; do ...; done < servers.txt` |
+| loop over file **names**: `for file in *.log` | read **lines inside** a file |
+
+> **Don't read lines with `for`:** `for line in $(cat file)` splits on **spaces**, so `web server 1` becomes 3 items. `while read line` keeps the whole line.
+
+| More | Meaning |
+|---|---|
+| `until <cond>` | opposite of while: runs **until** the condition is true: `until curl -s url; do sleep 5; done` |
+| `break` | leave the loop now |
+| `continue` | skip to the next round |
 
 ## Real script: install many packages with a loop
 
@@ -493,6 +544,7 @@ echo "Nginx..SUCCESS" | tee -a app.log   # screen + log file
 - `1>` = success output, `2>` = errors, `&>` = both; `>>` appends.
 - A `for` loop: set a start value → check the condition → run the body → repeat until false.
 - `for package in $@` loops over every argument passed to the script.
+- **for** = a known list (packages, `$@`, file names); **while** = until a condition changes (wait for health, retry, `while read line` for file lines).
 - Check before you act (`dnf list installed`) so the script is **idempotent**: safe to run again.
 - **Colors:** `\e[31m` red, `\e[32m` green, `\e[33m` yellow, `\e[0m` reset, printed with `echo -e`.
 - **`set -e`** stops the script on the first failed command; **`trap '...' ERR`** shows the line (`$LINENO`) and command (`$BASH_COMMAND`) that failed.
@@ -510,4 +562,4 @@ See also: [Day 14 - Shell Scripting and Version Control Basics](../day-14-shell-
 
 ## Interview Questions
 
-16 questions with short answers → [interview-questions/](interview-questions/README.md)
+17 questions with short answers → [interview-questions/](interview-questions/README.md)

@@ -65,3 +65,7 @@ No. Quoting fixes spaces, not empty values: an empty `DIR` still gives `rm -rf /
 **16. A command succeeded (`$?` is 0) but the script still did the wrong thing. How?**
 
 Some commands succeed but return nothing, e.g. `describe-instances` with an empty instance ID returns every instance. Check important values aren't empty (`[ -z "$x" ]` or `${x:?}`), not just the exit code.
+
+**17. When do you use a for loop and when a while loop?**
+
+"Both repeat commands, but they decide how many times differently. A **for** loop runs once for each item in a list, so I use it when I know the items: in my RoboShop `roboshop.sh`, `for instance in $@` creates one server per name. A **while** loop runs as long as a condition is true, so I use it when I don't know how long: waiting for a service's health check after a restart, retrying a command, or reading a file line by line with `while read line`. The risk with while is an infinite loop, so I add a counter or a max number of retries."

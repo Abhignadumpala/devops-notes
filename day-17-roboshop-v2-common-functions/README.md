@@ -219,6 +219,41 @@ Redis: `0.0.0.0:6379` + SG `roboshop-redis` allows only `roboshop-user` and `rob
 
 My `ss -tnp` on redis: `172.31.8.36:22 ← 2.82.252.24:54140 sshd` = **my own SSH session**. No `:6379` line yet: user and cart don't exist. They show up only once the **app is installed and running** (the app connects, not the empty server).
 
+**Reading `ss -tnp` on cart** (after `07-cart.sh`):
+```text
+ESTAB  172.31.10.152:41498  172.31.8.36:6379    MainThread,pid=12559   ← cart app → redis (OUTGOING)
+ESTAB  172.31.10.152:22     2.82.252.24:60066   sshd                   ← me → cart (INCOMING)
+```
+
+**Definition:** *ephemeral port* = a random high port the caller picks for one outgoing connection (`41498`).
+
+| Local port is... | Direction |
+|---|---|
+| well-known (`22`, `8080`) | **incoming**: someone connected to this server |
+| random high (`41498`) | **outgoing**: this server connected out |
+
+One connection, two ends: cart sees `→ redis:6379` (outgoing), redis sees `← cart:41498` (incoming).
+
+**"Both directions" = connections, not open ports.** Open ports = `ss -lntp`.
+
+**What shows in `ss -tnp`:**
+
+| Connection | Lasts | Shows? |
+|---|---|---|
+| app → its DB (cart → redis) | stays open | ✅ always |
+| frontend → cart, cart → catalogue (HTTP) | milliseconds | ⚠️ rarely; just after: `TIME-WAIT` (~60 s, no process) |
+
+Catch short ones: `watch -n 0.5 'ss -tn | grep 8080'` or `journalctl -u cart -f`.
+
+| Server | Long-lived connections |
+|---|---|
+| catalogue | → mongodb:27017 |
+| user | → mongodb:27017, → redis:6379 |
+| cart | → redis:6379 |
+| shipping | → mysql:3306 |
+| payment | → rabbitmq:5672 |
+| mongodb / redis / mysql / rabbitmq | ← incoming from their apps |
+
 **IP → server name** (Linux only sees IPs; names live in AWS tags and DNS):
 ```bash
 # laptop: all servers with names

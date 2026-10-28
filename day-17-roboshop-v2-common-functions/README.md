@@ -17,7 +17,9 @@
 | 07 | `07-cart.sh` | roboshop-cart | ✅ **29 s**, `*:8080`, → redis:6379 |
 | 08 | `08-shipping.sh` | roboshop-shipping | ✅ **33 s** final run, health `UP` (after a Java TLS error chain: [story](hands-on/README.md#08---shipping-the-long-one)) |
 | 09 | `09-payment.sh` | roboshop-payment | ✅ **94 s**, `{"app":"OK","rabbitmq":true}` |
-| 10 | frontend | | ⏳ |
+| 10 | `10-frontend.sh` | roboshop-frontend | ✅ **94 s**, `abhignadevops.store → 100.54.75.212`, all `/api/*/health` 200 |
+
+**End-to-end ✅ (2026-10-28):** registered → added a robot → shipping Portugal/Lamego (€79.85) → paid → order `a2a4de95` (€379.85) in order history. [Story + screenshots](hands-on/README.md#end-to-end-order). Dispatch not built in v2.
 
 Day 1 ended with mongodb, redis and mysql **stopped** (not terminated). Day 2 (2026-10-28): started them again, ran `03-mysql.sh`, created rabbitmq with `bash roboshop.sh rabbitmq` and ran `04-rabbitmq.sh`.
 
@@ -339,6 +341,7 @@ git push
 | 12 | Shipping running but 8080 never opens; log: `Communications link failure` … `X25519MLKEM768` | same TLS lock, now in the app's MySQL connection (`MAVEN_OPTS` only covers Maven) | `-Djdk.tls.namedGroups=...` before `-jar` in `shipping.service` `ExecStart` |
 | 13 | `ERROR 1129: Host '172.31.14.32' is blocked` | app crash-looped (`Restart=on-failure`) → 100 failed connects | `systemctl stop shipping`; on mysql `TRUNCATE TABLE performance_schema.host_cache;` |
 | 14 | `Access denied for user 'root'@'localhost'` on mysql server | local root has **no password** (separate from `root@'%'`) | `mysql -uroot` |
+| 15 | Order confirmed, history empty | never registered in v2 (`GET /check/abhigna 404`), so payment skipped saving the order | register, order again ([details](troubleshooting/README.md#12-order-confirmed-but-order-history-empty-check-404)) |
 
 ## Troubleshooting
 
@@ -362,10 +365,12 @@ Step-by-step write-ups of the errors above, including how my `validate` function
 - **Two Java processes, two fixes:** Maven's Java (build) and the app's Java (systemd) don't share settings: `MAVEN_OPTS` vs `ExecStart` options.
 - **Crash loops have side effects:** a failing app restarting every 5 s got its IP blocked by MySQL (`max_connect_errors`); stop it, fix it, clear `host_cache`.
 - **MySQL users = user + host:** `root@localhost` and `root@'%'` are different accounts.
+- **Layers of checks:** `telnet`/`nc` = network, `curl -v` = app (`*` info, `>` request, `<` response), browser order = everything.
+- **Follow the `requestId`** across service logs; a `404` from `/check` = missing data, not a broken service.
 - **Git tracks files, not folders**; images go in `images/` and show in a README with `![alt](images/file.png)`.
 
 ---
 
 ## Interview Questions
 
-19 questions with short answers → [interview-questions/](interview-questions/README.md)
+21 questions with short answers → [interview-questions/](interview-questions/README.md)

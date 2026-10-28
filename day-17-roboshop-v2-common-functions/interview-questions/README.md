@@ -77,3 +77,11 @@ MySQL counts failed connections per IP; after `max_connect_errors` (100) it bloc
 **19. `mysql -uroot -p` says Access denied on the DB server, but the app logs in as root from another server. How?**
 
 MySQL accounts are user + host. `root@localhost` and `root@'%'` are separate accounts with separate passwords; here local root had no password, so `mysql -uroot` worked.
+
+**20. telnet vs `curl -v`: what does each prove?**
+
+`telnet host port` (or `nc -zv`) only proves TCP: DNS resolved, the security group allows it and something listens. `curl -v` also proves the app answers: status code and body. Neither proves the whole flow; for that I place a real order.
+
+**21. The order is confirmed but doesn't appear in order history. How do you debug it?**
+
+I take the order id, grep it in payment's log to get the `requestId`, then grep that `requestId` in user's log. I found `GET /check/<user> 404`: the user didn't exist in the new MongoDB, so payment never saved the order. Registering and ordering again fixed it.

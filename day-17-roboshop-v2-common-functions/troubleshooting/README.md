@@ -19,7 +19,8 @@ Real problems I hit while building RoboShop v2 (`03` to `09`), what each error m
 9. [Shipping app: 8080 never opens, same TLS error to MySQL](#9-shipping-app-8080-never-opens-same-tls-error-to-mysql)
 10. [MySQL `ERROR 1129`: host is blocked](#10-mysql-error-1129-host-is-blocked)
 11. [`Access denied for root@localhost` on the mysql server](#11-access-denied-for-rootlocalhost-on-the-mysql-server)
-12. [Quick Checklist](#quick-checklist)
+12. [Order confirmed, but order history empty (`/check` 404)](#12-order-confirmed-but-order-history-empty-check-404)
+13. [Quick Checklist](#quick-checklist)
 
 ---
 
@@ -421,6 +422,40 @@ Check all accounts: `mysql -uroot -e "SELECT user, host, plugin FROM mysql.user;
 
 Also seen: `mysql -uroot -p<mysql-root-password> -e` with nothing after `-e` → `option '-e' requires an argument`. `-e` needs the SQL in quotes right after it.
 
+## 12. Order confirmed, but order history empty (`/check` 404)
+
+**What I saw:** "Order confirmed" with an order id, but **Order history → No orders yet**.
+
+![history empty](../hands-on/images/web-04-history-empty-no-account.png)
+
+**Definition:** *requestId* = one ID that every service logs for the same click, so I can follow one request across servers.
+
+**How an order is saved:**
+```text
+payment ─① GET  /check/<user>  → user    (does the user exist?)
+        ─② cart                → cart
+        ─③ queue order         → RabbitMQ
+        ─④ POST /order/<user>  → user → MongoDB   ← what the history page reads
+```
+
+**Hop by hop:**
+
+| Hop | Command | Result |
+|---|---|---|
+| payment | `journalctl -u payment \| grep <order-id>` | `queued`, `placed`, no error → requestId `c6143973...` |
+| user | `journalctl -u user \| grep <requestId>` | **`GET /check/abhigna 404`**, no `POST /order` |
+
+**Cause:** `404` = user not found. I never registered in v2: new MongoDB, empty `users`. The browser still showed my name from the v1 site on the **same domain**. Payment treats an unknown user as a guest: order queued (so I got an id), but step ④ is skipped.
+
+**Fix:** sign out → **register** → order again → history shows the order (`a2a4de95`, €379.85). On user: `GET /check/abhigna 200`, `POST /order/abhigna 200`.
+
+Check users in MongoDB (on user):
+```bash
+mongosh --host mongodb.abhignadevops.store --quiet --eval 'db.getSiblingDB("users").users.find({},{name:1}).toArray()'
+```
+
+**Lesson:** network ✅, services ✅, the **data** was missing. A `404` from an API often means "that thing doesn't exist", not "server broken".
+
 ## Quick Checklist
 
 When a RoboShop script fails:
@@ -435,3 +470,4 @@ When a RoboShop script fails:
 8. Service `active (running)` but port not listening → the app is stuck starting: `journalctl -u <app> -n 30`, read the **last `Caused by:`**.
 9. Same error in a build **and** at run time → fix both processes (`MAVEN_OPTS` and `ExecStart`).
 10. `ERROR 1129 ... blocked` → stop the failing app, then `TRUNCATE TABLE performance_schema.host_cache;` on the DB server.
+11. Browser works but data is wrong/missing → follow the `requestId` through each service's log; a `404` = the record doesn't exist.

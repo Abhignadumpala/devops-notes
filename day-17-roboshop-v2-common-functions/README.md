@@ -21,7 +21,7 @@
 
 **End-to-end ✅ (2026-10-28):** registered → added a robot → shipping Portugal/Lamego (€79.85) → paid → order `a2a4de95` (€379.85) in order history. [Story + screenshots](hands-on/README.md#end-to-end-order). Dispatch not built in v2.
 
-Day 1 ended with mongodb, redis and mysql **stopped** (not terminated). Day 2 (2026-10-28): started them again, ran `03-mysql.sh`, created rabbitmq with `bash roboshop.sh rabbitmq` and ran `04-rabbitmq.sh`.
+Day 1 ended with mongodb, redis and mysql **stopped** (not terminated). Day 2 ended with all **10 servers terminated** after the end-to-end order (no leftover EBS volumes or Elastic IPs; the 12 SGs and the Route 53 zone stay for the next build). Day 2 (2026-10-28): started them again, ran `03-mysql.sh`, created rabbitmq with `bash roboshop.sh rabbitmq` and ran `04-rabbitmq.sh`.
 
 **More in this folder**
 

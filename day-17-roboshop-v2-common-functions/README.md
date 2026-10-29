@@ -24,11 +24,10 @@
 8. [See who is connected](#step-8-see-who-is-connected)
 9. [Test the whole shop](#step-9-test-the-whole-shop)
 10. [Stop or terminate](#step-10-stop-or-terminate)
-11. [Extra: screenshots in the README](#extra-screenshots-in-the-readme)
-12. [Result](#result)
-13. [Problems I hit](#problems-i-hit)
-14. [What I learned](#what-i-learned)
-15. [Interview Questions](#interview-questions)
+11. [Result](#result)
+12. [Problems I hit](#problems-i-hit)
+13. [What I learned](#what-i-learned)
+14. [Interview Questions](#interview-questions)
 
 ---
 
@@ -336,25 +335,6 @@ aws ec2 terminate-instances --instance-ids <id>
 
 Stop = pause for tomorrow. Terminate = lab finished (SGs and the Route 53 zone stay for the next build).
 
-## Extra: screenshots in the README
-
-An image on GitHub is just a file in the repo; the README shows it with a relative link.
-
-```bash
-cp ~/Pictures/Screenshots/<file>.png images/03-mysql-running.png
-git add images/
-git commit -m "Add MySQL screenshot"
-git push
-```
-```markdown
-![MySQL running](images/03-mysql-running.png)
-```
-
-| Rule | Why |
-|---|---|
-| Path is relative to the **README** | wrong path → broken image |
-| Lowercase, no spaces, start with the script number | GitHub is case-sensitive |
-
 ## Result
 
 | # | Script | Time | Check |
@@ -383,7 +363,6 @@ Each one is written up with the error, the cause and my fix in [troubleshooting/
 | MySQL | [`mysql.service` not found](troubleshooting/README.md#4-unit-mysqlservice-could-not-be-found) · [`ERROR 1129` host blocked](troubleshooting/README.md#10-mysql-error-1129-host-is-blocked) · [root@localhost access denied](troubleshooting/README.md#11-access-denied-for-rootlocalhost-on-the-mysql-server) |
 | Shipping | [`mvn` TLS error `X25519MLKEM768`](troubleshooting/README.md#7-shipping-mvn-fails-x25519mlkem768-keypair-not-available) · [app never opens 8080](troubleshooting/README.md#9-shipping-app-8080-never-opens-same-tls-error-to-mysql) |
 | Shop | [order confirmed, history empty](troubleshooting/README.md#12-order-confirmed-but-order-history-empty-check-404) |
-| Git / images | [`images/` not in `git status`](troubleshooting/README.md#5-images-folder-not-showing-in-git-status) · [remove a pushed file](troubleshooting/README.md#6-removing-a-file-i-already-pushed) |
 
 ## What I learned
 
@@ -415,7 +394,6 @@ What I noticed myself while doing the lab:
 - `root@localhost` and `root@'%'` are different MySQL users (local root has no password).
 - Order confirmed but history empty: I hadn't registered in v2. A `404` meant missing data, not a broken service.
 - Following one `requestId` through each service's log showed exactly where the order stopped.
-- Git doesn't track empty folders, so `images/` didn't show in `git status`.
 
 Details of every error → [troubleshooting/](troubleshooting/README.md)
 

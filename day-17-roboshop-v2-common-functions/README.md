@@ -172,9 +172,13 @@ git push                       # every push after that
 ```
 
 ```
+   ① Step 4 (laptop)                ② Step 6 (on each server)
 laptop ──git push──► GitHub ──git clone / git pull──► server
-(write + fix code)              (only reads code)
+(write + fix code)                    (only reads code)
 ```
+
+1. **First** push the code from the laptop to GitHub (this step).
+2. **Then** clone the repo on each server and run the script → [Step 6](#step-6-install-each-component-on-each-server).
 
 - Servers never push: the repo is public, so they need no login or keys.
 - After a fix: laptop `git push` → server `git pull` → run the script again.

@@ -269,7 +269,7 @@ Example: Redis listens on `0.0.0.0:6379`, and SG `roboshop-redis` allows only `r
 | Command | Shows |
 |---|---|
 | `ss -lntp` | **listening** ports (the open doors) |
-| `ss -tnp` | **connections** right now (who is talking to whom) |
+| `ss -tnp` | used to check **live active connections** |
 
 Example on cart after `07-cart.sh`:
 ```text

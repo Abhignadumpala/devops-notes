@@ -76,6 +76,50 @@ validate $? "Install MongoDB"
 total_time
 ```
 
+**`02-redis.sh`** (short, only Redis steps):
+```bash
+#!/bin/bash
+
+source ./common.sh
+check_root
+
+dnf module disable redis -y &>> $logs_file
+dnf module enable redis:7 -y &>> $logs_file
+dnf install redis -y &>> $logs_file
+validate $? "installing redis"
+
+# allow other servers to connect (127.0.0.1 → 0.0.0.0)
+sed -i -e 's/^bind 127.0.0.1/bind 0.0.0.0/' -e 's/^protected-mode yes/protected-mode no/' /etc/redis/redis.conf &>> $logs_file
+validate $? "Allowing remote connections to redis"
+
+systemctl enable redis &>> $logs_file
+systemctl start redis &>> $logs_file
+validate $? "enable and start redis"
+
+total_time
+```
+
+**`03-mysql.sh`** (short, only MySQL steps):
+```bash
+#!/bin/bash
+
+source ./common.sh
+check_root
+
+dnf module enable mysql:8.4 -y &>> $logs_file
+dnf install mysql-server -y &>> $logs_file
+validate $? "installing mysql"
+
+systemctl enable mysqld &>> $logs_file
+systemctl start mysqld &>> $logs_file
+validate $? "start and enable mysql"
+
+mysql_secure_installation --set-root-pass <mysql-root-password> &>> $logs_file
+validate $? "setup MySQL root user and password"
+
+total_time
+```
+
 ## Step 2: How source works
 
 **Definition:** `source file` (or `. file`) runs the file **inside the current script**, so its variables and functions can be used there.
@@ -109,6 +153,8 @@ source "$scripts_dir/common.sh"
 |---|---|
 | all | `common.sh` |
 | `01-mongodb.sh` | `mongo.repo` |
+| `02-redis.sh` | `common.sh` only (Redis comes from the RHEL repo, no extra file) |
+| `03-mysql.sh` | `common.sh` only (MySQL comes from the RHEL repo, no extra file) |
 | `04-rabbitmq.sh` | `rabbitmq.repo` |
 | `05-catalogue.sh` | `catalogue.service`, `mongo.repo` |
 | `06-user.sh` / `07-cart.sh` / `08-shipping.sh` / `09-payment.sh` | `user` / `cart` / `shipping` / `payment.service` |

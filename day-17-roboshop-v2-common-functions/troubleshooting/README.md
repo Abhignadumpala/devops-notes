@@ -2,7 +2,7 @@
 
 [← Back to Day 17 notes](../README.md)
 
-Real problems I hit while building RoboShop v2 (`03` to `09`), what each error meant, and how I fixed it. The full run with screenshots is in [hands-on/](../hands-on/README.md).
+Real problems I hit while building RoboShop v2, what each error meant, and how I fixed it. The full run with screenshots is in [hands-on/](../hands-on/README.md).
 
 ![Shipping error chain](../images/01-shipping-error-chain.svg)
 
@@ -20,7 +20,11 @@ Real problems I hit while building RoboShop v2 (`03` to `09`), what each error m
 10. [MySQL `ERROR 1129`: host is blocked](#10-mysql-error-1129-host-is-blocked)
 11. [`Access denied for root@localhost` on the mysql server](#11-access-denied-for-rootlocalhost-on-the-mysql-server)
 12. [Order confirmed, but order history empty (`/check` 404)](#12-order-confirmed-but-order-history-empty-check-404)
-13. [Quick Checklist](#quick-checklist)
+13. [`roboshop.sh: No such file or directory` in v2](#13-roboshopsh-no-such-file-or-directory-in-v2)
+14. [`git commit` without `-m`: commit cancelled](#14-git-commit-without--m-commit-cancelled)
+15. [`git push`: no upstream branch](#15-git-push-no-upstream-branch)
+16. [Trainer's common.sh brings back 4 v1 bugs](#16-trainers-commonsh-brings-back-4-v1-bugs)
+17. [Quick Checklist](#quick-checklist)
 
 ---
 
@@ -455,6 +459,58 @@ mongosh --host mongodb.abhignadevops.store --quiet --eval 'db.getSiblingDB("user
 ```
 
 **Lesson:** network ✅, services ✅, the **data** was missing. A `404` from an API often means "that thing doesn't exist", not "server broken".
+
+## 13. `roboshop.sh: No such file or directory` in v2
+
+**What I saw** (laptop, inside `shellscript-roboshop-v2`):
+```text
+$ bash roboshop.sh mongodb
+bash: roboshop.sh: No such file or directory
+```
+
+**Cause:** `roboshop.sh` was only in the v1 repo. `bash <file>` looks in the folder I'm in.
+
+**Fix:** copy `roboshop.sh` from v1 into v2, commit, push. Then run it from the v2 folder.
+
+## 14. `git commit` without `-m`: commit cancelled
+
+**What I saw:** after `git commit`, `git log` showed no new commit.
+
+**Cause:** without `-m`, Git opens an editor for the message. I closed it without saving → Git **cancels** the commit.
+
+**Fix:**
+```bash
+git commit -m "Add common.sh, 01-mongodb.sh and mongo.repo"
+```
+(In vim: `i` → type the message → `Esc` → `:wq`.)
+
+## 15. `git push`: no upstream branch
+
+**What I saw** (first push from the new v2 repo):
+```text
+fatal: The current branch main has no upstream branch.
+```
+
+**Cause:** a new local branch doesn't know which GitHub branch to push to yet.
+
+**Fix:** first push only:
+```bash
+git push -u origin main      # -u remembers main → origin/main
+git push                     # every push after that
+```
+
+## 16. Trainer's common.sh brings back 4 v1 bugs
+
+The trainer's v2 `common.sh` has 4 bugs I already fixed in v1 ([Day 16 troubleshooting](../../day-16-roboshop-shell-scripts/troubleshooting.md)):
+
+| Trainer's v2 | Problem (Day 16 #) | My v1 fix |
+|---|---|---|
+| `sed -i` on `$scripts_dir/$app_name.service` | edits the repo file → later `git pull` refuses (#33) | `cp` first, `sed` the copy |
+| `echo $JAVA_HOME` + `validate $?` | always SUCCESS: `echo` never fails (#24) | `[ -n "$JAVA_HOME" ]` before `validate` |
+| `source ./common.sh` | breaks when run from another folder (#11) | `source "$scripts_dir/common.sh"` |
+| `logs_file=".../${0}.log"` | wrong path when run with a full path | `$(basename $0)` |
+
+Also: I moved both repos into `~/repos` to copy the trainer's layout, then moved them back with `mv ~/repos/* ~/`. Git doesn't care where the folder is: `.git` moves with it.
 
 ## Quick Checklist
 

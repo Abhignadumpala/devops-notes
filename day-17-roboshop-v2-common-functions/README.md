@@ -1,57 +1,40 @@
 # Day 17 - RoboShop v2: Shared Code in common.sh
 
-> **In short:** Same RoboShop project, version 2. In v1 every script repeated the same code (root check, logs, `validate`, colors). In v2 that code lives **once** in `common.sh`, and each script loads it with `source`, so the scripts are short and a fix is made in **one** file. `roboshop.sh` still runs on my **laptop**; each `0X-<name>.sh` runs **on its own server** after `git clone`.
+> **In short:** RoboShop v2 is the same 10-server shop as v1, but the code every script repeats (root check, logs, `validate`, colors) lives **once** in `common.sh`. Each script loads it with `source` and keeps only its own steps. `roboshop.sh` runs on my **laptop** to create servers; each `0X-<name>.sh` runs **on its own server** to install that component.
 
 > **Project repo:** [shellscript-roboshop-v2](https://github.com/Abhignadumpala/shellscript-roboshop-v2) · v1: [shellscript-roboshop-v1](https://github.com/Abhignadumpala/shellscript-roboshop-v1) · v1 notes: [Day 16](../day-16-roboshop-shell-scripts/README.md)
-
-**Progress**
-
-| # | Script | Server | Status |
-|---|--------|--------|--------|
-| 01 | `01-mongodb.sh` | roboshop-mongodb | ✅ first v2 run, 5/5 SUCCESS, **105 s**, `mongodb.abhignadevops.store → 172.31.6.250` |
-| 02 | `02-redis.sh` | roboshop-redis | ✅ `0.0.0.0:6379` listening, `redis.abhignadevops.store → 172.31.8.36` |
-| 03 | `03-mysql.sh` | roboshop-mysql | ✅ all SUCCESS, **25 s**, `mysqld` on `3306`, `mysql.abhignadevops.store → 172.31.1.79` |
-| 04 | `04-rabbitmq.sh` | roboshop-rabbitmq | ✅ all SUCCESS, **181 s** (after fixing a missing `rabbitmq.repo`), `rabbitmq.abhignadevops.store → 172.31.10.202` |
-| 05 | `05-catalogue.sh` | roboshop-catalogue | ✅ **58 s** (after pushing the missed `.service` files), products loaded |
-| 06 | `06-user.sh` | roboshop-user | ✅ **26 s** |
-| 07 | `07-cart.sh` | roboshop-cart | ✅ **29 s**, `*:8080`, → redis:6379 |
-| 08 | `08-shipping.sh` | roboshop-shipping | ✅ **33 s** final run, health `UP` (after a Java TLS error chain: [story](hands-on/README.md#08---shipping-the-long-one)) |
-| 09 | `09-payment.sh` | roboshop-payment | ✅ **94 s**, `{"app":"OK","rabbitmq":true}` |
-| 10 | `10-frontend.sh` | roboshop-frontend | ✅ **94 s**, `abhignadevops.store → 100.54.75.212`, all `/api/*/health` 200 |
-
-**End-to-end ✅ (2026-10-28):** registered → added a robot → shipping Portugal/Lamego (€79.85) → paid → order `a2a4de95` (€379.85) in order history. [Story + screenshots](hands-on/README.md#end-to-end-order). Dispatch not built in v2.
-
-Day 1 ended with mongodb, redis and mysql **stopped** (not terminated). Day 2 ended with all **10 servers terminated** after the end-to-end order (no leftover EBS volumes or Elastic IPs; the 12 SGs and the Route 53 zone stay for the next build). Day 2 (2026-10-28): started them again, ran `03-mysql.sh`, created rabbitmq with `bash roboshop.sh rabbitmq` and ran `04-rabbitmq.sh`.
 
 **More in this folder**
 
 | Folder | What's inside |
 |---|---|
-| [hands-on/](hands-on/README.md) | The full day-2 run, mysql → payment, with 24 screenshots and the shipping story |
-| [troubleshooting/](troubleshooting/README.md) | Real errors: `cannot stat rabbitmq.repo` + how `validate` stopped the script, `mysql.service` not found, `images/` not in `git status`, `git rm`, shipping `mvn` + app TLS error (`X25519MLKEM768`), MySQL `ERROR 1129` blocked host, local root without password |
+| [hands-on/](hands-on/README.md) | My full run, mysql → frontend → end-to-end order, with screenshots |
+| [troubleshooting/](troubleshooting/README.md) | Every error I hit and how I fixed it |
 | [interview-questions/](interview-questions/README.md) | Short answers for interview prep |
 
 ## Table of Contents
 
-1. [v1 vs v2: why common.sh](#v1-vs-v2-why-commonsh)
-2. [How source works](#how-source-works)
-3. [Every file a script uses must be in the v2 repo](#every-file-a-script-uses-must-be-in-the-v2-repo)
-4. [Setting up v2 in VS Code](#setting-up-v2-in-vs-code)
-5. [roboshop.sh: component name, not script name](#roboshopsh-component-name-not-script-name)
-6. [Git: first push, and servers only pull](#git-first-push-and-servers-only-pull)
-7. [SSH login (password)](#ssh-login-password)
-8. [Checks on a target server](#checks-on-a-target-server)
-   - [Service name vs app name](#service-name-vs-app-name)
-9. [Stop vs terminate](#stop-vs-terminate)
-10. [Images in a repo and README](#images-in-a-repo-and-readme)
-11. [Common problems and how to solve them](#common-problems-and-how-to-solve-them)
-12. [Troubleshooting](#troubleshooting)
-13. [What I learned](#what-i-learned)
-14. [Interview Questions](#interview-questions)
+1. [Why v2: common.sh](#step-1-why-v2-commonsh)
+2. [How source works](#step-2-how-source-works)
+3. [Set up the v2 repo](#step-3-set-up-the-v2-repo)
+4. [Push it to GitHub](#step-4-push-it-to-github)
+5. [Create the servers (laptop)](#step-5-create-the-servers-laptop)
+6. [Install each component (on each server)](#step-6-install-each-component-on-each-server)
+7. [Check a database server](#step-7-check-a-database-server)
+8. [See who is connected](#step-8-see-who-is-connected)
+9. [Test the whole shop](#step-9-test-the-whole-shop)
+10. [Stop or terminate](#step-10-stop-or-terminate)
+11. [Extra: screenshots in the README](#extra-screenshots-in-the-readme)
+12. [Result](#result)
+13. [Problems I hit](#problems-i-hit)
+14. [What I learned](#what-i-learned)
+15. [Interview Questions](#interview-questions)
 
 ---
 
-## v1 vs v2: why common.sh
+## Step 1: Why v2: common.sh
+
+**Definition:** *DRY* (Don't Repeat Yourself) = write shared code once and reuse it.
 
 | | v1 | v2 |
 |---|---|---|
@@ -59,7 +42,7 @@ Day 1 ended with mongodb, redis and mysql **stopped** (not terminated). Day 2 en
 | A fix in shared code | edit up to 10 files | edit **1** file |
 | Each script holds | everything | only what's **special** about that component |
 
-**My `common.sh` (so far):**
+**`common.sh`:**
 ```bash
 #!/bin/bash
 
@@ -77,7 +60,7 @@ validate(){ ... }            # $1 = exit status, $2 = step name → SUCCESS / FA
 total_time(){ ... }          # "Script completed in $SECONDS seconds"
 ```
 
-**My `01-mongodb.sh` in v2** (only the MongoDB part is left):
+**`01-mongodb.sh`** (only the MongoDB part is left):
 ```bash
 #!/bin/bash
 
@@ -93,36 +76,34 @@ validate $? "Install MongoDB"
 total_time
 ```
 
-**Watch out:** the trainer's v2 `common.sh` brings back 4 bugs I already fixed in v1:
+## Step 2: How source works
 
-| Trainer's v2 | Problem (Day 16 troubleshooting #) | My v1 fix |
+**Definition:** `source file` (or `. file`) runs the file **inside the current script**, so its variables and functions can be used there.
+
+| Command | Runs in | Variables/functions come back? |
 |---|---|---|
-| `sed -i` on `$scripts_dir/$app_name.service` | edits the repo file → later `git pull` refuses (#33) | `cp` first, `sed` the copy |
-| `echo $JAVA_HOME` + `validate $?` | always SUCCESS: `echo` never fails (#24) | `[ -n "$JAVA_HOME" ]` before `validate` |
-| `source ./common.sh` | breaks when run from another folder (#11) | `source "$scripts_dir/common.sh"` |
-| `logs_file=".../${0}.log"` | wrong path when run with a full path | `$(basename $0)` |
+| `source common.sh` | the same script | ✅ yes |
+| `bash common.sh` | a new, separate process | ❌ no |
 
-## How source works
-
-`source file` (or `. file`) runs the file **inside the current script**, so its variables and functions become available. `bash file` would run it in a **separate** process and nothing would come back.
-
-`./` means **the folder I'm in when I run the command**, not the script's folder:
-
-| How I run it | `source ./common.sh` |
-|---|---|
-| `cd shellscript-roboshop-v2` → `bash 01-mongodb.sh` | ✅ found |
-| `bash shellscript-roboshop-v2/01-mongodb.sh` from `~` | ❌ `./common.sh: No such file or directory` |
-
-Works from any folder:
+`./common.sh` means "in the folder I'm in **now**", so always `cd` into the repo before running a script. To make it work from any folder:
 ```bash
 scripts_dir=$(dirname "$(realpath "$0")")
 source "$scripts_dir/common.sh"
-cp "$scripts_dir/mongo.repo" /etc/yum.repos.d/mongo.repo
 ```
 
-## Every file a script uses must be in the v2 repo
+## Step 3: Set up the v2 repo
 
-The server only gets what's in the repo I clone. It never sees v1.
+1. Create the empty repo `shellscript-roboshop-v2` on GitHub and clone it to the laptop.
+2. Open v1 and v2 together in VS Code:
+   ```bash
+   code ~/shellscript-roboshop-v1
+   code -a ~/shellscript-roboshop-v2      # -a = add to this window
+   ```
+3. Copy files from v1 to v2: click the file → **Ctrl+C** → click the v2 folder → **Ctrl+V**.
+   (Drag **with Ctrl** = copy, drag without Ctrl = move.)
+4. Write `common.sh`, then shorten each script to only its own steps.
+
+**The server only gets what's in the repo**, so every file a script uses must be in v2:
 
 | Script | Needs in v2 |
 |---|---|
@@ -132,242 +113,261 @@ The server only gets what's in the repo I clone. It never sees v1.
 | `05-catalogue.sh` | `catalogue.service`, `mongo.repo` |
 | `06-user.sh` / `07-cart.sh` / `08-shipping.sh` / `09-payment.sh` | `user` / `cart` / `shipping` / `payment.service` |
 | `10-frontend.sh` | `roboshop.conf` |
-| laptop | `roboshop.sh` (only needed in the folder I run it from) |
+| laptop | `roboshop.sh` |
 
-## Setting up v2 in VS Code
-
-**Two repos in one window:**
-```bash
-code ~/shellscript-roboshop-v1
-code -a ~/shellscript-roboshop-v2      # -a = add to this window
-```
-(The trainer opened one parent folder `repos/` holding both. Same result; I kept my repos where they are.)
-
-**Copy a file from v1 to v2:** click it → **Ctrl+C** → click the v2 folder → **Ctrl+V**. Ctrl+click / Shift+click for several.
-**Drag + hold Ctrl** = copy. Drag **without** Ctrl = **move** (undo with Ctrl+Z).
-**Side by side:** right-click a file → **Open to the Side**.
-
-## roboshop.sh: component name, not script name
+## Step 4: Push it to GitHub
 
 ```bash
-bash roboshop.sh mongodb          # ✅ laptop: creates server roboshop-mongodb + DNS
-bash roboshop.sh 01-mongodb.sh    # ❌ looks for SG "roboshop-01-mongodb.sh" → groupId empty
-bash 01-mongodb.sh                # ✅ ON the mongodb server: installs MongoDB
+git status                     # check every file is listed before pushing
+git add .
+git commit -m "Add common.sh and v2 scripts"
+git push -u origin main        # first push only (-u links main → origin/main)
+git push                       # every push after that
 ```
-
-| Name I type | SG used | DNS record |
-|---|---|---|
-| `mongodb` | `roboshop-mongodb` ✅ | `mongodb.abhignadevops.store` |
-| `01-mongodb.sh` | `roboshop-01-mongodb.sh` ❌ | `01-mongodb.sh.abhignadevops.store` |
-
-After `mongodb ID: i-...` the script looks stuck: it's `aws ec2 wait instance-running` (15–60 s).
-
-**Security groups:** all 12 from v1 still exist in the default VPC with their rules, so v2 needed **no new SGs**. Rules use **other SGs as the source**, so they work for new servers with new IPs.
-
-## Git: first push, and servers only pull
-
-```bash
-git add common.sh 01-mongodb.sh mongo.repo
-git commit -m "Add common.sh, 01-mongodb.sh and mongo.repo"
-git push -u origin main      # first push only: -u remembers main → origin/main
-git push                     # every push after that
-```
-
-- `git commit` **without `-m`** opens an editor; closing it without saving **cancels** the commit (vim: `i`, type, `Esc`, `:wq`).
-- Without `-u` once: `fatal: The current branch main has no upstream branch`.
 
 ```
 laptop ──git push──► GitHub ──git clone / git pull──► server
 (write + fix code)              (only reads code)
 ```
 
-- The practice AMI already has **git** (`git --version`). A plain RHEL AMI needs `dnf install git -y`.
-- Servers never push: the repo is public, so no login or keys are needed there.
-- After a fix: laptop `git push` → server `git pull` → run again.
+- Servers never push: the repo is public, so they need no login or keys.
+- After a fix: laptop `git push` → server `git pull` → run the script again.
 
-## SSH login (password)
+## Step 5: Create the servers (laptop)
 
-Practice AMI `Redhat-9-DevOps-Practice`: no key pair, user `ec2-user`, password from [Day 7](../day-07-3tier-nodejs-expense-app/03-frontend.md).
+In the laptop terminal, inside the repo, run `roboshop.sh` with the **component name**:
+
+```bash
+bash roboshop.sh mongodb      # creates server roboshop-mongodb + DNS record
+bash roboshop.sh redis
+bash roboshop.sh mysql
+bash roboshop.sh rabbitmq
+bash roboshop.sh catalogue
+bash roboshop.sh user
+bash roboshop.sh cart
+bash roboshop.sh shipping
+bash roboshop.sh payment
+bash roboshop.sh frontend     # gets the public IP → abhignadevops.store
+```
+
+After `mongodb ID: i-...` it waits 15–60 s for the server to start. That's normal.
+
+The 12 security groups from v1 are reused, so v2 needs **no new SGs**.
+
+## Step 6: Install each component (on each server)
+
+Practice AMI `Redhat-9-DevOps-Practice`: user `ec2-user`, password from [Day 7](../day-07-3tier-nodejs-expense-app/03-frontend.md).
+
+Do this on **each server**: connect → clone the repo → run **that server's** script.
 ```bash
 ssh ec2-user@<public-ip>      # yes (first time) → password (nothing shows while typing)
 sudo su -
 git clone https://github.com/Abhignadumpala/shellscript-roboshop-v2.git
 cd shellscript-roboshop-v2
-bash 01-mongodb.sh
-```
-`Permission denied (publickey)` → `ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no ec2-user@<ip>`.
-SSH only works from my home IP in `roboshop-common`. Timeout → `curl checkip.amazonaws.com` and compare.
-
-## Checks on a target server
-
-MongoDB and Redis are **targets** (others connect to them). On a target I check the service and how it listens:
-
-| # | Check | MongoDB | Redis | MySQL | RabbitMQ |
-|---|---|---|---|---|---|
-| 1 | Running? | `systemctl status mongod` | `systemctl status redis` | `systemctl status mysqld` | `systemctl status rabbitmq-server` |
-| 2 | Listening for other servers? | `ss -lntp \| grep 27017` → `0.0.0.0:27017` | `ss -lntp \| grep 6379` → `0.0.0.0:6379` | `ss -lntp \| grep 3306` | `ss -lntp \| grep 5672` |
-| 3 | Answers locally? | `mongosh --eval 'db.runCommand({ping:1})'` | `redis-cli ping` → `PONG` | `mysql -u root -p` → `show databases;` | `rabbitmqctl list_users` → `roboshop` listed |
-| 4 | Errors? | `journalctl -u mongod` | `journalctl -u redis` | `journalctl -u mysqld` | `journalctl -u rabbitmq-server` |
-
-**Two layers decide who can reach it:**
-
-| Layer | Question | Where |
-|---|---|---|
-| `ss -lntp` | is the door open? `0.0.0.0` = to the network, `127.0.0.1` = only this server | on the server |
-| Security group | who may walk to the door? | AWS (the server doesn't know) |
-
-Redis: `0.0.0.0:6379` + SG `roboshop-redis` allows only `roboshop-user` and `roboshop-cart` → only user and cart can reach it.
-
-**`ss -lntp` vs `ss -tnp`:**
-
-| Command | Shows |
-|---|---|
-| `ss -lntp` | **listening** ports (the open door) |
-| `ss -tnp` | **established** connections: who is connected now (Peer Address = caller's IP) |
-
-My `ss -tnp` on redis: `172.31.8.36:22 ← 2.82.252.24:54140 sshd` = **my own SSH session**. No `:6379` line yet: user and cart don't exist. They show up only once the **app is installed and running** (the app connects, not the empty server).
-
-**Reading `ss -tnp` on cart** (after `07-cart.sh`):
-```text
-ESTAB  172.31.10.152:41498  172.31.8.36:6379    MainThread,pid=12559   ← cart app → redis (OUTGOING)
-ESTAB  172.31.10.152:22     2.82.252.24:60066   sshd                   ← me → cart (INCOMING)
+bash 01-mongodb.sh            # script for this server (table below)
 ```
 
-**Definition:** *ephemeral port* = a random high port the caller picks for one outgoing connection (`41498`).
+Go in this order: databases first, then the apps that use them, frontend last.
 
-| Local port is... | Direction |
+| Server | Script |
 |---|---|
-| well-known (`22`, `8080`) | **incoming**: someone connected to this server |
-| random high (`41498`) | **outgoing**: this server connected out |
+| roboshop-mongodb | `bash 01-mongodb.sh` |
+| roboshop-redis | `bash 02-redis.sh` |
+| roboshop-mysql | `bash 03-mysql.sh` |
+| roboshop-rabbitmq | `bash 04-rabbitmq.sh` |
+| roboshop-catalogue | `bash 05-catalogue.sh` |
+| roboshop-user | `bash 06-user.sh` |
+| roboshop-cart | `bash 07-cart.sh` |
+| roboshop-shipping | `bash 08-shipping.sh` |
+| roboshop-payment | `bash 09-payment.sh` |
+| roboshop-frontend | `bash 10-frontend.sh` |
 
-One connection, two ends: cart sees `→ redis:6379` (outgoing), redis sees `← cart:41498` (incoming).
+Every step prints **SUCCESS** or **FAILED**. On FAILED the script stops; the full error is in `/var/log/roboshop/<script>.log`.
 
-**"Both directions" = connections, not open ports.** Open ports = `ss -lntp`.
+## Step 7: Check a database server
 
-**What shows in `ss -tnp`:**
+MongoDB, Redis, MySQL and RabbitMQ are **targets**: other servers connect to them. After the script, check 3 things on the server:
 
-| Connection | Lasts | Shows? |
-|---|---|---|
-| app → its DB (cart → redis) | stays open | ✅ always |
-| frontend → cart, cart → catalogue (HTTP) | milliseconds | ⚠️ rarely; just after: `TIME-WAIT` (~60 s, no process) |
+| Check | MongoDB | Redis | MySQL | RabbitMQ |
+|---|---|---|---|---|
+| 1. Running? | `systemctl status mongod` | `systemctl status redis` | `systemctl status mysqld` | `systemctl status rabbitmq-server` |
+| 2. Open to the network? | `ss -lntp \| grep 27017` | `ss -lntp \| grep 6379` | `ss -lntp \| grep 3306` | `ss -lntp \| grep 5672` |
+| 3. Answers? | `mongosh --eval 'db.runCommand({ping:1})'` | `redis-cli ping` → `PONG` | `mysql -uroot -e 'show databases;'` | `rabbitmqctl list_users` |
 
-Catch short ones: `watch -n 0.5 'ss -tn | grep 8080'` or `journalctl -u cart -f`.
+In check 2: `0.0.0.0:<port>` = open to other servers ✅, `127.0.0.1:<port>` = only this server ❌.
 
-| Server | Long-lived connections |
-|---|---|
-| catalogue | → mongodb:27017 |
-| user | → mongodb:27017, → redis:6379 |
-| cart | → redis:6379 |
-| shipping | → mysql:3306 |
-| payment | → rabbitmq:5672 |
-| mongodb / redis / mysql / rabbitmq | ← incoming from their apps |
+**Service name ≠ client name:** the *service* is the background process `systemctl` manages; the *client* is the command I use to talk to it.
 
-**IP → server name** (Linux only sees IPs; names live in AWS tags and DNS):
-```bash
-# laptop: all servers with names
-aws ec2 describe-instances --filters "Name=instance-state-name,Values=running" \
-  --query 'Reservations[].Instances[].[Tags[?Key==`Name`]|[0].Value,PrivateIpAddress,PublicIpAddress]' --output table
-
-# on a server: compare with DNS
-dig +short user.abhignadevops.store
-```
-`nslookup <private-ip>` only gives `ip-172-31-x-x.ec2.internal`, not the RoboShop name.
-
-### Service name vs app name
-
-**Definition:** the *service* (daemon) is the background process `systemctl` manages; the *client* is the command I use to talk to it. Their names often differ.
-
-| App | Service (`systemctl`) | Client |
+| App | Service | Client |
 |---|---|---|
 | MySQL | `mysqld` | `mysql` |
 | MongoDB | `mongod` | `mongosh` |
 | Redis | `redis` | `redis-cli` |
 | RabbitMQ | `rabbitmq-server` | `rabbitmqctl` |
 
-`systemctl status mysql` → `Unit mysql.service could not be found` (MySQL was fine, the name was wrong). Find the real name: `systemctl list-units --type=service | grep -i <app>`.
+**Two things must both allow a connection:**
 
-## Stop vs terminate
+| Layer | Question | Where |
+|---|---|---|
+| `ss -lntp` | is the door open? | on the server |
+| Security group | who may walk to the door? | AWS |
+
+Example: Redis listens on `0.0.0.0:6379`, and SG `roboshop-redis` allows only `roboshop-user` and `roboshop-cart` → only those two can reach it.
+
+## Step 8: See who is connected
+
+| Command | Shows |
+|---|---|
+| `ss -lntp` | **listening** ports (the open doors) |
+| `ss -tnp` | **connections** right now (who is talking to whom) |
+
+Example on cart after `07-cart.sh`:
+```text
+ESTAB  172.31.10.152:41498  172.31.8.36:6379    MainThread   ← cart app → redis (outgoing)
+ESTAB  172.31.10.152:22     2.82.252.24:60066   sshd         ← me → cart (incoming)
+```
+
+**How to read the direction:** look at the **local** port (left column).
+
+| Local port | Direction |
+|---|---|
+| well-known (`22`, `8080`) | **incoming**: someone connected to this server |
+| random high (`41498`) | **outgoing**: this server connected out |
+
+**Definition:** *ephemeral port* = the random high port a caller picks for one outgoing connection.
+
+Which connections you'll see on each server:
+
+| Server | Stays connected to |
+|---|---|
+| catalogue | mongodb:27017 |
+| user | mongodb:27017, redis:6379 |
+| cart | redis:6379 |
+| shipping | mysql:3306 |
+| payment | rabbitmq:5672 |
+
+HTTP calls (frontend → cart) last only milliseconds, so they rarely show up. To catch them: `journalctl -u cart -f`.
+
+**IP → server name** (Linux only sees IPs):
+```bash
+# laptop: all servers with name + IPs
+aws ec2 describe-instances --filters "Name=instance-state-name,Values=running" \
+  --query 'Reservations[].Instances[].[Tags[?Key==`Name`]|[0].Value,PrivateIpAddress,PublicIpAddress]' --output table
+```
+
+## Step 9: Test the whole shop
+
+1. On frontend, check each app answers through Nginx:
+   ```bash
+   curl localhost/api/catalogue/health
+   curl localhost/api/cart/health
+   ```
+2. Open `http://abhignadevops.store` in the browser.
+3. **Register** a new user (v2 has a new, empty database).
+4. Add a product → cart → choose shipping country/city → pay.
+5. Open **Order history**: the order is there ✅.
+
+Screenshots of my run: [hands-on/ → End-to-end order](hands-on/README.md#end-to-end-order).
+
+## Step 10: Stop or terminate
 
 | | Stop | Terminate |
 |---|---|---|
 | Server + installed software | kept | **deleted** |
 | Paying for | only the disk (EBS) | nothing |
-| Private IP | **same** → DNS records still right | gone |
+| Private IP | **same** → DNS still right | gone |
 | Public IP | **changes** on start → new SSH IP | gone |
 
 ```bash
-aws ec2 stop-instances --instance-ids <id> ...
-aws ec2 start-instances --instance-ids <id> ...
+aws ec2 stop-instances --instance-ids <id>
+aws ec2 start-instances --instance-ids <id>
+aws ec2 terminate-instances --instance-ids <id>
 ```
 
-## Images in a repo and README
+Stop = pause for tomorrow. Terminate = lab finished (SGs and the Route 53 zone stay for the next build).
 
-**Definition:** an image in GitHub is just a file in the repo; the README shows it with a Markdown link relative to the README.
+## Extra: screenshots in the README
+
+An image on GitHub is just a file in the repo; the README shows it with a relative link.
 
 ```bash
-# from the repo root: copy + rename in one step
 cp ~/Pictures/Screenshots/<file>.png images/03-mysql-running.png
 git add images/
 git commit -m "Add MySQL screenshot"
 git push
 ```
-
 ```markdown
 ![MySQL running](images/03-mysql-running.png)
 ```
 
 | Rule | Why |
 |---|---|
-| Git tracks **files**, not folders | empty `images/` never shows in `git status` (use `.gitkeep` to keep one) |
-| Path is relative to the **README** | wrong path → broken image icon |
-| Names: no spaces, lowercase, start with the script number | `03-mysql-error-refused.png`; GitHub is case-sensitive |
-| Remove a pushed file: `git rm <file>` + commit + push | still in history; fine for a trial file |
+| Path is relative to the **README** | wrong path → broken image |
+| Lowercase, no spaces, start with the script number | GitHub is case-sensitive |
 
-## Common problems and how to solve them
+## Result
 
-| # | Problem | Cause | Fix |
+| # | Script | Time | Check |
 |---|---|---|---|
-| 1 | `bash: roboshop.sh: No such file or directory` in v2 | file only in v1; bash looks in the current folder | copy it to v2 (or `cd` to v1), push it |
-| 2 | Ran `bash roboshop.sh 01-mongodb.sh` | script name instead of component name | `bash roboshop.sh mongodb` |
-| 3 | `git log`: no commits after `git commit` | no `-m`; editor closed without saving → commit cancelled | `git commit -m "..."` |
-| 4 | `mongo.repo` not in v2 | copied only the scripts | copy every file the script uses; `git status` before push |
-| 5 | Moved both repos into `~/repos`, then wanted them back | trying the trainer's layout | `mv ~/repos/* ~/`; Git doesn't care where the folder is (`.git` moves with it) |
-| 6 | `cp: cannot stat 'rabbitmq.repo'` → `adding rabbitmq repo..FAILED` | `rabbitmq.repo` never pushed to v2 | add it on the laptop, push, `git pull` on the server, run again ([details](troubleshooting/README.md#1-cannot-stat-rabbitmqrepo-validate-stopped-the-script)) |
-| 7 | `Unit mysql.service could not be found` | service is `mysqld`, not `mysql` | `systemctl status mysqld` |
-| 8 | New `images/` folder not in `git status` | Git ignores empty folders | add a file (or `.gitkeep`) |
-| 9 | Trial image already pushed | - | `git rm images/<file>` + commit + push |
-| 10 | `catalogue.service: No such file` | `.service` files not pushed (same as #6) | add all 4 `.service` files, push, `git pull` |
-| 11 | Shipping `Installing dependencies..FAILED`: `Could not generate keypair for algorithm: X25519MLKEM768` | new RHEL crypto policy makes Java offer a post-quantum TLS lock it can't make | `export MAVEN_OPTS="-Djdk.tls.namedGroups=x25519,secp256r1,secp384r1"` in `08-shipping.sh` ([details](troubleshooting/README.md#7-shipping-mvn-fails-x25519mlkem768-keypair-not-available)) |
-| 12 | Shipping running but 8080 never opens; log: `Communications link failure` … `X25519MLKEM768` | same TLS lock, now in the app's MySQL connection (`MAVEN_OPTS` only covers Maven) | `-Djdk.tls.namedGroups=...` before `-jar` in `shipping.service` `ExecStart` |
-| 13 | `ERROR 1129: Host '172.31.14.32' is blocked` | app crash-looped (`Restart=on-failure`) → 100 failed connects | `systemctl stop shipping`; on mysql `TRUNCATE TABLE performance_schema.host_cache;` |
-| 14 | `Access denied for user 'root'@'localhost'` on mysql server | local root has **no password** (separate from `root@'%'`) | `mysql -uroot` |
-| 15 | Order confirmed, history empty | never registered in v2 (`GET /check/abhigna 404`), so payment skipped saving the order | register, order again ([details](troubleshooting/README.md#12-order-confirmed-but-order-history-empty-check-404)) |
+| 01 | `01-mongodb.sh` | 105 s | 5/5 SUCCESS |
+| 02 | `02-redis.sh` | - | `0.0.0.0:6379` |
+| 03 | `03-mysql.sh` | 25 s | `mysqld` on 3306 |
+| 04 | `04-rabbitmq.sh` | 181 s | `roboshop` user listed |
+| 05 | `05-catalogue.sh` | 58 s | products loaded |
+| 06 | `06-user.sh` | 26 s | ✅ |
+| 07 | `07-cart.sh` | 29 s | `*:8080`, → redis:6379 |
+| 08 | `08-shipping.sh` | 33 s | health `UP` |
+| 09 | `09-payment.sh` | 94 s | `{"app":"OK","rabbitmq":true}` |
+| 10 | `10-frontend.sh` | 94 s | all `/api/*/health` 200 |
 
-## Troubleshooting
+**End-to-end ✅ (2026-10-28):** registered → added a robot → shipping Portugal/Lamego (€79.85) → paid → order `a2a4de95` (€379.85) in order history. All 10 servers terminated afterwards. Dispatch not built in v2.
 
-Step-by-step write-ups of the errors above, including how my `validate` function stopped the script at the first failure → [troubleshooting/](troubleshooting/README.md)
+## Problems I hit
+
+Each one is written up with the error, the cause and my fix in [troubleshooting/](troubleshooting/README.md):
+
+| Where | Problem |
+|---|---|
+| Setup | [`roboshop.sh` not found in v2](troubleshooting/README.md#13-roboshopsh-no-such-file-or-directory-in-v2) · [commit without `-m` cancelled](troubleshooting/README.md#14-git-commit-without--m-commit-cancelled) · [first push: no upstream branch](troubleshooting/README.md#15-git-push-no-upstream-branch) · [trainer's common.sh brings back v1 bugs](troubleshooting/README.md#16-trainers-commonsh-brings-back-4-v1-bugs) |
+| Missing files | [`rabbitmq.repo`](troubleshooting/README.md#1-cannot-stat-rabbitmqrepo-validate-stopped-the-script) · [`.service` files](troubleshooting/README.md#8-cannot-stat--catalogueservice-same-mistake-second-time) |
+| MySQL | [`mysql.service` not found](troubleshooting/README.md#4-unit-mysqlservice-could-not-be-found) · [`ERROR 1129` host blocked](troubleshooting/README.md#10-mysql-error-1129-host-is-blocked) · [root@localhost access denied](troubleshooting/README.md#11-access-denied-for-rootlocalhost-on-the-mysql-server) |
+| Shipping | [`mvn` TLS error `X25519MLKEM768`](troubleshooting/README.md#7-shipping-mvn-fails-x25519mlkem768-keypair-not-available) · [app never opens 8080](troubleshooting/README.md#9-shipping-app-8080-never-opens-same-tls-error-to-mysql) |
+| Shop | [order confirmed, history empty](troubleshooting/README.md#12-order-confirmed-but-order-history-empty-check-404) |
+| Git / images | [`images/` not in `git status`](troubleshooting/README.md#5-images-folder-not-showing-in-git-status) · [remove a pushed file](troubleshooting/README.md#6-removing-a-file-i-already-pushed) |
 
 ## What I learned
 
-- **v2 = DRY:** shared code once in `common.sh`, each script keeps only its own steps; one fix in one file.
-- **`source`** loads a file's variables and functions into the current script; `./` = the folder I'm in, so `$scripts_dir` is safer.
-- Every file a script uses (`.repo`, `.service`, `common.sh`) **must be in the repo the server clones**.
-- `roboshop.sh <component>` on the **laptop** creates the server; `bash 0X-<name>.sh` **on the server** installs it.
-- **First push:** `git push -u origin main`; after that `git push`. Servers only `clone` / `pull`.
-- **Target checks:** `systemctl status` + `ss -lntp` (`0.0.0.0` = open to the network). `ss -tnp` shows who is connected; names come from AWS tags or DNS.
-- **Two layers:** the server listening (`ss`) **and** the security group allowing the caller.
-- **Stop** keeps everything (private IP too); public IP changes on start.
-- **`validate` + `exit 1`** stops the script at the **first** failure, so the real cause is the only error on screen (`cannot stat rabbitmq.repo`), not 4 follow-on errors.
-- **Fix at the source:** missing file → add on the laptop, push, `git pull` on the server. Found and fixed in ~2 minutes.
-- **Idempotent:** `rabbitmqctl list_users | grep -qw roboshop` before `add_user`, so a rerun prints SKIPPING instead of failing.
-- **Service ≠ client:** `mysqld` is the service, `mysql` the client. `systemctl list-units | grep <app>` finds the real name.
-- **Same script, new packages:** shipping `mvn` broke on a new server because a RHEL crypto-policy update made Java offer a post-quantum TLS lock (`X25519MLKEM768`) it can't make. Fix scoped to one app: `MAVEN_OPTS` with `jdk.tls.namedGroups`.
-- **Two Java processes, two fixes:** Maven's Java (build) and the app's Java (systemd) don't share settings: `MAVEN_OPTS` vs `ExecStart` options.
-- **Crash loops have side effects:** a failing app restarting every 5 s got its IP blocked by MySQL (`max_connect_errors`); stop it, fix it, clear `host_cache`.
-- **MySQL users = user + host:** `root@localhost` and `root@'%'` are different accounts.
-- **Layers of checks:** `telnet`/`nc` = network, `curl -v` = app (`*` info, `>` request, `<` response), browser order = everything.
-- **Follow the `requestId`** across service logs; a `404` from `/check` = missing data, not a broken service.
-- **Git tracks files, not folders**; images go in `images/` and show in a README with `![alt](images/file.png)`.
+### Class summary
+
+- v2 = same RoboShop, but shared code lives **once** in `common.sh`.
+- Each script loads it with `source` and keeps only its own steps.
+- One fix in `common.sh` fixes all 10 scripts.
+- Laptop: `bash roboshop.sh <component>` creates the server.
+- Server: `git clone` the repo → `bash 0X-<name>.sh` installs it.
+- Every file a script uses must be in the repo the server clones.
+- Order: databases first, then the apps, frontend last.
+
+### My learnings
+
+What I noticed myself while doing the lab:
+
+- The trainer's v2 `common.sh` brought back 4 bugs I had already fixed in v1.
+- `roboshop.sh` was only in v1, so it wasn't found in the v2 folder.
+- `git commit` without `-m` → I closed the editor → the commit was cancelled.
+- I forgot to push files twice (`rabbitmq.repo`, the `.service` files) → now I run `git status` before every push.
+- My `validate` stopped the script at the first FAILED, so the real cause was the only error on screen.
+- `systemctl status mysql` → not found: the service is `mysqld`, `mysql` is only the client.
+- `ss -tnp` on redis showed only my own SSH session: apps connect only after they're installed.
+- `ss -tnp` on cart showed cart → redis:6379: a random high local port = outgoing connection.
+- Shipping `mvn` broke on a new server with the same script: newer RHEL packages caused a Java TLS error.
+- Maven's Java and the app's Java are separate, so the same TLS fix was needed in two places.
+- The crashing shipping app retried so often that MySQL blocked its IP (`ERROR 1129`).
+- `root@localhost` and `root@'%'` are different MySQL users (local root has no password).
+- Order confirmed but history empty: I hadn't registered in v2. A `404` meant missing data, not a broken service.
+- Following one `requestId` through each service's log showed exactly where the order stopped.
+- Git doesn't track empty folders, so `images/` didn't show in `git status`.
+
+Details of every error → [troubleshooting/](troubleshooting/README.md)
 
 ---
 

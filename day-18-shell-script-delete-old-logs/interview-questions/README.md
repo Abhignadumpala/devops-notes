@@ -2,6 +2,43 @@
 
 [← Back to Day 18 notes](../README.md)
 
+## ⭐ Very Important (asked in class)
+
+**1. Tell me about an issue you faced with a cron job. (Interview story: cron PATH, dev vs prod)**
+
+| | What happened |
+|---|---|
+| **Situation** | I wrote a shell script (our `archive` command) and scheduled it with **crontab** to run every day. |
+| **Problem** | I tested it first on the **development** server: it **worked**. On the **production** servers the same cron job **failed** with `command not found`. |
+| **Root cause** | Cron's `$PATH` is **different** from the terminal's. The terminal has a long PATH; cron's PATH is **minimal** (`/usr/bin:/bin`). On dev, someone had set cron's PATH to include `/usr/local/bin`; on prod it was **not** set. The command lived in `/usr/local/bin`, so cron on prod couldn't find it. |
+| **Fix** | Option 1: **change the command location** → call it by its full path (`/usr/local/bin/archive`). Option 2: **set PATH at the top of the script**: `PATH=$PATH:/usr/local/bin` |
+| **Result** | The job ran on prod too. Lesson: "works on dev" doesn't mean "works on prod"; cron's environment must be checked. |
+
+**How `PATH=$PATH:/usr/local/bin` works:** it **appends** the new folder to the **old existing** PATH (nothing is lost):
+
+```
+old PATH (cron):   /usr/bin:/bin
+PATH=$PATH:/usr/local/bin
+new PATH:          /usr/bin:/bin:/usr/local/bin
+                   └── old ───┘ └─ new added ─┘
+```
+
+| Part | Means |
+|---|---|
+| `$PATH` | the old, existing value |
+| `:` | separator between folders (**no spaces**: `$PATH: /usr/local/bin` would break it) |
+| `/usr/local/bin` | the new folder added at the end |
+
+```bash
+#!/bin/bash
+PATH=$PATH:/usr/local/bin     # first line after the shebang
+...rest of the script...
+```
+
+> ⚠️ Don't write `PATH=/usr/local/bin` (without `$PATH:`): that **replaces** the whole PATH, and normal commands like `find`, `tar`, `rm` stop working.
+
+**Short answer to say in the interview:** "My cron job worked on dev but failed on prod with command not found. Cron runs with a minimal PATH, and only dev had `/usr/local/bin` added to it. I fixed it by using the full path to the command and by adding `PATH=$PATH:/usr/local/bin` at the top of the script, which appends the folder to the existing PATH."
+
 ## Other Questions
 
 **1. Why do we delete old log files?**

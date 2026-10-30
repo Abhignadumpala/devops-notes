@@ -18,7 +18,7 @@ Apps write logs all the time, so log files keep growing. If nobody cleans them, 
 
 **4. What do you check before deleting anything in the script?**
 
-That the user passed a folder (`$#`), and that the folder exists (`[ -d "$DIR" ]`). If either check fails, print a message and `exit 1`, so the script never runs `rm` on a wrong path.
+That the user passed a folder (`[ -z "$source_dir" ]` → print usage), and that the folder exists (`[ ! -d "$source_dir" ]`). If either check fails, print a message and `exit 1`, so the script never runs `rm` on a wrong path.
 
 **5. How do you test a cleanup script without waiting 14 days?**
 
@@ -43,3 +43,43 @@ With cron: `0 2 * * * bash /home/ec2-user/cleanup.sh /var/log/roboshop 14` runs 
 **10. What tool does Linux already have for this?**
 
 `logrotate`: it rotates, compresses and deletes old logs based on a config file in `/etc/logrotate.d/`.
+
+**11. What is the difference between `<` and `<<<`?**
+
+`<` gives a **file** as input (`done < files.txt`); `<<<` gives a **variable** as input (`done <<< "$files_to_delete"`).
+
+**12. Why quote variables, e.g. `rm -f "$file"`?**
+
+Without quotes, bash splits the value at spaces. `rm -f my app.log` deletes `my` and `app.log`, not `my app.log`, so it can delete the wrong file.
+
+**13. What does `${2:-14}` mean?**
+
+Use the 2nd argument; if it's empty, use `14` as the default.
+
+**14. What is crontab and when do cron jobs usually run?**
+
+crontab schedules scripts to run automatically in Linux. Maintenance jobs (cleanup, backup) usually run at low-traffic times like 2 AM.
+
+**15. What do the 5 fields in `0 2 * * *` mean?**
+
+minute, hour, day of month, month, day of week → every day at 02:00. `* * * * *` = every minute.
+
+**16. A script works in the terminal but fails in cron. Why?**
+
+Cron runs with a minimal environment: its PATH is only `/usr/bin:/bin`, so commands in `/usr/local/bin` (like `aws`) aren't found. Fix: full paths, or set `PATH=` in the crontab or the script. Also save output with `>> file.log 2>&1` to see the error.
+
+**17. The same cron job works on dev but fails on prod. What do you check?**
+
+The cron environment, especially PATH. On dev, cron's PATH had `/usr/local/bin`; on prod it didn't, so the command wasn't found.
+
+**18. How do you back up logs safely before deleting them?**
+
+Compress them into another folder (`tar -czf $dest/app-logs-$(date +%Y-%m-%d-%H-%M-%S).tar.gz ...`), check tar's exit code, and delete the originals only if it's `0`. If tar fails, keep the files.
+
+**19. `&&` vs `||` in an if condition?**
+
+`&&` is true only if both sides are true; `||` is true if either side is true. To check that two required arguments are both given, use `[ -z "$src" ] || [ -z "$dest" ]` → error if either is missing.
+
+**20. Why avoid `:` in a tar archive name?**
+
+tar treats `name:path` as `host:path` (a remote archive) and fails with "Cannot connect". Use `-` in timestamps.

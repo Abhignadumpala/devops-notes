@@ -74,7 +74,7 @@ The cron environment, especially PATH. On dev, cron's PATH had `/usr/local/bin`;
 
 **18. How do you back up logs safely before deleting them?**
 
-Compress them into another folder (`tar -czf $dest/app-logs-$(date +%Y-%m-%d-%H-%M-%S).tar.gz ...`), check tar's exit code, and delete the originals only if it's `0`. If tar fails, keep the files.
+Compress them into another folder (`tar -czf $dest/logs-$(date +%Y-%m-%d-%H-%M-%S).tar.gz ...`), check tar's exit code, and delete the originals only if it's `0`. If tar fails, keep the files.
 
 **19. `&&` vs `||` in an if condition?**
 
@@ -83,3 +83,7 @@ Compress them into another folder (`tar -czf $dest/app-logs-$(date +%Y-%m-%d-%H-
 **20. Why avoid `:` in a tar archive name?**
 
 tar treats `name:path` as `host:path` (a remote archive) and fails with "Cannot connect". Use `-` in timestamps.
+
+**21. In cron, why do both `0` and `7` mean Sunday?**
+
+Cron supports two ways of counting the week: Sunday-first (Sunday = 0, old Unix/C style) and Monday-first (Sunday = 7, ISO style). Monday to Saturday are 1 to 6 either way, so cron accepts both numbers for Sunday. You can also write `SUN`.

@@ -2,7 +2,7 @@
 
 > **In short:** Apps write logs all the time, so log files keep growing and fill the disk. As daily maintenance, a script deletes **`.log` files older than 14 days** from `/var/log/roboshop`. The script checks its inputs first (was a folder given? does it exist?), finds the old files with `find`, says so if there are none, and otherwise deletes them and shows each one. A safer **backup** script first compresses the old logs into a `.tar.gz` in another folder and deletes them **only if** the archive worked. **crontab** runs these scripts automatically at low-traffic times, but cron has a **minimal PATH**, so use full paths.
 
-**More in this folder:** [Interview questions](interview-questions/README.md)
+**More in this folder:** [Interview questions](interview-questions/README.md) · [scripts/](scripts) (`cleanup.sh`, `archive.sh`, `read-file.sh`)
 
 ## Table of Contents
 
@@ -12,21 +12,23 @@
 4. [Make test files with old dates (touch -d)](#make-test-files-with-old-dates-touch--d)
 5. [find: search for old .log files](#find-search-for-old-log-files)
 6. [The script: cleanup.sh](#the-script-cleanupsh)
-7. [2 bugs I found in the class script](#2-bugs-i-found-in-the-class-script)
-8. [Run it and check the result](#run-it-and-check-the-result)
-9. [Schedule it with crontab](#schedule-it-with-crontab)
-   - [The 5 time fields](#the-5-time-fields)
-   - [crontab commands](#crontab-commands)
-   - [Add the cleanup job](#add-the-cleanup-job)
-   - [Cron's PATH is different from my terminal](#crons-path-is-different-from-my-terminal)
-10. [Backup script: compress old logs, then delete](#backup-script-compress-old-logs-then-delete)
+7. [How the script works, step by step](#how-the-script-works-step-by-step)
+8. [2 bugs I found in the class script](#2-bugs-i-found-in-the-class-script)
+9. [Run it and check the result](#run-it-and-check-the-result)
+10. [Schedule it with crontab](#schedule-it-with-crontab)
+    - [The 5 time fields](#the-5-time-fields)
+    - [Why are both 0 and 7 Sunday?](#why-are-both-0-and-7-sunday)
+    - [crontab commands](#crontab-commands)
+    - [Add the cleanup job](#add-the-cleanup-job)
+    - [Cron's PATH is different from my terminal](#crons-path-is-different-from-my-terminal)
+11. [Backup script: compress old logs, then delete](#backup-script-compress-old-logs-then-delete)
     - [Algorithm: the 6 steps](#algorithm-the-6-steps)
     - [&& vs ||](#-vs-)
     - [Timestamp in the archive name](#timestamp-in-the-archive-name)
-    - [The script: backup.sh](#the-script-backupsh)
-    - [Run it and check](#run-it-and-check)
-11. [What I learned](#what-i-learned)
-12. [Interview Questions](#interview-questions)
+    - [The script: archive.sh](#the-script-archivesh)
+    - [How archive.sh works, step by step](#how-archivesh-works-step-by-step)
+12. [What I learned](#what-i-learned)
+13. [Interview Questions](#interview-questions)
 
 ---
 
@@ -188,25 +190,180 @@ done <<< "$files_to_delete"
 # <<< -> variable as input
 ```
 
-| Code | Meaning |
-|---|---|
-| `$1`, `$2` | 1st and 2nd argument |
-| `${2:-14}` | use `$2`; if the user didn't pass it, use `14` (default) |
-| `usage(){ ... }` | function that prints how to run the script, then `exit 1` |
-| `$0` | the script's own name (e.g. `cleanup.sh`) |
-| `[ -z "$source_dir" ]` | true if the variable is **empty** (no argument passed) |
-| `[ ! -d "$source_dir" ]` | true if the folder does **not** exist |
-| `while IFS= read -r line` | read the list **one line (one file) at a time** |
-| `IFS=` | keep spaces at the start/end of the line |
-| `-r` | keep `\` as a normal character |
-| `exit 1` / `exit 0` | stop with failure / success |
+## How the script works, step by step
 
-**`<` vs `<<<`: what goes into the loop**
+**Example used below:**
 
-| Symbol | Input comes from | Example |
+```bash
+sh cleanup.sh /var/log/roboshop 14
+```
+Files in `/var/log/roboshop`: `cart.log` (old), `shipping.log` (old), `payment.log` (new, today).
+
+### Part 0: colors and inputs
+
+```bash
+R="\e[31m"   # red
+G="\e[32m"   # green
+Y="\e[33m"   # yellow
+N="\e[0m"    # normal (back to default color)
+```
+**Color codes**: `${R}` makes text red, `${N}` changes it back. They only make messages nicer.
+
+```bash
+source_dir=$1
+days=${2:-14}
+```
+
+| Code | Gets | In the example |
 |---|---|---|
-| `<` | a **file** | `done < files.txt` |
-| `<<<` | a **variable** (here-string) | `done <<< "$files_to_delete"` |
+| `$1` | 1st word after the script name | `/var/log/roboshop` |
+| `$2` | 2nd word | `14` |
+| `${2:-14}` | `$2` if given, otherwise **14** | `14` |
+
+So `sh cleanup.sh /var/log/roboshop` (without days) also works: days becomes 14.
+
+### Part 0b: the usage function
+
+```bash
+usage(){
+    echo -e "${R}USAGE:: $0 [SOURCE_DIR] [days(Optional, default to 14 days)]${N}"
+    exit 1
+}
+```
+- **Function** = a block of code you call by name (`usage`). It doesn't run here, only when something calls it.
+- It prints **how to run the script correctly**, then stops with `exit 1` (1 = failure).
+- `$0` = the script's own name → `USAGE:: cleanup.sh [SOURCE_DIR] ...`
+
+### Step 1: did the user give a folder?
+
+```bash
+if [ -z "$source_dir" ]; then
+    echo "ERROR:: Missing parameters"
+    usage
+fi
+```
+- `-z` = "is it **empty**?"
+- `sh cleanup.sh` with nothing after it → `source_dir` is empty → error + `usage` → stop.
+- Example: `source_dir = /var/log/roboshop` isn't empty → continue ✅
+
+### Step 2: does the folder exist?
+
+```bash
+if [ ! -d "$source_dir" ]; then
+    echo -e "${R}ERROR:: $source_dir does not exist${N}"
+    exit 1
+fi
+```
+- `-d` = "is this a folder that exists?" and `!` = **NOT**.
+- Reads as: "if the folder does **not** exist → error, stop."
+- Example: `/var/log/roboshop` exists → continue ✅
+- Without `exit 1` (FIX 1), it would print the error but **keep running**.
+
+### Step 3: find the old .log files
+
+```bash
+echo "Scanning files older than $days in $source_dir"
+files_to_delete=$(find "$source_dir" -name "*.log" -type f -mtime +$days)
+```
+
+| Part | Means |
+|---|---|
+| `find "$source_dir"` | search inside `/var/log/roboshop` |
+| `-name "*.log"` | only names ending in `.log` |
+| `-type f` | only files, not folders |
+| `-mtime +$days` | last changed **more than 14 days ago** |
+| `$( ... )` | run the command and **save its output** in the variable |
+
+Saved in `files_to_delete` (`payment.log` isn't there, because it's new):
+```
+/var/log/roboshop/cart.log
+/var/log/roboshop/shipping.log
+```
+
+### Step 4: nothing found?
+
+```bash
+if [ -z "$files_to_delete" ]; then
+    echo "No log files found older than $days"
+    exit 0
+fi
+```
+- If `find` found nothing, the variable is **empty** → message → stop.
+- `exit 0` = **success**: nothing to delete is not an error.
+- Example: 2 files found → continue ✅
+
+### Step 5: delete each file and show it
+
+```bash
+while IFS= read -r line
+do
+    echo "File is going to be deleted: $line"
+    rm -f "$line"
+    echo "File deleted: $line"
+done <<< "$files_to_delete"
+```
+
+| Part | Means |
+|---|---|
+| `<<< "$files_to_delete"` | feed the list (the variable) into the loop |
+| `while read -r line` | take **one line at a time** and put it in `line` |
+| `IFS=` and `-r` | read the line exactly as it is (keep spaces and `\`) |
+| `rm -f "$line"` | delete that file (`-f` = don't ask "are you sure?") |
+| `"$line"` in quotes | FIX 2: a name with spaces stays one file |
+
+The loop runs 2 times:
+```
+Round 1: line = /var/log/roboshop/cart.log      → delete
+Round 2: line = /var/log/roboshop/shipping.log  → delete
+List finished → loop ends
+```
+
+### `<` vs `<<<` (the last 2 comments)
+
+| Symbol | Gives input from | Example |
+|---|---|---|
+| `<` | a **file** | `done < list.txt` |
+| `<<<` | a **variable** | `done <<< "$files_to_delete"` |
+
+**`<` example: read a file line by line** ([scripts/read-file.sh](scripts/read-file.sh))
+
+```bash
+#!/bin/bash
+
+while IFS= read -r line
+do
+    echo $line
+done < 02-conversation.sh
+```
+- `< 02-conversation.sh` → the loop reads that **file**, one line per round, and prints it.
+- Same loop as Step 5; only the input changes: a **file** (`<`) instead of a **variable** (`<<<`).
+
+### Full picture
+
+```
+sh cleanup.sh /var/log/roboshop 14
+        │
+        ▼
+Step 1: folder given?        no → ERROR + usage, exit 1
+        │ yes
+Step 2: folder exists?       no → ERROR, exit 1
+        │ yes
+Step 3: find *.log older than 14 days
+        │
+Step 4: anything found?      no → "No log files found", exit 0
+        │ yes
+Step 5: loop → delete each file, print its name
+```
+
+**Output in the example:**
+```
+Scanning files older than 14 in /var/log/roboshop
+File is going to be deleted: /var/log/roboshop/cart.log
+File deleted: /var/log/roboshop/cart.log
+File is going to be deleted: /var/log/roboshop/shipping.log
+File deleted: /var/log/roboshop/shipping.log
+```
+The two files can come in any order (`find` doesn't sort). At the end, only `payment.log` is left.
 
 ## 2 bugs I found in the class script
 
@@ -267,6 +424,32 @@ In real projects nobody runs the cleanup by hand every day. A **cron job** runs 
 | `0 2 * * *` | every day at 02:00 |
 | `0 2 * * 0` | every Sunday at 02:00 |
 | `0 0 1 * *` | 1st of every month at 00:00 |
+
+### Why are both 0 and 7 Sunday?
+
+**Definition:** cron accepts **two ways of counting** the days of the week, so Sunday has two numbers.
+
+| Way of counting | Week starts on | Sunday is | Who uses it |
+|---|---|---|---|
+| Old Unix / C style | Sunday | **0** (0 to 6) | the original cron, C programs, US calendars |
+| ISO / Europe style | Monday | **7** (1 to 7) | most of the world, ISO 8601 standard |
+
+```
+Sun Mon Tue Wed Thu Fri Sat Sun
+ 0   1   2   3   4   5   6   7
+ └───────── both = Sunday ─────┘
+```
+
+Monday to Saturday are the same number either way (1 to 6). Only Sunday differs, so cron accepts **both**: no one gets it wrong, whichever way they count.
+
+| Expression | Runs |
+|---|---|
+| `0 2 * * 0` | every Sunday at 02:00 |
+| `0 2 * * 7` | every Sunday at 02:00 (same) |
+| `0 2 * * 1-5` | Monday to Friday at 02:00 |
+| `0 2 * * SUN` | every Sunday at 02:00 (day names avoid confusion) |
+
+> One-liner: cron accepts 0 and 7 for Sunday so it works whether your week starts on Sunday (0) or Monday (Sunday = 7).
 
 ### crontab commands
 
@@ -338,8 +521,8 @@ env -i PATH=/usr/bin:/bin bash -c '/usr/local/bin/aws --version'
 Deleting old logs loses them forever. A safer job: **compress** them into a backup folder first, and delete them **only if** the archive was created.
 
 ```bash
-sh backup.sh <source_dir> <dest_dir> [days]
-sh backup.sh /var/log/roboshop /home/ec2-user/backup 14
+sh archive.sh <source_dir> <dest_dir> [days]
+sh archive.sh /var/log/roboshop /home/ec2-user/backup 14
 ```
 
 ### Algorithm: the 6 steps
@@ -372,7 +555,7 @@ Step 6 is the key: if the backup failed and we still deleted, the logs would be 
 if [ -z "$source_dir" ] || [ -z "$dest_dir" ]; then    # ✅ catches one OR both missing
 ```
 
-> ⚠️ My rough notes had `[ -z "$source_dir" ] && [ -z "$dest_dir" ]`. That is only true when **both** are missing. I tested `sh backup.sh /a` (no dest): `&&` → **not caught**, the script keeps going; `||` → caught.
+> ⚠️ My rough notes had `[ -z "$source_dir" ] && [ -z "$dest_dir" ]`. That is only true when **both** are missing. I tested it with only a source folder given (no dest): `&&` → **not caught**, the script keeps going; `||` → caught.
 
 ### Timestamp in the archive name
 
@@ -387,11 +570,13 @@ date +%Y-%m-%d-%H-%M-%S        # 2026-10-30-18-56-55
 | `%Y` `%m` `%d` | year, month, day |
 | `%H` `%M` `%S` | hour, minute, second |
 
-The name becomes `app-logs-2026-10-30-18-56-55.tar.gz`. Each run gets a **unique** name, so it never overwrites an older backup.
+The name becomes `logs-2026-10-30-18-56-55.tar.gz`. Each run gets a **unique** name, so it never overwrites an older backup.
 
 > ⚠️ Don't use `:` in the name (`logs-2026-10-23-02:40:53.tar.gz` from my rough notes). tar thinks `name:path` is a **remote host**. I tested it: `tar (child): Cannot connect to logs-2026-10-23-02: resolve failed`. Use `-` (as the `date` format above does).
 
-### The script: backup.sh
+### The script: archive.sh
+
+This is the class script ([scripts/archive.sh](scripts/archive.sh)), with quotes added around `$source_dir` and `$line` (marked `# FIX`), the same quote fix as in `cleanup.sh`.
 
 ```bash
 #!/bin/bash
@@ -405,83 +590,146 @@ dest_dir=$2
 days=${3:-14} # if user is not passing days, we will take 14 days as default
 
 usage(){
-    echo -e "${R}USAGE:: $0 <SOURCE_DIR> <DEST_DIR> [days(Optional, default to 14 days)]${N}"
+    echo -e "${R}USAGE:: $0 [SOURCE_DIR] [DEST_DIR] [days(Optional, default to 14 days)]${N}"
     exit 1
 }
 
 # 1. user gave source_dir and dest_dir or not
 if [ -z "$source_dir" ] || [ -z "$dest_dir" ]; then
-    echo -e "${R}ERROR:: Missing parameters${N}"
+    echo "Either source or destination directory are missing"
     usage
 fi
 
 # 2. both directories exist or not
 if [ ! -d "$source_dir" ]; then
-    echo -e "${R}ERROR:: $source_dir does not exist${N}"
+    echo "Source Directory: $source_dir does not exist"
     exit 1
 fi
 
 if [ ! -d "$dest_dir" ]; then
-    echo -e "${R}ERROR:: $dest_dir does not exist${N}"
+    echo "Destination Directory: $dest_dir does not exist"
     exit 1
 fi
 
 # 3. find the files
 echo "Scanning files older than $days days in $source_dir"
-files=$(find "$source_dir" -name "*.log" -type f -mtime +$days)
+files_to_archive=$(find "$source_dir" -name "*.log" -type f -mtime +$days)    # FIX: quotes
 
-if [ -z "$files" ]; then
-    echo -e "${Y}No log files found older than $days days${N}"
+if [ -z "$files_to_archive" ]; then
+    echo "No log files found older than $days days"
     exit 0
 fi
 
 # 4. compress them and place in dest_dir
 timestamp=$(date +%Y-%m-%d-%H-%M-%S)
-zip_file="$dest_dir/app-logs-$timestamp.tar.gz"
-echo "Compressing into $zip_file"
-echo "$files" | tar -czf "$zip_file" -T -
 
-# 5. if successfully placed, delete in source_dir
-# 6. if error, don't delete the files
-if [ $? -eq 0 ] && [ -f "$zip_file" ]; then
-    echo -e "${G}Archive created: $zip_file${N}"
-    while IFS= read -r file
-    do
-        echo "Deleting: $file"
-        rm -f "$file"
-    done <<< "$files"
-else
-    echo -e "${R}ERROR:: Archive failed, files are NOT deleted${N}"
+file_name="$dest_dir/logs-$timestamp.tar.gz"
+
+tar -czf $file_name $files_to_archive
+
+# 5. if error, don't delete the files
+# 6. if successfully archived, delete in source_dir
+if [ $? -ne 0 ]; then
+    echo "Logs archival is failed"
     exit 1
+else
+    echo "Logs are archived: $file_name"
+    while IFS= read -r line
+    do
+        echo "File is going to be deleted: $line"
+        rm -f "$line"                                                         # FIX: quotes
+        echo "File deleted: $line"
+    done <<< "$files_to_archive"
 fi
 ```
 
-| Code | Meaning |
+### How archive.sh works, step by step
+
+**Example:** `sh archive.sh /var/log/roboshop /home/ec2-user/backup 14`, with `cart.log` and `shipping.log` (old) and `payment.log` (new) in `/var/log/roboshop`.
+
+**Part 0: inputs**
+
+| Code | Gets | In the example |
+|---|---|---|
+| `$1` → `source_dir` | where the logs are | `/var/log/roboshop` |
+| `$2` → `dest_dir` | where the archive goes | `/home/ec2-user/backup` |
+| `${3:-14}` → `days` | 3rd word, or 14 if not given | `14` |
+
+**Step 1: both folders given?**
+- `[ -z "$source_dir" ] || [ -z "$dest_dir" ]` = source is empty **OR** dest is empty.
+- If either one is missing → `Either source or destination directory are missing` + `usage` → stop.
+
+**Step 2: both folders exist?**
+- Two separate checks with `! -d`, so the message says **which** folder is missing (`Source Directory: ...` or `Destination Directory: ...`) → `exit 1`.
+
+**Step 3: find the old .log files**
+- Same `find` as `cleanup.sh`. The list is saved in `files_to_archive`.
+- Nothing found → `No log files found older than 14 days` → `exit 0`.
+
+**Step 4: compress into one file**
+
+```bash
+timestamp=$(date +%Y-%m-%d-%H-%M-%S)              # 2026-10-30-02-00-00
+file_name="$dest_dir/logs-$timestamp.tar.gz"      # /home/ec2-user/backup/logs-2026-10-30-02-00-00.tar.gz
+tar -czf $file_name $files_to_archive
+```
+
+| Part | Means |
 |---|---|
-| `tar -czf <file>` | **c**reate an archive, g**z**ip-compress it, write it to **f**ile |
-| `echo "$files" \| tar ... -T -` | tar reads the list of files from the pipe (`-T -`), one per line, so names with spaces are safe |
-| `$?` | exit code of the last command (tar): `0` = success |
-| `[ -f "$zip_file" ]` | the archive file really exists |
-| `tar -tzf <file>` | lists what's inside an archive (to check it) |
+| `tar` | packs many files into one file |
+| `-c` | **c**reate a new archive |
+| `-z` | compress it with g**z**ip (`.gz`) |
+| `-f $file_name` | write it to this **f**ile |
+| `$files_to_archive` | the files to put inside (cart.log, shipping.log) |
 
-### Run it and check
+**Step 5 + 6: check tar, then delete or not**
 
-I tested it on my laptop with the same test files (`cart.log`, `shipping.log` old, `payment.log` new):
+```bash
+if [ $? -ne 0 ]; then
+```
+- `$?` = exit code of the last command (tar). `0` = success.
+- `-ne 0` = **not equal** to 0 → tar **failed** → `Logs archival is failed` → `exit 1`. **Nothing is deleted**, so no logs are lost.
+- Else (tar worked) → `Logs are archived: ...` → same delete loop as `cleanup.sh`.
 
-| Run | Output | Exit | Files in source after |
-|---|---|---|---|
-| `backup.sh src` (no dest) | `ERROR:: Missing parameters` + `USAGE:: ...` | 1 | all 3 |
-| `backup.sh src nope` | `ERROR:: nope does not exist` | 1 | all 3 |
-| dest not writable (`chmod 555 dest`) | `tar ... Cannot open: Permission denied`<br>`ERROR:: Archive failed, files are NOT deleted` | 1 | all 3 ✅ (nothing lost) |
-| `backup.sh src dest` | `Archive created: dest/app-logs-2026-10-30-18-56-55.tar.gz`<br>`Deleting: src/shipping.log`<br>`Deleting: src/cart.log` | 0 | `payment.log` |
-| run again | `No log files found older than 14 days` | 0 | `payment.log` |
+> ⚠️ `$?` must come **right after** `tar`. Any command in between (even an `echo`) changes `$?`.
 
-`tar -tzf dest/app-logs-*.tar.gz` → `src/shipping.log`, `src/cart.log`: the backup has both files.
+**Full picture**
+
+```
+sh archive.sh /var/log/roboshop /home/ec2-user/backup 14
+        │
+Step 1: source AND dest given?    no → message + usage, exit 1
+        │ yes
+Step 2: both folders exist?       no → which one is missing, exit 1
+        │ yes
+Step 3: find *.log older than 14  none → "No log files found", exit 0
+        │ found
+Step 4: tar -czf logs-<timestamp>.tar.gz  <files>
+        │
+Step 5: tar failed ($? ≠ 0)?      yes → "Logs archival is failed", exit 1 (files kept)
+        │ no
+Step 6: delete each file, print its name
+```
+
+**Expected output in the example:**
+```
+Scanning files older than 14 days in /var/log/roboshop
+tar: Removing leading `/' from member names
+Logs are archived: /home/ec2-user/backup/logs-2026-10-30-02-00-00.tar.gz
+File is going to be deleted: /var/log/roboshop/cart.log
+File deleted: /var/log/roboshop/cart.log
+File is going to be deleted: /var/log/roboshop/shipping.log
+File deleted: /var/log/roboshop/shipping.log
+```
+
+- `Removing leading '/'` is just a tar **warning**, not an error: tar stores `var/log/roboshop/cart.log` without the first `/`, so unpacking can't overwrite the real files.
+- Check what's inside the archive: `tar -tzf /home/ec2-user/backup/logs-*.tar.gz`
+- Unpack it later: `tar -xzf <file>.tar.gz` (`-x` = e**x**tract)
 
 Schedule it the same way:
 
 ```
-0 2 * * * /bin/bash /home/ec2-user/backup.sh /var/log/roboshop /home/ec2-user/backup 14 >> /tmp/backup.log 2>&1
+0 2 * * * /bin/bash /home/ec2-user/archive.sh /var/log/roboshop /home/ec2-user/backup 14 >> /tmp/archive.log 2>&1
 ```
 
 ## What I learned

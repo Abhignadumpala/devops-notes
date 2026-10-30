@@ -23,6 +23,7 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 15 - Shell Loops, Error Handling & AWS CLI](day-15-shell-loops-error-handling-aws-cli/README.md)
 - [Day 16 - RoboShop with Shell Scripts](day-16-roboshop-shell-scripts/README.md)
 - [Day 17 - RoboShop v2: Shared Code in common.sh](day-17-roboshop-v2-common-functions/README.md)
+- [Day 18 - Shell Script: Delete Old Log Files](day-18-shell-script-delete-old-logs/README.md)
 
 ## Projects
 

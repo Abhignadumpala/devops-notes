@@ -1,8 +1,8 @@
-# Day 18 - Shell Script: Log Cleanup, Backup & Crontab
+# Day 18 - Shell Script: Log Cleanup, Backup, Crontab & Disk Usage Alert
 
-> **In short:** Apps write logs all the time, so log files keep growing and fill the disk. As daily maintenance, a script deletes **`.log` files older than 14 days** from `/var/log/roboshop`. The script checks its inputs first (was a folder given? does it exist?), finds the old files with `find`, says so if there are none, and otherwise deletes them and shows each one. A safer **backup** script first compresses the old logs into a `.tar.gz` in another folder and deletes them **only if** the archive worked. **crontab** runs these scripts automatically at low-traffic times, but cron has a **minimal PATH**, so use full paths.
+> **In short:** Apps write logs all the time, so log files keep growing and fill the disk. As daily maintenance, a script deletes **`.log` files older than 14 days** from `/var/log/roboshop`. The script checks its inputs first (was a folder given? does it exist?), finds the old files with `find`, says so if there are none, and otherwise deletes them and shows each one. A safer **backup** script first compresses the old logs into a `.tar.gz` in another folder and deletes them **only if** the archive worked. **crontab** runs these scripts automatically at low-traffic times, but cron has a **minimal PATH**, so use full paths. A **monitoring script** checks `df -hT` line by line and sends an **email alert** when a disk is more than 70–80% full.
 
-**More in this folder:** [Interview questions](interview-questions/README.md) · [scripts/](scripts) (`cleanup.sh`, `archive.sh`, `read-file.sh`)
+**More in this folder:** [Interview questions](interview-questions/README.md) · [scripts/](scripts) (`cleanup.sh`, `archive.sh`, `read-file.sh`, `disk-usage.sh`, `mail.sh`, `template.html`)
 
 ## Table of Contents
 
@@ -32,8 +32,20 @@
     - [What comes in the AMI?](#what-comes-in-the-ami)
     - [Create the AMI and launch servers from it](#create-the-ami-and-launch-servers-from-it)
     - [Summary](#summary)
-14. [What I learned](#what-i-learned)
-15. [Interview Questions](#interview-questions)
+14. [Monitoring script: disk usage alert by email](#monitoring-script-disk-usage-alert-by-email)
+    - [What is a monitoring script?](#what-is-a-monitoring-script)
+    - [Why shell scripts when we have Prometheus?](#why-shell-scripts-when-we-have-prometheus)
+    - [How it works (big picture)](#how-it-works-big-picture)
+    - [Step 1: read disk usage with df -hT](#step-1-read-disk-usage-with-df--ht)
+    - [Step 2: disk-usage.sh (find high usage)](#step-2-disk-usagesh-find-high-usage)
+    - [Step 3: mail.sh (send the email)](#step-3-mailsh-send-the-email)
+    - [Step 4: template.html (email body)](#step-4-templatehtml-email-body)
+    - [Step 5: set up msmtp (email sender)](#step-5-set-up-msmtp-email-sender)
+    - [What I found when I tested it](#what-i-found-when-i-tested-it)
+    - [Same idea for CPU and RAM](#same-idea-for-cpu-and-ram)
+    - [Schedule the monitoring script with crontab](#schedule-the-monitoring-script-with-crontab)
+15. [What I learned](#what-i-learned)
+16. [Interview Questions](#interview-questions)
 
 ---
 
@@ -979,7 +991,397 @@ archive.sh ──► archive command ──► AMI ──► every server ──
                 (/usr/local/bin)                            + crontab runs it daily at 02:00
 ```
 
+## Monitoring script: disk usage alert by email
+
+> A **monitoring script** checks the server and sends an **email alert** when something crosses a limit. Here, `disk-usage.sh` reads `df -hT` **line by line** with a `while` loop, finds every partition using more than the threshold (75–80% in real life), and calls `mail.sh`, which fills an HTML **template** and sends the email with `msmtp`. The same idea works for CPU, RAM and more. Tools like Prometheus do this today, but on **legacy / high-security servers** (e.g. banking), where external tools aren't allowed, native shell scripts are the way.
+
+### What is a monitoring script?
+
+**Definition:** **Monitoring script** = a script that regularly **checks** something on a server (disk, CPU, RAM, a service) and **alerts** the team when it crosses a limit.
+
+**The need:** if a disk reaches **75–80%** full, the team must know **before** it hits 100% and the app crashes. So:
+
+1. Find the disk usage of **each** partition.
+2. If any partition is above the limit → **send an email**.
+
+| Check | Command | Alert when |
+|---|---|---|
+| Disk | `df -hT` | a partition > 75–80% |
+| RAM | `free -m` | used memory > limit |
+| CPU | `uptime` / `top` | load or CPU % > limit |
+| Service | `systemctl is-active nginx` | not `active` |
+
+### Why shell scripts when we have Prometheus?
+
+**Definition:** **Monitoring tools** (Prometheus, Grafana, CloudWatch, Nagios) = ready-made software that collects server metrics and sends alerts.
+
+Nowadays we mostly use tools like **Prometheus**. But shell scripts are still useful:
+
+| Situation | Why shell script |
+|---|---|
+| **Legacy servers** | old servers where new tools can't be installed |
+| **High-security servers** (e.g. banking) | **external tools are not allowed**; you may only run the commands already on the server |
+| Gaps in tools | **no tool can promise 100% automation**; a script can fill the gap |
+| **CI/CD pipelines** | pipelines run shell steps; scripts do the custom checks |
+
+> **Shell scripting is native**: bash, `df`, `free`, `awk`, `sed` are already on every Linux server, nothing to install. That's why with shell scripts **100% automation is possible** in situations where tools can't reach.
+
+### How it works (big picture)
+
+```
+cron (every 5 min / hourly)
+   │
+   ▼
+disk-usage.sh
+   │ 1. df -hT                       → all partitions
+   │ 2. while loop, line by line     → usage % of each partition
+   │ 3. usage ≥ threshold?           → add a line to "message"
+   │
+   ▼
+mail.sh "DevOps Team" <ip> "High Disk Usage" "<message>" <to> "<subject>"
+   │ 4. put values into template.html (sed)
+   │ 5. add To / Subject / Content-Type headers
+   │ 6. msmtp sends it
+   ▼
+📧 DevOps team inbox: "WARNING: High Disk Usage Alert"
+```
+
+| File | Job |
+|---|---|
+| [disk-usage.sh](scripts/disk-usage.sh) | **find** the problem (which partition is too full) |
+| [mail.sh](scripts/mail.sh) | **send** the email (reusable for any alert: disk, CPU, RAM) |
+| [template.html](scripts/template.html) | the email **design**, with placeholders |
+
+### Step 1: read disk usage with df -hT
+
+**Definition:** `df` = **d**isk **f**ree: shows the size, used and free space of every partition. `-h` = human-readable (G, M), `-T` = show the filesystem **T**ype.
+
+```bash
+df -hT
+```
+```
+Filesystem     Type   Size  Used Avail Use% Mounted on
+/dev/xvda1     xfs     20G   16G  4.0G  80% /
+tmpfs          tmpfs  475M     0  475M   0% /dev/shm
+/dev/xvdf      xfs     50G   10G   40G  20% /data
+```
+
+| Column # | Name | Example | Used in script |
+|---|---|---|---|
+| 1 | Filesystem | `/dev/xvda1` | |
+| 2 | Type | `xfs` | |
+| 3 | Size | `20G` | |
+| 4 | Used | `16G` | |
+| 5 | Avail | `4.0G` | |
+| **6** | **Use%** | `80%` | ✅ `awk '{print $6}'` → usage |
+| **7** | **Mounted on** | `/` | ✅ `awk '{print $7}'` → partition |
+
+The first line is a **header** (`Filesystem ...`), not a disk, so the script removes it with `grep -v Filesystem`.
+
+### Step 2: disk-usage.sh (find high usage)
+
+```bash
+#!/bin/bash
+
+disk_usage=$(df -hT | grep -v Filesystem)
+usage_threshold=20
+server_ip=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+
+while IFS= read -r line
+do
+    usage=$(echo $line | awk '{print $6}' | cut -d "%" -f1)
+    partition=$(echo $line | awk '{print $7}')
+    if [ "$usage" -ge "$usage_threshold" ]; then
+        message+="High Disk Usage on $partition: $usage <br>"
+    fi
+done <<< "$disk_usage"
+
+#echo -e "$message"
+
+sh mail.sh "DevOps Team" "$server_ip" "High Disk Usage" "$message" "<your-to-mail>" "WARNING: High Disk Usage Alert"
+```
+
+#### How disk-usage.sh works, line by line
+
+**1. Get all partitions**
+```bash
+disk_usage=$(df -hT | grep -v Filesystem)
+```
+- `grep -v Filesystem` = show every line **except** the header (`-v` = in**v**ert).
+- The list is saved in `disk_usage`.
+
+**2. Set the limit**
+```bash
+usage_threshold=20
+```
+- **Threshold** = the limit; above it → alert.
+- `20` is low **for testing in class** (so an alert fires). In real servers use **75 or 80**.
+
+**3. Get the server's private IP**
+```bash
+server_ip=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+```
+- **Definition:** `169.254.169.254` = the **EC2 metadata** address. Every EC2 server can ask it about itself (IP, instance ID, region).
+- The IP goes into the email so the team knows **which server** has the problem.
+
+**4. Check each partition, line by line**
+```bash
+while IFS= read -r line
+do
+    ...
+done <<< "$disk_usage"
+```
+- `<<< "$disk_usage"` feeds the list into the loop; each round, `line` = **one partition**.
+- Same loop as in [cleanup.sh](#how-the-script-works-step-by-step).
+
+**5. Cut out usage % and partition name**
+```bash
+usage=$(echo $line | awk '{print $6}' | cut -d "%" -f1)
+partition=$(echo $line | awk '{print $7}')
+```
+
+| Command | Takes | Example result |
+|---|---|---|
+| `awk '{print $6}'` | 6th column (Use%) | `80%` |
+| `cut -d "%" -f1` | split at `%`, keep part **1** | `80` |
+| `awk '{print $7}'` | 7th column (Mounted on) | `/` |
+
+**Why remove `%`?** `-ge` compares **numbers** only; `80%` isn't a number, `80` is.
+
+**6. Compare with the threshold**
+```bash
+if [ "$usage" -ge "$usage_threshold" ]; then
+    message+="High Disk Usage on $partition: $usage <br>"
+fi
+```
+- `-ge` = **g**reater than or **e**qual.
+- `message+=` = **add** to the end of `message` (doesn't overwrite), so **every** high partition is listed.
+- `<br>` = HTML **line break**, so each partition is on its own line in the email.
+
+**7. Send the email**
+```bash
+sh mail.sh "DevOps Team" "$server_ip" "High Disk Usage" "$message" "<your-to-mail>" "WARNING: High Disk Usage Alert"
+```
+
+| Argument | In mail.sh | Value |
+|---|---|---|
+| `$1` | `team_name` | `DevOps Team` |
+| `$2` | `server_ip` | `172.31.10.25` |
+| `$3` | `alert_type` | `High Disk Usage` |
+| `$4` | `message` | `High Disk Usage on /: 80 <br>` |
+| `$5` | `to_address` | the team's email |
+| `$6` | `subject` | `WARNING: High Disk Usage Alert` |
+
+`#echo -e "$message"` is commented out; remove the `#` to **see the message on screen** while testing.
+
+### Step 3: mail.sh (send the email)
+
+```bash
+#!/bin/bash
+
+team_name=$1
+server_ip=$2
+alert_type=$3
+message=$4
+to_address=$5
+subject=$6
+
+final_message=$(echo "$message" | sed 's/[.|$*^\\\/]/\\&/g')
+final_body=$(sed -e "s/TO_TEAM/$team_name/g" -e "s/ALERT_TYPE/$alert_type/g" -e "s/SERVER_IP/$server_ip/g" -e "s/MESSAGE_BODY/$final_message/g" template.html)
+
+{
+echo "To: $to_address"
+echo "Subject: $subject"
+echo "Content-Type: text/html"
+echo ""
+echo "$final_body"
+} | msmtp "$to_address"
+```
+
+**Why a separate mail.sh?** It's **reusable**: the disk, CPU and RAM scripts all call the same `mail.sh` with different arguments.
+
+#### How mail.sh works
+
+**1. Take the 6 arguments** (`$1` … `$6`) into named variables.
+
+**2. Make the message safe for sed**
+```bash
+final_message=$(echo "$message" | sed 's/[.|$*^\\\/]/\\&/g')
+```
+- Partition names have `/` (e.g. `/var/log`). In `sed`, `/` is the **separator**, so an unescaped `/` in the message breaks the next `sed`.
+- This puts a `\` in front of every special character: `/` → `\/`, `.` → `\.`
+- `&` in the replacement = "the character that matched".
+
+| Before | After |
+|---|---|
+| `High Disk Usage on /var/log: 80` | `High Disk Usage on \/var\/log: 80` |
+
+**3. Fill the template**
+```bash
+final_body=$(sed -e "s/TO_TEAM/$team_name/g" ... template.html)
+```
+- `sed "s/OLD/NEW/g"` = **s**ubstitute OLD with NEW, **g**lobally (every match).
+- Each `-e` is one replacement: `TO_TEAM` → `DevOps Team`, `SERVER_IP` → `172.31.10.25`, ...
+- `template.html` itself isn't changed; the result goes into `final_body`.
+
+**4. Build the email and send it**
+```bash
+{
+echo "To: $to_address"
+echo "Subject: $subject"
+echo "Content-Type: text/html"
+echo ""
+echo "$final_body"
+} | msmtp "$to_address"
+```
+
+| Line | Means |
+|---|---|
+| `{ ... }` | group the echos so all their output goes into **one** pipe |
+| `To:` / `Subject:` | email **headers** |
+| `Content-Type: text/html` | the body is **HTML** (so `<b>`, `<br>` work) |
+| `echo ""` | **empty line** = end of headers, body starts |
+| `\| msmtp "$to_address"` | `msmtp` sends the email |
+
+### Step 4: template.html (email body)
+
+**Definition:** **Template** = a fixed design with **placeholders** (`TO_TEAM`, `SERVER_IP`, ...) that `sed` replaces with real values.
+
+The class didn't show the template, so this is a simple example with the 4 placeholders `mail.sh` replaces ([scripts/template.html](scripts/template.html)):
+
+```html
+<html>
+<body>
+  <p>Hi TO_TEAM,</p>
+  <p><b>Alert:</b> ALERT_TYPE</p>
+  <p><b>Server IP:</b> SERVER_IP</p>
+  <p>MESSAGE_BODY</p>
+  <p>Regards,<br>Monitoring Script</p>
+</body>
+</html>
+```
+
+Keep `template.html` in the **same folder** as `mail.sh` (it's read by its relative name).
+
+### Step 5: set up msmtp (email sender)
+
+**Definition:** **msmtp** = a small command-line program that sends email through an **SMTP server** (e.g. Gmail's).
+
+```bash
+sudo dnf install msmtp -y        # on some RHEL versions it comes from the EPEL repo
+vim ~/.msmtprc
+```
+```
+defaults
+auth           on
+tls            on
+tls_trust_file /etc/ssl/certs/ca-bundle.crt
+logfile        ~/.msmtp.log
+
+account        gmail
+host           smtp.gmail.com
+port           587
+from           <your-mail>@gmail.com
+user           <your-mail>@gmail.com
+password       <gmail-app-password>
+
+account default : gmail
+```
+```bash
+chmod 600 ~/.msmtprc             # only me can read it (it has a password)
+```
+
+| Setting | Means |
+|---|---|
+| `host` / `port` | Gmail's SMTP server, port 587 |
+| `tls on` | encrypt the connection |
+| `password` | a Gmail **app password** (Google account → Security → App passwords), not the normal password |
+| `chmod 600` | msmtp refuses a config that others can read |
+
+> 🔒 Never push `.msmtprc` or the app password to GitHub.
+
+### What I found when I tested it
+
+I ran both scripts on my laptop with `msmtp` replaced by `cat` (prints the email instead of sending) and a fixed IP.
+
+| Test | Result |
+|---|---|
+| threshold 20 | email body: `High Disk Usage on /sys/firmware/efi/efivars: 98 <br>` ✅ the loop and `sed` work |
+| threshold 99 (no disk that full) | an email was **still built, with an empty message** ❌ |
+
+**Things to improve:**
+
+| # | Problem | Fix |
+|---|---|---|
+| 1 | Email is sent even when **nothing** is high | send only if there's a message: `if [ -n "$message" ]; then sh mail.sh ...; fi` (`-n` = not empty) |
+| 2 | Small system filesystems (`tmpfs`, `efivarfs`) can show high % and cause **false alerts** | skip them: `df -hT -x tmpfs -x devtmpfs -x efivarfs` (`-x` = exclude type) |
+| 3 | New EC2 servers use **IMDSv2**: plain `curl` to `169.254.169.254` returns `401 Unauthorized` | get a token first (below) |
+| 4 | `sh mail.sh` and `template.html` are **relative** paths: from cron they aren't found | `cd` to the script folder first, or use full paths |
+| 5 | Threshold 20 is for class testing | use `75` or `80` |
+
+**IMDSv2 (token first, then ask):**
+```bash
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+server_ip=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4)
+```
+`-s` = silent (hides curl's progress bar).
+
+### Same idea for CPU and RAM
+
+Same pattern: **command → cut out the number → compare with threshold → call mail.sh**.
+
+**RAM**
+```bash
+memory_usage=$(free | awk '/Mem:/ {printf "%d", $3/$2*100}')    # used / total × 100
+if [ "$memory_usage" -ge 80 ]; then
+    sh mail.sh "DevOps Team" "$server_ip" "High Memory Usage" "Memory usage: $memory_usage% <br>" "<your-to-mail>" "WARNING: High Memory Usage Alert"
+fi
+```
+
+**CPU**
+```bash
+cpu_idle=$(top -bn1 | grep "Cpu(s)" | awk -F',' '{print $4}' | awk '{print int($1)}')   # idle %
+cpu_usage=$((100 - cpu_idle))
+if [ "$cpu_usage" -ge 80 ]; then
+    sh mail.sh "DevOps Team" "$server_ip" "High CPU Usage" "CPU usage: $cpu_usage% <br>" "<your-to-mail>" "WARNING: High CPU Usage Alert"
+fi
+```
+
+| Check | Command | Number we cut out |
+|---|---|---|
+| Disk | `df -hT` | Use% of each partition |
+| RAM | `free` | used ÷ total × 100 |
+| CPU | `top -bn1` | 100 − idle % |
+
+`mail.sh` doesn't change: that's why it's a separate script.
+
+### Schedule the monitoring script with crontab
+
+Run the check every 5 minutes (see [crontab](#schedule-it-with-crontab)):
+
+```
+*/5 * * * * cd /home/ec2-user/monitoring && /bin/bash disk-usage.sh >> /tmp/disk-usage.log 2>&1
+```
+- `cd ... &&` → `mail.sh` and `template.html` are found (relative paths).
+- `*/5` → every 5 minutes. Too often = too many emails; too rare = late alert.
+
 ## What I learned
+
+### Class summary
+
+In this class I learned to write **shell scripts that do server maintenance and monitoring automatically**:
+
+1. **Log cleanup with backup** ([cleanup.sh](#the-script-cleanupsh), [archive.sh](#the-script-archivesh)): a script finds `.log` files **older than 14 days**, **backs them up** (compresses them into a `.tar.gz` in another folder), and deletes them **only after** the backup works.
+2. **Run it as a command**: put the script in `/usr/local/bin` → it becomes a Linux command (`archive /var/log/roboshop/ /var/log/logs-archive/`), and **crontab** runs it every day.
+3. **Make an AMI from that server**: any future server created from that AMI has the cleanup command and cron job **by default**, so log cleanup happens on every server without setting it up again.
+4. **[Monitoring script](#monitoring-script-disk-usage-alert-by-email)**: checks `df -hT` **one partition at a time** with a `while` loop, finds which disk is using **more than 70–80%**, and sends an **email alert** to the team.
+
+```
+Cleanup:     old logs ──► backup (.tar.gz) ──► delete ──► as command ──► crontab ──► AMI ──► every server
+Monitoring:  df -hT ──► while loop, line by line ──► usage > 70-80%? ──► email alert
+```
+
+### Details
 
 - Logs grow every day, so deleting old ones is daily maintenance.
 - Before coding, answer 3 questions: **which location, which extension, how many days old**.
@@ -997,6 +1399,12 @@ archive.sh ──► archive command ──► AMI ──► every server ──
 - Backup = compress first, delete **only if** the archive succeeded; if it fails, keep the files.
 - `&&` = both must be true, `||` = one is enough. "Both folders are required" → error if `-z src || -z dest`.
 - `date +%Y-%m-%d-%H-%M-%S` makes a unique archive name; no `:` in tar file names.
+- A **monitoring script** checks the server (disk, CPU, RAM) and **emails** the team when a limit is crossed.
+- `df -hT` → `while read` loop **line by line** → `awk` column 6 (Use%) and 7 (mount) → `cut` the `%` → `-ge` threshold.
+- `message+=` collects **all** high partitions into one email; `<br>` puts each on a new line.
+- `mail.sh` is **reusable**: any alert calls it with 6 arguments; `sed` fills an HTML template; `msmtp` sends it.
+- Use 75–80% as the real threshold; send the email **only if** something is high.
+- Tools like **Prometheus** do this today, but on **legacy / high-security (banking) servers** external tools aren't allowed, so **native shell scripts** do the job. No tool promises 100% automation; shell scripts can fill the gaps, and they're used in **CI/CD** too.
 
 ## Interview Questions
 

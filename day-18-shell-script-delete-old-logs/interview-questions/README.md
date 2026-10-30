@@ -39,6 +39,14 @@ script sets:     /usr/bin:/bin:/usr/local/bin       ← every folder written out
 
 **Short answer to say in the interview:** "My cron job worked on dev but failed on prod with command not found. Cron runs with a minimal PATH, and only dev had `/usr/local/bin` added to it. I fixed it by using the full path to the command, `/usr/local/bin/archive`, and by setting the full PATH explicitly at the top of the script: `PATH=/usr/bin:/bin:/usr/local/bin`. Now the script runs the same on every server."
 
+**2. We have Prometheus and other monitoring tools. Why write monitoring shell scripts?**
+
+On **legacy** and **high-security servers** (like banking), installing external tools is often not allowed; only the commands already on the server can be run. Shell scripting is **native** (bash, `df`, `free`, `awk` are already there), so a script can monitor disk/CPU/RAM and send alerts there. No tool promises 100% automation; shell scripts fill those gaps and are also used in CI/CD pipelines.
+
+**3. How do you send an alert when disk usage is above 80%?**
+
+Read `df -hT` (without the header) line by line in a `while read` loop. For each line, take the Use% (column 6) with `awk`, remove `%` with `cut`, and compare with `-ge 80`. Add every high partition to a message, and if the message isn't empty, send it by email (`mail.sh` → HTML template → `msmtp`). Schedule it with cron.
+
 ## Other Questions
 
 **1. Why do we delete old log files?**
@@ -148,3 +156,47 @@ No. An AMI is a snapshot of the disk at that moment. Servers already running and
 **27. What is a golden AMI?**
 
 One base image with all the common company setup (scripts like cleanup/archive, cron jobs, monitoring agents, security settings). Every server is launched from it, so all servers start the same.
+
+**28. What does `df -hT` show?**
+
+Every partition's filesystem, type, size, used, available, Use% and mount point. `-h` = human-readable sizes, `-T` = filesystem type.
+
+**29. Why `grep -v Filesystem`?**
+
+To remove the header line of `df`; `-v` shows every line that does **not** match.
+
+**30. Why `cut -d "%" -f1` before comparing?**
+
+`-ge` compares numbers only. `cut` splits `80%` at `%` and keeps the first part, `80`.
+
+**31. What does `message+=` do?**
+
+Appends to the variable instead of overwriting it, so every high partition ends up in one email.
+
+**32. What is `169.254.169.254`?**
+
+The EC2 instance metadata address. A server can ask it for its own private IP, instance ID, region etc. On IMDSv2 you first get a token with a `PUT` request and send it as a header.
+
+**33. Why is mail.sh a separate script?**
+
+Reusability: disk, CPU and RAM scripts all call the same `mail.sh` with different arguments (team, IP, alert type, message, to, subject).
+
+**34. How does mail.sh fill the email template?**
+
+`sed -e "s/TO_TEAM/$team_name/g" -e ... template.html` replaces each placeholder with a real value. The message is escaped first (`/` → `\/`) because `/` is sed's separator.
+
+**35. What is msmtp?**
+
+A small command-line SMTP client. It sends the email built by the script through an SMTP server like Gmail (configured in `~/.msmtprc`, `chmod 600`, using an app password).
+
+**36. Why `Content-Type: text/html` and an empty `echo ""`?**
+
+`text/html` tells the mail client the body is HTML (so `<br>`, `<b>` work). The empty line separates the email headers from the body.
+
+**37. How do you avoid empty or false alerts?**
+
+Send only if the message isn't empty (`[ -n "$message" ]`), skip small system filesystems (`df -x tmpfs -x devtmpfs`), and use a realistic threshold like 75–80%.
+
+**38. How would you monitor RAM and CPU the same way?**
+
+RAM: `free | awk '/Mem:/ {printf "%d", $3/$2*100}'` = used %. CPU: 100 − idle % from `top -bn1`. Compare with the threshold and call the same `mail.sh`.

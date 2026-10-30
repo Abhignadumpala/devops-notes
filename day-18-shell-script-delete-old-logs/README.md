@@ -15,20 +15,21 @@
 7. [How the script works, step by step](#how-the-script-works-step-by-step)
 8. [2 bugs I found in the class script](#2-bugs-i-found-in-the-class-script)
 9. [Run it and check the result](#run-it-and-check-the-result)
-10. [Schedule it with crontab](#schedule-it-with-crontab)
+10. [Run the script as a command (PATH)](#run-the-script-as-a-command-path)
+11. [Schedule it with crontab](#schedule-it-with-crontab)
     - [The 5 time fields](#the-5-time-fields)
     - [Why are both 0 and 7 Sunday?](#why-are-both-0-and-7-sunday)
     - [crontab commands](#crontab-commands)
     - [Add the cleanup job](#add-the-cleanup-job)
     - [Cron's PATH is different from my terminal](#crons-path-is-different-from-my-terminal)
-11. [Backup script: compress old logs, then delete](#backup-script-compress-old-logs-then-delete)
+12. [Backup script: compress old logs, then delete](#backup-script-compress-old-logs-then-delete)
     - [Algorithm: the 6 steps](#algorithm-the-6-steps)
     - [&& vs ||](#-vs-)
     - [Timestamp in the archive name](#timestamp-in-the-archive-name)
     - [The script: archive.sh](#the-script-archivesh)
     - [How archive.sh works, step by step](#how-archivesh-works-step-by-step)
-12. [What I learned](#what-i-learned)
-13. [Interview Questions](#interview-questions)
+13. [What I learned](#what-i-learned)
+14. [Interview Questions](#interview-questions)
 
 ---
 
@@ -397,6 +398,57 @@ ls /var/log/roboshop
 > **Why `sudo`?** `/var/log` belongs to root, so deleting files there needs root.
 > **`sh` vs `bash`:** on RHEL / Amazon Linux `sh` is bash, so `sh cleanup.sh` works. On Ubuntu `sh` is `dash`: `echo -e` and `<<<` break, so run `bash cleanup.sh` there.
 
+## Run the script as a command (PATH)
+
+**Definition:** **`$PATH`** = the list of folders Linux searches when you type a command. Any file in those folders can be run **by its name** from anywhere, like `ls` or `cp`.
+
+The cleanup script has to run on **every Linux server**. Instead of typing `sh /home/ec2-user/cleanup.sh ...` each time, put it in a PATH folder and run it as a **command**:
+
+```
+Before:  sh /home/ec2-user/cleanup.sh /var/log/roboshop 14     (need sh + full path)
+After:   cleanup /var/log/roboshop 14                          (from any folder)
+```
+
+### PATH folders on the server
+
+```bash
+echo $PATH
+```
+
+| Folder | Who can use it | Use for |
+|---|---|---|
+| `/home/ec2-user/.local/bin` | only ec2-user | my own tools |
+| `/home/ec2-user/bin` | only ec2-user | my own tools |
+| `/usr/local/bin` | **all users** | ✅ **admin scripts like cleanup** |
+| `/usr/bin` | all users | packages installed by `dnf` (don't put own scripts here) |
+| `/usr/local/sbin` | root (admin) | admin-only tools |
+| `/usr/sbin` | root (admin) | system admin commands from packages |
+
+Linux checks the folders **in order**, left to right, and runs the **first** match.
+
+### Steps
+
+```bash
+sudo cp cleanup.sh /usr/local/bin/cleanup     # 1. copy into a PATH folder (drop .sh: nicer command name)
+sudo chmod +x /usr/local/bin/cleanup          # 2. make it executable
+which cleanup                                 # 3. check: /usr/local/bin/cleanup
+sudo /usr/local/bin/cleanup /var/log/roboshop 14   # 4. run it (see the sudo note below)
+cleanup /var/log/abc                          #    without sudo, from any folder: ERROR:: /var/log/abc does not exist
+```
+
+| Step | Why |
+|---|---|
+| `cp` to `/usr/local/bin` | Linux finds it by name, for every user |
+| `chmod +x` | without **execute permission**: `Permission denied` |
+| `#!/bin/bash` (1st line of the script) | **shebang**: tells Linux which shell runs the file, since there's no `sh` in front any more |
+| `which cleanup` | shows which file runs when you type `cleanup` |
+
+I tested it on my laptop: with the file in a PATH folder, `cleanup <folder> 14` worked from `/`; with cron's PATH (`/usr/bin:/bin`) → `cleanup: command not found`.
+
+> ⚠️ **sudo:** on RHEL / Amazon Linux, `sudo` uses its own short PATH (`secure_path` in `/etc/sudoers` = `/sbin:/bin:/usr/sbin:/usr/bin`), so `sudo cleanup` can say `command not found`. Use `sudo /usr/local/bin/cleanup ...`, or run `sudo -i` first (root's PATH).
+
+> ⚠️ **Cron:** `/usr/local/bin` is **not** in cron's PATH (see [Cron's PATH](#crons-path-is-different-from-my-terminal)). In crontab, use the full path: `0 2 * * * /usr/local/bin/cleanup /var/log/roboshop 14`.
+
 ## Schedule it with crontab
 
 **Definition:** **crontab** = used to **schedule scripts** in Linux. The cron service runs each entry automatically at the time you set.
@@ -655,18 +707,102 @@ fi
 | `$2` → `dest_dir` | where the archive goes | `/home/ec2-user/backup` |
 | `${3:-14}` → `days` | 3rd word, or 14 if not given | `14` |
 
-**Step 1: both folders given?**
-- `[ -z "$source_dir" ] || [ -z "$dest_dir" ]` = source is empty **OR** dest is empty.
-- If either one is missing → `Either source or destination directory are missing` + `usage` → stop.
+**The 4 checks before archiving:** if any check fails, the script stops.
 
-**Step 2: both folders exist?**
-- Two separate checks with `! -d`, so the message says **which** folder is missing (`Source Directory: ...` or `Destination Directory: ...`) → `exit 1`.
+![archive.sh: 4 checks before archiving](images/archive-checks-flow.svg)
 
-**Step 3: find the old .log files**
-- Same `find` as `cleanup.sh`. The list is saved in `files_to_archive`.
-- Nothing found → `No log files found older than 14 days` → `exit 0`.
+**Check 1: did the user type both folder names?**
 
-**Step 4: compress into one file**
+```bash
+if [ -z "$source_dir" ] || [ -z "$dest_dir" ]; then
+    echo "Either source or destination directory are missing"
+    usage
+fi
+```
+
+**Definition:** `-z` = "is it **missing**?" (the user didn't pass a value).
+
+**If either the source or the destination directory is missing, the condition becomes true and the script exits with an error message.**
+
+| Directory | Missing? | `[ -z "$var" ]` gives |
+|---|---|---|
+| passed (e.g. `/var/log/roboshop`) | no | **false** |
+| not passed | yes | **true** |
+
+`||` = OR: if **at least one** side is true, the whole condition is true → error message + usage → exit.
+
+| You type | source missing? | dest missing? | `\|\|` result | Result |
+|---|---|---|---|---|
+| `sh archive.sh /var/log/roboshop /backup` | false | false | **false** | ✅ continue |
+| `sh archive.sh /var/log/roboshop` | false | **true** | **true** | ❌ error message, exit |
+| `sh archive.sh "" /backup` | **true** | false | **true** | ❌ error message, exit |
+| `sh archive.sh` | **true** | **true** | **true** | ❌ error message, exit |
+
+The script continues **only** when both directories are passed. The `if` looks for **problems**: **true** = "a directory is missing" → error; **false** = "both passed" → continue.
+
+> `-z` here checks the **folder name the user typed** (`$1`, `$2`), not whether the folder has log files. That's Check 4.
+
+**Check 2: does the source folder exist?**
+
+```bash
+if [ ! -d "$source_dir" ]; then
+    echo "Source Directory: $source_dir does not exist"
+    exit 1
+fi
+```
+- `-d` = "is it a folder that exists?" and `!` = **NOT**.
+- Reads as: "if the source folder does **not** exist → error, stop."
+- `sh archive.sh /var/log/abc /backup` → `Source Directory: /var/log/abc does not exist`
+
+**Check 3: does the destination folder exist?**
+
+Same as Check 2, for `dest_dir` → `Destination Directory: ... does not exist`.
+
+**Why 2 separate checks?** So the message tells you **which** folder is wrong.
+
+**Find the old .log files**
+
+```bash
+echo "Scanning files older than $days days in $source_dir"
+files_to_archive=$(find $source_dir -name "*.log" -type f -mtime +$days)
+```
+`find` prints every match and `$( ... )` saves that list in `files_to_archive` (same `find` as `cleanup.sh`).
+
+| Case | Folder has | `files_to_archive` |
+|---|---|---|
+| A: old logs exist | `cart.log` (Jan 1), `shipping.log` (Jan 1), `payment.log` (today) | `cart.log` and `shipping.log` paths |
+| B: no old logs | only `payment.log` (today) | `""` (empty) |
+
+**Check 4: did find find any old log files?**
+
+```bash
+if [ -z "$files_to_archive" ]; then
+    echo "No log files found older than $days days"
+    exit 0
+fi
+```
+
+| Case | `-z "$files_to_archive"` | What happens |
+|---|---|---|
+| A: 2 files found | **false** | skip the `if` → go on to `tar` |
+| B: list is empty | **true** | `No log files found older than 14 days` → `exit 0` |
+
+- **Why stop here?** If the list is empty, `tar` would have nothing to pack and fail (`Cowardly refusing to create an empty archive`), which would show a false "archival failed" error.
+- **Why `exit 0`, not `exit 1`?** No old logs = nothing to do, which is **not an error**. Cron runs this every night, so quiet nights shouldn't count as failures.
+
+| Exit code | Means | Used when |
+|---|---|---|
+| `exit 1` | error | missing or wrong input (Checks 1–3) |
+| `exit 0` | success | nothing to do (Check 4), or all done |
+
+**Same `-z`, different variable:**
+
+| | Variable checked | Question |
+|---|---|---|
+| Check 1 | `source_dir`, `dest_dir` | "Did the user **type** the folder names?" |
+| Check 4 | `files_to_archive` | "Did `find` find any old log files?" |
+
+**After the checks: compress into one file (tar)**
 
 ```bash
 timestamp=$(date +%Y-%m-%d-%H-%M-%S)              # 2026-10-30-02-00-00
@@ -682,7 +818,7 @@ tar -czf $file_name $files_to_archive
 | `-f $file_name` | write it to this **f**ile |
 | `$files_to_archive` | the files to put inside (cart.log, shipping.log) |
 
-**Step 5 + 6: check tar, then delete or not**
+**Last: check tar, then delete or not**
 
 ```bash
 if [ $? -ne 0 ]; then
@@ -745,6 +881,7 @@ Schedule it the same way:
 - Always quote variables in `rm`: `rm -f $line` with a space in the name deleted the wrong file.
 - **crontab** schedules scripts; real cleanup jobs run from cron at low-traffic times, not by hand.
 - Cron's PATH is minimal (`/usr/bin:/bin`): a script that works in the terminal (and on dev) can fail in cron (on prod). Use full paths or set PATH.
+- Put a script in a PATH folder (`/usr/local/bin`) + `chmod +x` → run it as a command (`cleanup /var/log/roboshop 14`) on every server.
 - Backup = compress first, delete **only if** the archive succeeded; if it fails, keep the files.
 - `&&` = both must be true, `||` = one is enough. "Both folders are required" → error if `-z src || -z dest`.
 - `date +%Y-%m-%d-%H-%M-%S` makes a unique archive name; no `:` in tar file names.

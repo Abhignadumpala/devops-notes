@@ -87,3 +87,11 @@ tar treats `name:path` as `host:path` (a remote archive) and fails with "Cannot 
 **21. In cron, why do both `0` and `7` mean Sunday?**
 
 Cron supports two ways of counting the week: Sunday-first (Sunday = 0, old Unix/C style) and Monday-first (Sunday = 7, ISO style). Monday to Saturday are 1 to 6 either way, so cron accepts both numbers for Sunday. You can also write `SUN`.
+
+**22. How do you run a script as a command (without `sh` and the full path)?**
+
+Copy it into a folder in `$PATH`, usually `/usr/local/bin` (`sudo cp cleanup.sh /usr/local/bin/cleanup`), make it executable (`chmod +x`), and keep the `#!/bin/bash` shebang. Then `cleanup /var/log/roboshop 14` works from any folder. Check with `which cleanup`.
+
+**23. Why `/usr/local/bin` and not `/usr/bin`?**
+
+`/usr/bin` is for commands installed by the package manager (`dnf`), which can overwrite files there. `/usr/local/bin` is for your own scripts and is available to all users.

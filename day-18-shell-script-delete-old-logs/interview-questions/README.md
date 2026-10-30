@@ -88,10 +88,26 @@ tar treats `name:path` as `host:path` (a remote archive) and fails with "Cannot 
 
 Cron supports two ways of counting the week: Sunday-first (Sunday = 0, old Unix/C style) and Monday-first (Sunday = 7, ISO style). Monday to Saturday are 1 to 6 either way, so cron accepts both numbers for Sunday. You can also write `SUN`.
 
-**22. How do you run a script as a command (without `sh` and the full path)?**
+**22. Can you create your own Linux command with shell scripting? How?**
 
-Copy it into a folder in `$PATH`, usually `/usr/local/bin` (`sudo cp cleanup.sh /usr/local/bin/cleanup`), make it executable (`chmod +x`), and keep the `#!/bin/bash` shebang. Then `cleanup /var/log/roboshop 14` works from any folder. Check with `which cleanup`.
+Yes. Commands like `ls` are just files in PATH folders. Copy the script into a folder in `$PATH`, usually `/usr/local/bin` (`sudo cp cleanup.sh /usr/local/bin/cleanup`), make it executable (`chmod +x`), and keep the `#!/bin/bash` shebang. Then `cleanup /var/log/roboshop 14` works from any folder. Check with `which cleanup`.
 
 **23. Why `/usr/local/bin` and not `/usr/bin`?**
 
 `/usr/bin` is for commands installed by the package manager (`dnf`), which can overwrite files there. `/usr/local/bin` is for your own scripts and is available to all users.
+
+**24. How do you run a daily maintenance script on all your servers?**
+
+Make the script a command (`/usr/local/bin/archive`, `chmod +x`), schedule it with crontab using the full path (`0 2 * * * /usr/local/bin/archive /var/log/roboshop/ /var/log/logs-archive/`), and bake both into the **AMI**. Every server launched from that AMI then has the command and the cron job.
+
+**25. What is an AMI and why put scripts in it?**
+
+An AMI is a saved image of a server's disk; new EC2 instances start from it. Putting common scripts and cron jobs in the AMI means every new server has them automatically, with the same version everywhere and nothing to set up by hand.
+
+**26. If you change the script after creating the AMI, do servers get the new version?**
+
+No. An AMI is a snapshot of the disk at that moment. Servers already running and old AMIs keep the old script. Create a new AMI version and launch new servers from it (or push the change to running servers).
+
+**27. What is a golden AMI?**
+
+One base image with all the common company setup (scripts like cleanup/archive, cron jobs, monitoring agents, security settings). Every server is launched from it, so all servers start the same.

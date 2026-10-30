@@ -28,8 +28,12 @@
     - [Timestamp in the archive name](#timestamp-in-the-archive-name)
     - [The script: archive.sh](#the-script-archivesh)
     - [How archive.sh works, step by step](#how-archivesh-works-step-by-step)
-13. [What I learned](#what-i-learned)
-14. [Interview Questions](#interview-questions)
+13. [Real-time use: archive as a command on every server (AMI)](#real-time-use-archive-as-a-command-on-every-server-ami)
+    - [What comes in the AMI?](#what-comes-in-the-ami)
+    - [Create the AMI and launch servers from it](#create-the-ami-and-launch-servers-from-it)
+    - [Summary](#summary)
+14. [What I learned](#what-i-learned)
+15. [Interview Questions](#interview-questions)
 
 ---
 
@@ -401,6 +405,12 @@ ls /var/log/roboshop
 ## Run the script as a command (PATH)
 
 **Definition:** **`$PATH`** = the list of folders Linux searches when you type a command. Any file in those folders can be run **by its name** from anywhere, like `ls` or `cp`.
+
+> 💡 **Key point: with shell scripting you can create your own Linux commands.** Commands like `ls`, `cp` and `useradd` are just files sitting in PATH folders. Write a script, put it in a PATH folder, make it executable, and it becomes a command too.
+
+```
+cleanup.sh (script)  ──cp to /usr/local/bin/cleanup + chmod +x──►  cleanup (new Linux command)
+```
 
 The cleanup script has to run on **every Linux server**. Instead of typing `sh /home/ec2-user/cleanup.sh ...` each time, put it in a PATH folder and run it as a **command**:
 
@@ -862,10 +872,111 @@ File deleted: /var/log/roboshop/shipping.log
 - Check what's inside the archive: `tar -tzf /home/ec2-user/backup/logs-*.tar.gz`
 - Unpack it later: `tar -xzf <file>.tar.gz` (`-x` = e**x**tract)
 
-Schedule it the same way:
+## Real-time use: archive as a command on every server (AMI)
+
+**Definition:** **AMI (Amazon Machine Image)** = a saved copy of a server's disk. Every new EC2 launched from it starts with the same software and files.
+
+**The need:** on our servers, **every day** some files (old logs) must be archived and moved to a destination folder. Doing it by hand on each server isn't possible, so:
+
+1. We **developed a shell script** (`archive.sh`).
+2. We made it a **command** (`archive`) by putting it in a PATH folder.
+3. We **schedule** that command with **crontab**.
+4. We put it in the **AMI**, so every server has the command.
+
+### Step 1: make it a command
+
+```bash
+sudo cp archive.sh /usr/local/bin/archive     # in a PATH folder, without .sh
+sudo chmod +x /usr/local/bin/archive          # executable
+sudo mkdir -p /var/log/logs-archive           # destination must exist (Check 3)
+```
+
+Now run it like any Linux command, from any folder:
+
+```bash
+sudo /usr/local/bin/archive /var/log/roboshop/ /var/log/logs-archive/
+# or, without sudo, as root (sudo -i):
+archive /var/log/roboshop/ /var/log/logs-archive/
+```
+Days aren't given, so `${3:-14}` → **14 days** (default).
+
+### Step 2: schedule it in crontab
+
+```bash
+sudo crontab -e
+```
+```
+0 2 * * * /usr/local/bin/archive /var/log/roboshop/ /var/log/logs-archive/ >> /tmp/archive.log 2>&1
+```
+- Every day at **02:00** (low traffic).
+- **Full path** `/usr/local/bin/archive`, because cron's PATH (`/usr/bin:/bin`) doesn't have `/usr/local/bin`.
+- `>> /tmp/archive.log 2>&1` saves the output so I can check it later.
+
+### Step 3: put it in the AMI (common for all servers)
 
 ```
-0 2 * * * /bin/bash /home/ec2-user/archive.sh /var/log/roboshop /home/ec2-user/backup 14 >> /tmp/archive.log 2>&1
+One server: install archive command + crontab entry
+        │
+        ▼  create image
+   AMI (has /usr/local/bin/archive + cron job)
+        │
+        ├──► EC2 server 1  ─┐
+        ├──► EC2 server 2   ├─ every server already has the "archive" command
+        └──► EC2 server 3  ─┘   and archives its logs every night
+```
+
+| Without AMI | With AMI |
+|---|---|
+| copy the script + set cron on **each** server by hand | done **once**, in the AMI |
+| easy to forget a server | every new server has it **automatically** |
+| servers can end up with different versions | same command everywhere |
+
+### What comes in the AMI?
+
+Creating an AMI copies the server's **whole disk** at that moment. So if I create any server using that AMI ID, it comes with the shell script already in it.
+
+| Saved on the disk at | In the AMI? |
+|---|---|
+| `/usr/local/bin/archive` (the script, executable) | ✅ yes |
+| root's crontab (`/var/spool/cron/root`) | ✅ yes → the cron job comes too |
+| `/var/log/logs-archive/` (destination folder) | ✅ yes |
+| installed packages, users, config files | ✅ yes |
+
+### Create the AMI and launch servers from it
+
+```
+1. Server A: install archive command + crontab + destination folder
+        │
+2. Create AMI from server A  →  ami-0abc123 (snapshot of the disk)
+        │
+3. Launch new servers with --image-id ami-0abc123
+        │
+        ├──► server B: archive command ✅  cron job ✅
+        └──► server C: archive command ✅  cron job ✅
+```
+
+| Step | Console | CLI |
+|---|---|---|
+| Create AMI | EC2 → select server A → **Actions → Image and templates → Create image** | `aws ec2 create-image --instance-id i-0123456789abcdef0 --name "base-with-archive-v1"` |
+| Launch server | Launch instance → **My AMIs** → pick it | `aws ec2 run-instances --image-id ami-0abc123 ...` (same `--image-id` as in `roboshop.sh`, just my own AMI ID) |
+
+### 3 things to remember
+
+| Point | Why |
+|---|---|
+| AMI = **snapshot at that moment** | Changing the script later doesn't update old AMIs or running servers → make a **new AMI version** (v2) and launch new servers from it. |
+| Enable the cron service | `sudo systemctl enable crond` on server A before creating the AMI, so cron starts on new servers. |
+| Clean server A first | Delete old logs, test files and secrets, or every new server gets them too. |
+
+**Golden AMI** = one base image with all the common company scripts (cleanup, archive, monitoring agents). In real projects every server is launched from it.
+
+### Summary
+
+> I used a **shell script** to create one **archival command** (`archive`). We placed that script in the **AMI**, so **any person who is using a server** launched from that AMI can use the `archive` command, and crontab runs it every day automatically.
+
+```
+archive.sh ──► archive command ──► AMI ──► every server ──► anyone on the server can run: archive <source> <dest>
+                (/usr/local/bin)                            + crontab runs it daily at 02:00
 ```
 
 ## What I learned
@@ -881,7 +992,8 @@ Schedule it the same way:
 - Always quote variables in `rm`: `rm -f $line` with a space in the name deleted the wrong file.
 - **crontab** schedules scripts; real cleanup jobs run from cron at low-traffic times, not by hand.
 - Cron's PATH is minimal (`/usr/bin:/bin`): a script that works in the terminal (and on dev) can fail in cron (on prod). Use full paths or set PATH.
-- Put a script in a PATH folder (`/usr/local/bin`) + `chmod +x` → run it as a command (`cleanup /var/log/roboshop 14`) on every server.
+- With shell scripting I can **create my own Linux commands**: put a script in a PATH folder (`/usr/local/bin`) + `chmod +x` → run it as a command (`cleanup /var/log/roboshop 14`) on every server.
+- Real-time: daily archive script → `archive` command in `/usr/local/bin` → crontab (full path) → baked into the **AMI**, so every server launched from that AMI ID has it (the AMI copies the whole disk at that moment; script changes need a new AMI version).
 - Backup = compress first, delete **only if** the archive succeeded; if it fails, keep the files.
 - `&&` = both must be true, `||` = one is enough. "Both folders are required" → error if `-z src || -z dest`.
 - `date +%Y-%m-%d-%H-%M-%S` makes a unique archive name; no `:` in tar file names.

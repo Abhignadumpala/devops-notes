@@ -572,7 +572,7 @@ env -i PATH=/usr/bin:/bin bash -c '/usr/local/bin/aws --version'
 |---|---|
 | Full paths in the script | `/usr/local/bin/aws` instead of `aws` (find it with `which aws`) |
 | Set PATH at the top of the crontab | `PATH=/usr/local/bin:/usr/bin:/bin` as the first line of `crontab -e` |
-| Set PATH at the top of the script | `PATH=$PATH:/usr/local/bin`: **appends** `/usr/local/bin` to the old PATH (old `/usr/bin:/bin` → `/usr/bin:/bin:/usr/local/bin`) |
+| Set the full PATH explicitly at the top of the script | `PATH=/usr/bin:/bin:/usr/local/bin`: every folder written out, so the script doesn't depend on cron's PATH |
 
 > Lesson: "it works in the terminal" doesn't mean it works in cron. Test with cron's PATH, and set PATH the **same on dev and prod**.
 

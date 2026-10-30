@@ -11,33 +11,33 @@
 | **Situation** | I wrote a shell script (our `archive` command) and scheduled it with **crontab** to run every day. |
 | **Problem** | I tested it first on the **development** server: it **worked**. On the **production** servers the same cron job **failed** with `command not found`. |
 | **Root cause** | Cron's `$PATH` is **different** from the terminal's. The terminal has a long PATH; cron's PATH is **minimal** (`/usr/bin:/bin`). On dev, someone had set cron's PATH to include `/usr/local/bin`; on prod it was **not** set. The command lived in `/usr/local/bin`, so cron on prod couldn't find it. |
-| **Fix** | Option 1: **change the command location** → call it by its full path (`/usr/local/bin/archive`). Option 2: **set PATH at the top of the script**: `PATH=$PATH:/usr/local/bin` |
+| **Fix** | Option 1: **change the command location** → call it by its full path (`/usr/local/bin/archive`). Option 2: **set the full PATH explicitly at the top of the script**: `PATH=/usr/bin:/bin:/usr/local/bin` |
 | **Result** | The job ran on prod too. Lesson: "works on dev" doesn't mean "works on prod"; cron's environment must be checked. |
 
-**How `PATH=$PATH:/usr/local/bin` works:** it **appends** the new folder to the **old existing** PATH (nothing is lost):
+**Fix in the script: give the full PATH explicitly**
+
+```bash
+#!/bin/bash
+PATH=/usr/bin:/bin:/usr/local/bin     # first line after the shebang
+...rest of the script...
+```
 
 ```
-old PATH (cron):   /usr/bin:/bin
-PATH=$PATH:/usr/local/bin
-new PATH:          /usr/bin:/bin:/usr/local/bin
-                   └── old ───┘ └─ new added ─┘
+cron's PATH:     /usr/bin:/bin                      ← /usr/local/bin missing
+script sets:     /usr/bin:/bin:/usr/local/bin       ← every folder written out
 ```
 
 | Part | Means |
 |---|---|
-| `$PATH` | the old, existing value |
-| `:` | separator between folders (**no spaces**: `$PATH: /usr/local/bin` would break it) |
-| `/usr/local/bin` | the new folder added at the end |
+| `/usr/bin:/bin` | normal commands (`find`, `tar`, `rm`, `date`) |
+| `/usr/local/bin` | our own commands (`archive`, `cleanup`) |
+| `:` | separator between folders (**no spaces**) |
 
-```bash
-#!/bin/bash
-PATH=$PATH:/usr/local/bin     # first line after the shebang
-...rest of the script...
-```
+**Why write the full PATH explicitly?** The script no longer depends on what PATH cron (or the server) gives it. Dev and prod run with the **same** PATH, so it works on every server.
 
-> ⚠️ Don't write `PATH=/usr/local/bin` (without `$PATH:`): that **replaces** the whole PATH, and normal commands like `find`, `tar`, `rm` stop working.
+> ⚠️ Don't write only `PATH=/usr/local/bin`: that **replaces** the whole PATH with one folder, and normal commands like `find`, `tar`, `rm` stop working. Always include `/usr/bin:/bin` too.
 
-**Short answer to say in the interview:** "My cron job worked on dev but failed on prod with command not found. Cron runs with a minimal PATH, and only dev had `/usr/local/bin` added to it. I fixed it by using the full path to the command and by adding `PATH=$PATH:/usr/local/bin` at the top of the script, which appends the folder to the existing PATH."
+**Short answer to say in the interview:** "My cron job worked on dev but failed on prod with command not found. Cron runs with a minimal PATH, and only dev had `/usr/local/bin` added to it. I fixed it by using the full path to the command, `/usr/local/bin/archive`, and by setting the full PATH explicitly at the top of the script: `PATH=/usr/bin:/bin:/usr/local/bin`. Now the script runs the same on every server."
 
 ## Other Questions
 

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="900" height="560" rx="14" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="450" y="40" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2328">crontab syntax: 5 stars + command</text>
+
+  <!-- the line -->
+  <rect x="60" y="62" width="740" height="64" rx="10" fill="#f6f8fa" stroke="#d0d7de"/>
+  <g font-family="Consolas, Menlo, monospace" font-size="40" font-weight="700" text-anchor="middle">
+    <text x="130" y="108" fill="#cf222e">*</text>
+    <text x="230" y="108" fill="#bc4c00">*</text>
+    <text x="330" y="108" fill="#1a7f37">*</text>
+    <text x="430" y="108" fill="#0969da">*</text>
+    <text x="530" y="108" fill="#8250df">*</text>
+    <text x="680" y="104" font-size="26" fill="#1f2328">command</text>
+  </g>
+
+  <!-- arrows -->
+  <g stroke-width="3" fill="none">
+    <path d="M130 128 V470" stroke="#cf222e"/>
+    <path d="M230 128 V400" stroke="#bc4c00"/>
+    <path d="M330 128 V330" stroke="#1a7f37"/>
+    <path d="M430 128 V260" stroke="#0969da"/>
+    <path d="M530 128 V190" stroke="#8250df"/>
+    <path d="M680 128 V150" stroke="#57606a"/>
+  </g>
+  <g font-size="16">
+    <!-- 5 day of week -->
+    <circle cx="530" cy="190" r="5" fill="#8250df"/>
+    <path d="M530 190 H570" stroke="#8250df" stroke-width="3"/>
+    <text x="580" y="186" font-weight="700" fill="#8250df">5. Day of week   0-7</text>
+    <text x="580" y="207" fill="#57606a">0 or 7 = Sun, 1 = Mon ... 6 = Sat</text>
+    <!-- 4 month -->
+    <circle cx="430" cy="260" r="5" fill="#0969da"/>
+    <path d="M430 260 H570" stroke="#0969da" stroke-width="3"/>
+    <text x="580" y="256" font-weight="700" fill="#0969da">4. Month   1-12</text>
+    <text x="580" y="277" fill="#57606a">1 = January ... 12 = December</text>
+    <!-- 3 day of month -->
+    <circle cx="330" cy="330" r="5" fill="#1a7f37"/>
+    <path d="M330 330 H570" stroke="#1a7f37" stroke-width="3"/>
+    <text x="580" y="326" font-weight="700" fill="#1a7f37">3. Day of month   1-31</text>
+    <text x="580" y="347" fill="#57606a">date in the month</text>
+    <!-- 2 hour -->
+    <circle cx="230" cy="400" r="5" fill="#bc4c00"/>
+    <path d="M230 400 H570" stroke="#bc4c00" stroke-width="3"/>
+    <text x="580" y="396" font-weight="700" fill="#bc4c00">2. Hour   0-23</text>
+    <text x="580" y="417" fill="#57606a">24-hour clock: 0 = midnight, 14 = 2 PM</text>
+    <!-- 1 minute -->
+    <circle cx="130" cy="470" r="5" fill="#cf222e"/>
+    <path d="M130 470 H570" stroke="#cf222e" stroke-width="3"/>
+    <text x="580" y="466" font-weight="700" fill="#cf222e">1. Minute   0-59</text>
+    <text x="580" y="487" fill="#57606a">minute in the hour</text>
+    <!-- command -->
+    <text x="690" y="148" fill="#57606a">script to run</text>
+  </g>
+
+  <text x="450" y="535" text-anchor="middle" font-size="16" fill="#1f2328"><tspan font-weight="700">*</tspan> = every value  ·  <tspan font-family="Consolas, Menlo, monospace">* * * * *</tspan> = every minute  ·  <tspan font-family="Consolas, Menlo, monospace">0 2 * * *</tspan> = every day at 02:00</text>
+</svg>

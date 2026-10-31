@@ -492,6 +492,8 @@ In real projects nobody runs the cleanup by hand every day. A **cron job** runs 
 
 `*` = every value.
 
+![crontab syntax: 5 stars + command](images/crontab-syntax.svg)
+
 | Expression | Runs |
 |---|---|
 | `* * * * *` | every minute (good for testing) |

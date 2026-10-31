@@ -8,19 +8,23 @@
 
 1. [Shell script disadvantages](#shell-script-disadvantages)
 2. [Non-interactive SSH: run one command on a server](#non-interactive-ssh-run-one-command-on-a-server)
-3. [What is configuration management?](#what-is-configuration-management)
+3. [Ansible introduction](#ansible-introduction)
+   - [What Ansible does](#what-ansible-does)
+   - [Shell script vs Ansible: add a user](#shell-script-vs-ansible-add-a-user)
+   - [Change the target with one line](#change-the-target-with-one-line)
+4. [What is configuration management?](#what-is-configuration-management)
    - [Configuration: plain server → ready to host the app](#configuration-plain-server--ready-to-host-the-app)
    - [CRUD of configuration](#crud-of-configuration)
-4. [Push vs Pull](#push-vs-pull)
-5. [Ansible basics](#ansible-basics)
+5. [Push vs Pull](#push-vs-pull)
+6. [Ansible basics](#ansible-basics)
    - [Inventory](#inventory)
    - [Module = Linux command](#module--linux-command)
    - [Ad-hoc command](#ad-hoc-command)
    - [Playbook](#playbook)
-6. [Markup languages: YAML, HTML, XML, JSON](#markup-languages-yaml-html-xml-json)
+7. [Markup languages: YAML, HTML, XML, JSON](#markup-languages-yaml-html-xml-json)
    - [Why key: value? (the bank form example)](#why-key-value-the-bank-form-example)
-7. [What I learned](#what-i-learned)
-8. [Interview Questions](#interview-questions)
+8. [What I learned](#what-i-learned)
+9. [Interview Questions](#interview-questions)
 
 ---
 
@@ -68,6 +72,78 @@ ssh ec2-user@172.31.31.45 -C "touch /tmp/devops.txt"
 | for a human | for **scripts and tools** |
 
 **This is how Ansible works:** it connects with SSH **non-interactively** and runs its work on each server.
+
+## Ansible introduction
+
+**Definition:** **Ansible** = an open-source **IT automation** tool. You write **what** you want in a simple **YAML playbook**, and Ansible does it on one server or hundreds of servers over SSH.
+
+It replaces long, hard-to-maintain shell scripts with short, readable playbooks.
+
+### What Ansible does
+
+| Task | Example |
+|---|---|
+| **Provisioning** | create VMs on AWS (cloud) or VMware (private) |
+| **Configuration** | install packages, create users, edit config files, firewall rules |
+| **Patching** | update packages on dozens of servers at once |
+| **App deployment** | download code, install dependencies, start the service |
+| **Orchestration** | restart servers **in order** (stop web → stop DB → reboot → start DB → start web) |
+| **Security / compliance** | check every server follows the same rules |
+| **Integration** | talk to other systems (CMDB, ServiceNow) using built-in modules |
+
+### Shell script vs Ansible: add a user
+
+**Shell script:** we write every check ourselves (root? user exists? did it work?):
+
+```bash
+#!/bin/bash
+if [ "$(id -u)" -eq 0 ]; then
+    username="johndoe"
+    grep -q "^$username:" /etc/passwd
+    if [ $? -ne 0 ]; then
+        useradd "$username"
+        echo "User has been added"
+    else
+        echo "User '$username' already exists!"
+    fi
+else
+    echo "This script must be run as root."
+fi
+```
+
+**Ansible playbook:** same job, a few lines. The `user` module already checks "does it exist?" (idempotent):
+
+```yaml
+- hosts: localhost
+  tasks:
+    - name: Add the user johndoe
+      user:
+        name: johndoe
+```
+
+### Change the target with one line
+
+Same task on many servers? Change only `hosts:`:
+
+```yaml
+- hosts: all_my_web_servers_in_DR    # a group from the inventory, not just localhost
+  tasks:
+    - name: Add the user johndoe
+      user:
+        name: johndoe
+```
+
+| | Shell script | Ansible |
+|---|---|---|
+| Lines of code | many (checks written by hand) | few |
+| Already done? | we write the check | module checks it (**idempotent**) |
+| Run on 100 servers | loop + ssh, one by one | change `hosts:`, runs in **parallel** |
+| Style | **imperative** (how) | **declarative** (what) |
+| Skill needed | good scripting | simple YAML |
+
+**Interview one-liner:** *Ansible is an agentless, push-based automation tool that uses YAML playbooks over SSH to configure many servers idempotently.*
+
+> More examples: [Ansible Documentation](https://docs.ansible.com)
 
 ## What is configuration management?
 

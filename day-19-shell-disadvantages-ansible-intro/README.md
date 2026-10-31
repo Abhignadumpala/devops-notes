@@ -19,6 +19,9 @@
    - [CRUD of configuration](#crud-of-configuration)
 5. [Push vs Pull](#push-vs-pull)
 6. [Ansible basics](#ansible-basics)
+   - [Where Ansible connects: control node → managed nodes](#where-ansible-connects-control-node--managed-nodes)
+   - [Set up the Ansible server](#set-up-the-ansible-server)
+   - [First connection: the ping module](#first-connection-the-ping-module)
    - [Inventory](#inventory)
    - [Module = Linux command](#module--linux-command)
    - [Ad-hoc command](#ad-hoc-command)
@@ -267,6 +270,77 @@ Ansible control server
    └──► server 3   ─┘
 ```
 
+### Where Ansible connects: control node → managed nodes
+
+**Definition:**
+- **Control node (Ansible server)** = the server where Ansible is **installed** and where we **run** the commands/playbooks.
+- **Managed nodes** = the servers Ansible **connects to** and configures. Nothing is installed on them (**agentless**), they only need **SSH**.
+
+```
+┌──────────────────────┐   ssh (port 22)   ┌──────────────────┐
+│  Ansible server      │ ────────────────► │  managed node 1  │
+│  (control node)      │                   │  e.g. frontend   │
+│  ansible installed   │   ssh (port 22)   ├──────────────────┤
+│  runs: ansible ...   │ ────────────────► │  managed node 2  │
+└──────────────────────┘                   │  e.g. catalogue  │
+                                           └──────────────────┘
+```
+
+| | Control node (Ansible server) | Managed node |
+|---|---|---|
+| Ansible installed? | ✅ yes | ❌ no (agentless) |
+| What it needs | Ansible (+ Python, comes with it) | SSH open on **port 22**, a user + password/key |
+| Role | **pushes** the work | **receives** and runs it |
+
+### Set up the Ansible server
+
+**Steps:**
+
+| # | Step | Command / where |
+|---|---|---|
+| 1 | Create an EC2 instance for Ansible | AWS console → name it `ansible-server` |
+| 2 | Allow **port 22** (SSH) in the security groups | managed nodes must accept SSH from the Ansible server |
+| 3 | Log in to the Ansible server | `ssh ec2-user@<ansible-server-ip>` |
+| 4 | Install Ansible | `sudo dnf install ansible -y` |
+| 5 | Check it | `ansible --version` |
+
+Installing Ansible is just **one command**:
+
+```bash
+sudo dnf install ansible -y
+```
+
+> Ansible is **developed in Python**, so `dnf` also installs all the **Python packages** it needs (dependencies). Nothing extra to set up.
+
+**Why port 22?** Ansible connects over **SSH**, and SSH listens on **port 22**. If port 22 is blocked in the security group → `UNREACHABLE` (connection timed out).
+
+### First connection: the ping module
+
+Ansible needs to **log in** to the server, so we give it a **username and password**:
+
+```bash
+ansible all -i <server-ip>, -e ansible_user=ec2-user -e ansible_password=<password> -m ping
+```
+
+| Part | Means |
+|---|---|
+| `all` | run on **all** servers in the inventory |
+| `-i <server-ip>,` | **i**nventory: the server's IP (the trailing **comma** = "this is a list, not a file") |
+| `-e ansible_user=ec2-user` | **e**xtra variable: username to log in |
+| `-e ansible_password=<password>` | password to log in (password login needs `sshpass` on the Ansible server) |
+| `-m ping` | **m**odule `ping`: checks Ansible can log in and run Python there |
+
+**Output when it works:**
+
+```
+172.31.31.45 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+```
+
+> `ping` module ≠ Linux `ping` command. Linux `ping` only checks the network (ICMP). Ansible `ping` checks **SSH login + Python** on the server, and answers `pong`.
+
 ### Inventory
 
 **Definition:** **Inventory** = the **list of items**: in Ansible, the list of **servers** (IPs or hostnames) to manage.
@@ -279,6 +353,14 @@ Ansible control server
 ### Module = Linux command
 
 **Definition:** **Module** = Ansible's ready-made unit of work, like a Linux command. A **collection** = a package of modules.
+
+In Linux, what we run is called a **command**. In Ansible, what we run is called a **module**.
+
+| In Linux | In Ansible |
+|---|---|
+| we run **commands** | we run **modules** |
+| `ping google.com` | `-m ping` |
+| `dnf install nginx` | `-m dnf -a "name=nginx state=installed"` |
 
 | Linux command | Ansible module |
 |---|---|

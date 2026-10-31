@@ -24,6 +24,7 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 16 - RoboShop with Shell Scripts](day-16-roboshop-shell-scripts/README.md)
 - [Day 17 - RoboShop v2: Shared Code in common.sh](day-17-roboshop-v2-common-functions/README.md)
 - [Day 18 - Shell Script: Log Cleanup, Backup, Crontab & Disk Usage Alert](day-18-shell-script-delete-old-logs/README.md)
+- [Day 19 - Shell Script Disadvantages & Ansible Introduction](day-19-shell-disadvantages-ansible-intro/README.md)
 
 ## Projects
 

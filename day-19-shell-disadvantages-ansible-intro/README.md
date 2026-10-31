@@ -25,10 +25,11 @@
    - [Inventory](#inventory)
    - [Module = Linux command](#module--linux-command)
    - [Ad-hoc command](#ad-hoc-command)
-   - [Class demo: install and start nginx with ad-hoc commands](#class-demo-install-and-start-nginx-with-ad-hoc-commands)
+   - [Step by step: install and start nginx with ad-hoc commands](#step-by-step-install-and-start-nginx-with-ad-hoc-commands)
    - [Ad-hoc vs playbook: when to use which](#ad-hoc-vs-playbook-when-to-use-which)
    - [Playbook](#playbook)
 7. [Markup languages: YAML, HTML, XML, JSON](#markup-languages-yaml-html-xml-json)
+   - [DTO: Data Transfer Object](#dto-data-transfer-object)
    - [Why key: value? (the bank form example)](#why-key-value-the-bank-form-example)
 8. [What I learned](#what-i-learned)
 9. [Interview Questions](#interview-questions)
@@ -314,7 +315,7 @@ sudo dnf install ansible -y
 
 > Ansible is **developed in Python**, so `dnf` also installs all the **Python packages** it needs (dependencies). Nothing extra to set up.
 
-What `dnf` installed in class (Ansible + Python packages):
+Example output of `dnf` (Ansible + Python packages):
 
 ```
 Installed:
@@ -408,19 +409,43 @@ ansible all -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<passw
 
 `state=installed` is **declarative**: I say **what** I want, not how. Run it twice → 2nd time nothing changes (idempotent).
 
-### Class demo: install and start nginx with ad-hoc commands
+### Step by step: install and start nginx with ad-hoc commands
 
-Ansible server `172.31.23.2` → managed node `172.31.31.45`. (Password hidden: `<password>`.)
+Ansible server → managed node `172.31.31.45`. All commands run **on the Ansible server**.
 
-| # | Command (after `ansible all -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<password>`) | Result | Why |
-|---|---|---|---|
-| 1 | `-m ping` | 🟢 **SUCCESS**, `"ping": "pong"` | Ansible can log in and run Python |
-| 2 | `-m dnf -a "name=nginx state=installed"` | 🔴 **FAILED!** `"This command has to be run under the root user."` | installing needs root; `ec2-user` is not root |
-| 3 | `-b -m dnf -a "name=nginx state=installed"` | 🟡 **CHANGED**, `"changed": true`, `Installed: nginx-...` | `-b` = **become root** (sudo), so it worked |
-| 4 | **same** command again | 🟢 **SUCCESS**, `"changed": false`, `"msg": "Nothing to do"` | nginx already installed → **idempotent**, no error |
-| 5 | `-b -m service -a "name=nginx state=started"` | 🟡 **CHANGED**, `"state": "started"` | nginx service started |
+**Step 1: check the connection (ping)**
 
-**Output colours / status:**
+```bash
+ansible all -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<password> -m ping
+```
+
+Output: `SUCCESS` and `"ping": "pong"` → Ansible can log in.
+
+**Step 2: install nginx** (`-b` = become root, needed to install packages)
+
+```bash
+ansible all -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<password> -b -m dnf -a "name=nginx state=installed"
+```
+
+Output: `CHANGED`, `"changed": true`, `Installed: nginx-...`
+
+**Step 3: run the same command again** (idempotency check)
+
+Output: `SUCCESS`, `"changed": false`, `"msg": "Nothing to do"` → nginx is already installed, so Ansible changes nothing and gives no error.
+
+**Step 4: start nginx**
+
+```bash
+ansible all -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<password> -b -m service -a "name=nginx state=started"
+```
+
+Output: `CHANGED`, `"state": "started"`
+
+```
+ping ──► install nginx (dnf) ──► run again: "Nothing to do" ──► start nginx (service)
+```
+
+**Output status:**
 
 | Status | Colour | Means |
 |---|---|---|
@@ -428,8 +453,6 @@ Ansible server `172.31.23.2` → managed node `172.31.31.45`. (Password hidden: 
 | `CHANGED` | yellow | ran fine, **something changed** on the server |
 | `FAILED!` | red | did not work, read `msg` |
 | `UNREACHABLE!` | red | could not connect (SSH / port 22 / password) |
-
-> Step 4 is shell vs Ansible in one line: `useradd` / `dnf` in a shell script would fail or redo work on the 2nd run. Ansible just says **"Nothing to do"**.
 
 ### Ad-hoc vs playbook: when to use which
 
@@ -455,7 +478,7 @@ repetitive           ──► playbook         (ansible-playbook nginx.yaml)
 | emergency / one-time | repetitive, saved in Git |
 | `ansible ...` | `ansible-playbook <file>.yaml` |
 
-**Class demo as a playbook:** the ad-hoc commands 3 and 5 above, written in **YAML** (key: value):
+**Same steps as a playbook:** install (step 2) and start (step 4) from above, written in **YAML** (key: value):
 
 ```yaml
 - name: install and start nginx          # play name
@@ -504,7 +527,21 @@ ansible-playbook -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<
 <h2>DevOps Engineer</h2>    <!-- smaller heading -->
 ```
 
-**Definition:** **DTO (Data Transfer Object)** = an object used only to **carry data** between systems or programs (e.g. the JSON an API sends back). JSON, YAML and XML are formats to send DTOs.
+### DTO: Data Transfer Object
+
+**Definition:** **DTO (Data Transfer Object)** = an object used only to **carry data** between systems or programs. YAML, HTML, XML and JSON are all formats used to **transfer data** this way.
+
+**Example: Facebook login.** When we enter our **username** and **password** in the Facebook app, that data is put into a DTO (usually **JSON**) and sent to the server through the **API**:
+
+```
+Facebook app ──── API request (DTO) ────► Facebook server
+                  {
+                    "username": "john",
+                    "password": "******"
+                  }
+```
+
+The server reads the keys (`username`, `password`) and checks the values.
 
 ### Why key: value? (the bank form example)
 

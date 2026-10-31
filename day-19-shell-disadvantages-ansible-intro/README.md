@@ -25,6 +25,8 @@
    - [Inventory](#inventory)
    - [Module = Linux command](#module--linux-command)
    - [Ad-hoc command](#ad-hoc-command)
+   - [Class demo: install and start nginx with ad-hoc commands](#class-demo-install-and-start-nginx-with-ad-hoc-commands)
+   - [Ad-hoc vs playbook: when to use which](#ad-hoc-vs-playbook-when-to-use-which)
    - [Playbook](#playbook)
 7. [Markup languages: YAML, HTML, XML, JSON](#markup-languages-yaml-html-xml-json)
    - [Why key: value? (the bank form example)](#why-key-value-the-bank-form-example)
@@ -312,6 +314,18 @@ sudo dnf install ansible -y
 
 > Ansible is **developed in Python**, so `dnf` also installs all the **Python packages** it needs (dependencies). Nothing extra to set up.
 
+What `dnf` installed in class (Ansible + Python packages):
+
+```
+Installed:
+  ansible-1:7.7.0-1.el9.noarch           ansible-core-1:2.14.18-3.el9_8.1.x86_64
+  python3-cffi-1.14.5-5.el9.x86_64       python3-cryptography-36.0.1-5.el9_6.x86_64
+  python3-packaging-20.9-5.el9.noarch    python3-ply-3.11-14.el9.noarch
+  python3-pycparser-2.20-6.el9.noarch    python3-pyparsing-2.4.7-9.el9.noarch
+  python3-resolvelib-0.5.4-5.el9.noarch
+Complete!
+```
+
 **Why port 22?** Ansible connects over **SSH**, and SSH listens on **port 22**. If port 22 is blocked in the security group → `UNREACHABLE` (connection timed out).
 
 ### First connection: the ping module
@@ -394,9 +408,46 @@ ansible all -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<passw
 
 `state=installed` is **declarative**: I say **what** I want, not how. Run it twice → 2nd time nothing changes (idempotent).
 
+### Class demo: install and start nginx with ad-hoc commands
+
+Ansible server `172.31.23.2` → managed node `172.31.31.45`. (Password hidden: `<password>`.)
+
+| # | Command (after `ansible all -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<password>`) | Result | Why |
+|---|---|---|---|
+| 1 | `-m ping` | 🟢 **SUCCESS**, `"ping": "pong"` | Ansible can log in and run Python |
+| 2 | `-m dnf -a "name=nginx state=installed"` | 🔴 **FAILED!** `"This command has to be run under the root user."` | installing needs root; `ec2-user` is not root |
+| 3 | `-b -m dnf -a "name=nginx state=installed"` | 🟡 **CHANGED**, `"changed": true`, `Installed: nginx-...` | `-b` = **become root** (sudo), so it worked |
+| 4 | **same** command again | 🟢 **SUCCESS**, `"changed": false`, `"msg": "Nothing to do"` | nginx already installed → **idempotent**, no error |
+| 5 | `-b -m service -a "name=nginx state=started"` | 🟡 **CHANGED**, `"state": "started"` | nginx service started |
+
+**Output colours / status:**
+
+| Status | Colour | Means |
+|---|---|---|
+| `SUCCESS` | green | ran fine, **nothing changed** (already in desired state) |
+| `CHANGED` | yellow | ran fine, **something changed** on the server |
+| `FAILED!` | red | did not work, read `msg` |
+| `UNREACHABLE!` | red | could not connect (SSH / port 22 / password) |
+
+> Step 4 is shell vs Ansible in one line: `useradd` / `dnf` in a shell script would fail or redo work on the 2nd run. Ansible just says **"Nothing to do"**.
+
+### Ad-hoc vs playbook: when to use which
+
+To install something we **can** run an ad-hoc command like above, but in real projects we **can't** do this every time we install something.
+
+- **Ad-hoc commands** → only for **emergency** purposes or **one-time simple tasks**.
+- **Repetitive work** → keep all the modules in **one file** called a **playbook**.
+
+```
+one-time / emergency ──► ad-hoc command   (ansible ... -m dnf ...)
+repetitive           ──► playbook         (ansible-playbook nginx.yaml)
+```
+
 ### Playbook
 
 **Definition:** **Playbook** = a **YAML file** that keeps all the modules (tasks) for **repetitive** work, so it can be run again and again.
+
+**Playbook = a book of all tasks (commands).** Like a sports team's **playbook** has all the plays written down, an Ansible playbook has all the tasks written down, in order.
 
 | Ad-hoc command | Playbook |
 |---|---|
@@ -404,17 +455,35 @@ ansible all -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<passw
 | emergency / one-time | repetitive, saved in Git |
 | `ansible ...` | `ansible-playbook <file>.yaml` |
 
-Small example (same task as the ad-hoc command):
+**Class demo as a playbook:** the ad-hoc commands 3 and 5 above, written in **YAML** (key: value):
 
 ```yaml
-- name: install nginx
-  hosts: all
-  become: yes
-  tasks:
+- name: install and start nginx          # play name
+  hosts: all                              # which servers (from the inventory)
+  become: yes                             # -b  → become root
+  tasks:                                  # the list of tasks (modules)
     - name: install nginx
-      ansible.builtin.dnf:
-        name: nginx
-        state: installed
+      ansible.builtin.dnf:                # -m dnf
+        name: nginx                       # -a "name=nginx
+        state: installed                  #     state=installed"
+
+    - name: start nginx
+      ansible.builtin.service:            # -m service
+        name: nginx                       # -a "name=nginx
+        state: started                    #     state=started"
+```
+
+| Ad-hoc flag | In the playbook |
+|---|---|
+| `-i 172.31.31.45,` | `-i` when running `ansible-playbook` (or an inventory file) |
+| `-b` | `become: yes` |
+| `-m dnf` | `ansible.builtin.dnf:` |
+| `-a "name=nginx state=installed"` | `name: nginx` and `state: installed` (key: value) |
+
+Run it:
+
+```bash
+ansible-playbook -i 172.31.31.45, -e ansible_user=ec2-user -e ansible_password=<password> nginx.yaml
 ```
 
 ## Markup languages: YAML, HTML, XML, JSON

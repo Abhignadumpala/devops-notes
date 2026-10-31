@@ -9,7 +9,9 @@
 1. [Shell script disadvantages](#shell-script-disadvantages)
 2. [Non-interactive SSH: run one command on a server](#non-interactive-ssh-run-one-command-on-a-server)
 3. [Ansible introduction](#ansible-introduction)
+   - [Core ideas](#core-ideas)
    - [What Ansible does](#what-ansible-does)
+   - [Ansible vs Terraform](#ansible-vs-terraform)
    - [Shell script vs Ansible: add a user](#shell-script-vs-ansible-add-a-user)
    - [Change the target with one line](#change-the-target-with-one-line)
 4. [What is configuration management?](#what-is-configuration-management)
@@ -75,9 +77,37 @@ ssh ec2-user@172.31.31.45 -C "touch /tmp/devops.txt"
 
 ## Ansible introduction
 
-**Definition:** **Ansible** = an open-source **IT automation** tool. You write **what** you want in a simple **YAML playbook**, and Ansible does it on one server or hundreds of servers over SSH.
+**Definition:** **Ansible** = an open-source **automation** tool used to **configure servers**, **deploy applications**, and **orchestrate** multi-step IT tasks. It's maintained by **Red Hat** and widely used in DevOps.
 
 It replaces long, hard-to-maintain shell scripts with short, readable playbooks.
+
+### Core ideas
+
+| Idea | What it means |
+|---|---|
+| **Agentless** | connects over **SSH** (or **WinRM** for Windows) and runs tasks directly; no special agent installed on each server |
+| **Playbook** | a **YAML** file where you describe the **desired state** |
+| **Inventory** | the list of machines you manage, grouped however you like (`webservers`, `databases`) |
+| **Modules** | built-in units of work: `dnf`/`apt`/`yum`, `copy`, `template`, `service`, `user`. Each is **idempotent**: if the system is already in the desired state, running it again changes nothing |
+| **Roles & collections** | reusable, shareable bundles of tasks, templates and variables, for organizing bigger projects |
+
+Simple playbook: install and start nginx on the `webservers` group:
+
+```yaml
+- name: Install and start nginx
+  hosts: webservers          # group from the inventory
+  become: yes                # run as root (sudo)
+  tasks:
+    - name: Install nginx
+      dnf:                   # on Ubuntu: apt
+        name: nginx
+        state: present
+
+    - name: Start nginx
+      service:
+        name: nginx
+        state: started
+```
 
 ### What Ansible does
 
@@ -87,9 +117,25 @@ It replaces long, hard-to-maintain shell scripts with short, readable playbooks.
 | **Configuration** | install packages, create users, edit config files, firewall rules |
 | **Patching** | update packages on dozens of servers at once |
 | **App deployment** | download code, install dependencies, start the service |
-| **Orchestration** | restart servers **in order** (stop web → stop DB → reboot → start DB → start web) |
+| **Cloud resources** | AWS, Azure, GCP all have Ansible modules |
+| **Orchestration** | multi-server workflows: **rolling updates**, restart servers **in order** (stop web → stop DB → reboot → start DB → start web) |
 | **Security / compliance** | check every server follows the same rules |
 | **Integration** | talk to other systems (CMDB, ServiceNow) using built-in modules |
+
+### Ansible vs Terraform
+
+| | Terraform | Ansible |
+|---|---|---|
+| Main job | **provisioning** infrastructure | **configuration management** & automation |
+| Works on | creating VMs, networks, cloud resources | what happens **inside** those machines once they exist |
+| Example | create 3 EC2 instances + security group | install nginx, create users, deploy the app |
+
+Many teams use **both**: **Terraform creates** the infrastructure → **Ansible configures** it.
+
+```
+Terraform ──► EC2 servers exist ──► Ansible ──► servers ready to host the app
+ (create)                           (configure)
+```
 
 ### Shell script vs Ansible: add a user
 

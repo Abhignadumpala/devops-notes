@@ -119,7 +119,7 @@ Ansible control server ──ssh──► server 1   (no agent installed)
 
 | Task | Example |
 |---|---|
-| **Provisioning** | create VMs on AWS (cloud) or VMware (private) |
+| **Provisioning** (possible, not its main job) | can create VMs on AWS or VMware with modules (`amazon.aws.ec2_instance`), but in real projects **Terraform** usually does this (see below) |
 | **Configuration** | install packages, create users, edit config files, firewall rules |
 | **Patching** | update packages on dozens of servers at once |
 | **App deployment** | download code, install dependencies, start the service |

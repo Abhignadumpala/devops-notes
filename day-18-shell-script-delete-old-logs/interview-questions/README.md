@@ -200,3 +200,11 @@ Send only if the message isn't empty (`[ -n "$message" ]`), skip small system fi
 **38. How would you monitor RAM and CPU the same way?**
 
 RAM: `free | awk '/Mem:/ {printf "%d", $3/$2*100}'` = used %. CPU: 100 − idle % from `top -bn1`. Compare with the threshold and call the same `mail.sh`.
+
+**39. Why does `line=/dev/nvme0n1p3   xfs   424M ...` give `xfs: command not found`?**
+
+Without quotes, bash ends the value at the first space (`line=/dev/nvme0n1p3`) and runs the next word, `xfs`, as a command. Put the value in quotes: `line="/dev/nvme0n1p3   xfs   424M ..."`.
+
+**40. How do you get the Use% number from one `df -hT` line?**
+
+`echo $line | awk '{print $6}' | cut -d "%" -f1`: awk takes column 6 (`81%`), cut removes the `%` (`81`).

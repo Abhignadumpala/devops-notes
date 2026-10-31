@@ -2,7 +2,7 @@
 
 > **In short:** Apps write logs all the time, so log files keep growing and fill the disk. As daily maintenance, a script deletes **`.log` files older than 14 days** from `/var/log/roboshop`. The script checks its inputs first (was a folder given? does it exist?), finds the old files with `find`, says so if there are none, and otherwise deletes them and shows each one. A safer **backup** script first compresses the old logs into a `.tar.gz` in another folder and deletes them **only if** the archive worked. **crontab** runs these scripts automatically at low-traffic times, but cron has a **minimal PATH**, so use full paths. A **monitoring script** checks `df -hT` line by line and sends an **email alert** when a disk is more than 70–80% full.
 
-**More in this folder:** [Interview questions](interview-questions/README.md) · [scripts/](scripts) (`cleanup.sh`, `archive.sh`, `read-file.sh`, `disk-usage.sh`, `mail.sh`, `template.html`)
+**More in this folder:** [Interview questions](interview-questions/README.md) · [scripts/](scripts) (`cleanup.sh`, `archive.sh`, `read-file.sh`, `disk-usage.sh`, `mail.sh`, `template.html`, [`sending-gmail.md`](scripts/sending-gmail.md))
 
 ## Table of Contents
 
@@ -37,6 +37,7 @@
     - [Why shell scripts when we have Prometheus?](#why-shell-scripts-when-we-have-prometheus)
     - [How it works (big picture)](#how-it-works-big-picture)
     - [Step 1: read disk usage with df -hT](#step-1-read-disk-usage-with-df--ht)
+    - [Try it by hand on one line first (class demo)](#try-it-by-hand-on-one-line-first-class-demo)
     - [Step 2: disk-usage.sh (find high usage)](#step-2-disk-usagesh-find-high-usage)
     - [Step 3: mail.sh (send the email)](#step-3-mailsh-send-the-email)
     - [Step 4: template.html (email body)](#step-4-templatehtml-email-body)
@@ -1078,6 +1079,94 @@ tmpfs          tmpfs  475M     0  475M   0% /dev/shm
 
 The first line is a **header** (`Filesystem ...`), not a disk, so the script removes it with `grep -v Filesystem`.
 
+### Try it by hand on one line first (class demo)
+
+**Definition:** **Test one line by hand** = before writing the loop, copy **one** line of `df -hT` into a variable and try each command on it. If it works for one line, the loop does the same for every line.
+
+**1. See all partitions**
+
+```bash
+df -hT
+```
+```
+Filesystem                 Type      Size  Used Avail Use% Mounted on
+devtmpfs                   devtmpfs  4.0M     0  4.0M   0% /dev
+tmpfs                      tmpfs     359M     0  359M   0% /dev/shm
+/dev/mapper/RootVG-rootVol xfs       6.0G  2.3G  3.8G  38% /
+/dev/mapper/RootVG-varVol  xfs       2.0G  709M  1.3G  36% /var
+/dev/nvme0n1p3             xfs       424M  343M   82M  81% /boot     ← high!
+/dev/mapper/RootVG-logVol  xfs       2.0G   64M  1.9G   4% /var/log
+...
+```
+
+**2. Remove the header line**
+
+```bash
+df -hT | grep -v Filesystem
+```
+Same list without the `Filesystem Type Size ...` line (`-v` = show lines that do **not** match).
+
+**3. Copy one line into a variable: quotes are needed**
+
+```bash
+line=/dev/nvme0n1p3      xfs      424M  343M   82M  81% /boot
+# -bash: xfs: command not found   ❌
+```
+Without quotes, bash stops the value at the **first space**: `line=/dev/nvme0n1p3`, then it tries to run the next word, `xfs`, as a **command**.
+
+```bash
+line="/dev/nvme0n1p3      xfs      424M  343M   82M  81% /boot"     # ✅ quotes = one value
+echo $line
+# /dev/nvme0n1p3 xfs 424M 343M 82M 81% /boot
+```
+`echo $line` (no quotes) prints the words with **single spaces**: bash splits the value at spaces. That doesn't matter for `awk`, which splits by spaces anyway.
+
+**4. Take the 6th column (Use%) with awk**
+
+**Definition:** `awk` = a text tool that splits each line into **columns** (`$1`, `$2`, ...) and prints the ones you ask for. `-F " "` = split by **space** (the default, so `-F " "` is optional). `awk --help` shows all options.
+
+```bash
+echo $line | awk -F " " '{print $6}'
+# 81%
+```
+
+```
+/dev/nvme0n1p3   xfs   424M   343M   82M   81%   /boot
+     $1          $2     $3     $4    $5    $6     $7
+```
+
+**5. Remove the % with cut**
+
+```bash
+echo $line | awk -F " " '{print $6}' | cut -d "%" -f1
+# 81
+```
+- `cut -d "%"` = split at `%` (**d**elimiter), `-f1` = keep **f**ield 1 → `81`.
+- Now it's a **number**, so `-ge` can compare it with the threshold.
+
+**6. Take the 7th column (the partition)**
+
+```bash
+echo $line | awk -F " " '{print $7}'
+# /boot
+```
+
+| Step | Command | Output |
+|---|---|---|
+| 1 | `df -hT` | all partitions + header |
+| 2 | `df -hT \| grep -v Filesystem` | all partitions, no header |
+| 3 | `line="..."` + `echo $line` | one line, in a variable |
+| 4 | `echo $line \| awk -F " " '{print $6}'` | `81%` |
+| 5 | `... \| cut -d "%" -f1` | `81` |
+| 6 | `echo $line \| awk -F " " '{print $7}'` | `/boot` |
+
+These are exactly the 2 lines inside the script's loop: the `while` loop does steps 4–6 for **every** line automatically.
+
+```bash
+usage=$(echo $line | awk '{print $6}' | cut -d "%" -f1)     # 81
+partition=$(echo $line | awk '{print $7}')                   # /boot
+```
+
 ### Step 2: disk-usage.sh (find high usage)
 
 ```bash
@@ -1266,6 +1355,8 @@ Keep `template.html` in the **same folder** as `mail.sh` (it's read by its relat
 ### Step 5: set up msmtp (email sender)
 
 **Definition:** **msmtp** = a small command-line program that sends email through an **SMTP server** (e.g. Gmail's).
+
+> 📧 **Full Gmail setup (class steps):** [scripts/sending-gmail.md](scripts/sending-gmail.md): 2-Step Verification, app password, global `/etc/msmtprc`, permissions, log file, test email.
 
 ```bash
 sudo dnf install msmtp -y        # on some RHEL versions it comes from the EPEL repo

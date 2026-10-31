@@ -83,15 +83,15 @@ It replaces long, hard-to-maintain shell scripts with short, readable playbooks.
 
 ### Core ideas
 
-| Idea | What it means |
-|---|---|
-| **Agentless** | connects over **SSH** (or **WinRM** for Windows) and runs tasks directly; no special agent installed on each server |
-| **Playbook** | a **YAML** file where you describe the **desired state** |
-| **Inventory** | the list of machines you manage, grouped however you like (`webservers`, `databases`) |
-| **Modules** | built-in units of work: `dnf`/`apt`/`yum`, `copy`, `template`, `service`, `user`. Each is **idempotent**: if the system is already in the desired state, running it again changes nothing |
-| **Roles & collections** | reusable, shareable bundles of tasks, templates and variables, for organizing bigger projects |
+**Agentless:** Ansible connects to machines over **SSH** (or **WinRM** for Windows) and runs tasks directly. You **don't need to install a special agent** on each server.
 
-Simple playbook: install and start nginx on the `webservers` group:
+```
+Ansible control server ──ssh──► server 1   (no agent installed)
+                       ──ssh──► server 2   (no agent installed)
+                       ──WinRM─► Windows server
+```
+
+**Playbooks:** you describe the **desired state** in **YAML** files called playbooks. A simple example:
 
 ```yaml
 - name: Install and start nginx
@@ -108,6 +108,12 @@ Simple playbook: install and start nginx on the `webservers` group:
         name: nginx
         state: started
 ```
+
+**Inventory:** a list of the machines you manage, grouped however you like (for example, `webservers`, `databases`).
+
+**Modules:** built-in units of work like `apt`, `yum`, `dnf`, `copy`, `template`, `service`, and `user`. Each module is designed to be **idempotent**: running it again when the system is already in the desired state **changes nothing**.
+
+**Roles and collections:** reusable, shareable bundles of tasks, templates, and variables for organizing larger projects.
 
 ### What Ansible does
 

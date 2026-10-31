@@ -787,7 +787,7 @@ Same as Check 2, for `dest_dir` → `Destination Directory: ... does not exist`.
 
 ```bash
 echo "Scanning files older than $days days in $source_dir"
-files_to_archive=$(find $source_dir -name "*.log" -type f -mtime +$days)
+files_to_archive=$(find "$source_dir" -name "*.log" -type f -mtime +$days)
 ```
 `find` prints every match and `$( ... )` saves that list in `files_to_archive` (same `find` as `cleanup.sh`).
 
@@ -1334,21 +1334,58 @@ echo "$final_body"
 
 ### Step 4: template.html (email body)
 
-**Definition:** **Template** = a fixed design with **placeholders** (`TO_TEAM`, `SERVER_IP`, ...) that `sed` replaces with real values.
+**Definition:** **Template** = a fixed email design with **placeholders** (`TO_TEAM`, `SERVER_IP`, ...) that `sed` replaces with real values.
 
-The class didn't show the template, so this is a simple example with the 4 placeholders `mail.sh` replaces ([scripts/template.html](scripts/template.html)):
+We send the alert as **HTML** (not plain text), so it looks **more attractive** and easy to read: bold text, colors, spacing. That's why `mail.sh` sends `Content-Type: text/html`.
+
+The class template ([scripts/template.html](scripts/template.html)):
 
 ```html
-<html>
-<body>
-  <p>Hi TO_TEAM,</p>
-  <p><b>Alert:</b> ALERT_TYPE</p>
-  <p><b>Server IP:</b> SERVER_IP</p>
-  <p>MESSAGE_BODY</p>
-  <p>Regards,<br>Monitoring Script</p>
-</body>
-</html>
+<p>Hi TO_TEAM,</p>
+<p>&nbsp;</p>
+<p>There is an <span style="color: #800000;"><strong>ALERT_TYPE</strong></span> in the system. Please find the details below.</p>
+<p><strong>Server IP: SERVER_IP</strong></p>
+<p><strong>MESSAGE_BODY</strong></p>
+<p>&nbsp;</p>
+<p>Regards,</p>
+<p>Monitoring Team</p>
 ```
+
+| HTML | Means |
+|---|---|
+| `<p> ... </p>` | a **paragraph** (one line/block of text) |
+| `<p>&nbsp;</p>` | an **empty line** (`&nbsp;` = a space, so the paragraph isn't skipped) |
+| `<strong> ... </strong>` | **bold** text |
+| `<span style="color: #800000;">` | colors the text **dark red** (`#800000` = maroon), so the alert type stands out |
+| `<br>` | line break (comes from `message+=` in `disk-usage.sh`) |
+
+| Placeholder | Replaced with (by `mail.sh`) |
+|---|---|
+| `TO_TEAM` | `DevOps Team` |
+| `ALERT_TYPE` | `High Disk Usage` |
+| `SERVER_IP` | `172.31.19.65` |
+| `MESSAGE_BODY` | `High Disk Usage on /boot: 81 <br>...` |
+
+**How the email looks** (I tested `mail.sh` with this template on my laptop, printing instead of sending):
+
+```
+Hi DevOps Team,
+
+There is an  High Disk Usage  in the system. Please find the details below.
+             └ bold, dark red ┘
+Server IP: 172.31.19.65                       ← bold
+High Disk Usage on /boot: 81                  ← bold, one line per partition (<br>)
+High Disk Usage on /var: 76
+
+Regards,
+Monitoring Team
+```
+
+| Plain text email | HTML email |
+|---|---|
+| all text looks the same | bold + color highlight the important parts |
+| hard to scan quickly | alert type and server stand out |
+| `<br>` would show as text | `<br>` makes new lines |
 
 Keep `template.html` in the **same folder** as `mail.sh` (it's read by its relative name).
 
@@ -1356,40 +1393,46 @@ Keep `template.html` in the **same folder** as `mail.sh` (it's read by its relat
 
 **Definition:** **msmtp** = a small command-line program that sends email through an **SMTP server** (e.g. Gmail's).
 
-> 📧 **Full Gmail setup (class steps):** [scripts/sending-gmail.md](scripts/sending-gmail.md): 2-Step Verification, app password, global `/etc/msmtprc`, permissions, log file, test email.
+Class steps, in short (full explanation: [scripts/sending-gmail.md](scripts/sending-gmail.md)):
 
 ```bash
-sudo dnf install msmtp -y        # on some RHEL versions it comes from the EPEL repo
-vim ~/.msmtprc
+sudo dnf install msmtp -y                  # 1. install
+# 2. Google Account → turn on 2-Step Verification
+# 3. create an app password: https://myaccount.google.com/apppasswords
+sudo vi /etc/msmtprc                       # 4. global config (all users)
+sudo chmod 644 /etc/msmtprc                # 5. every user/script can read it
+sudo touch /var/log/msmtp.log              # 6. log file
+sudo chmod 666 /var/log/msmtp.log          #    any user can write the log
 ```
+
+`/etc/msmtprc`:
 ```
 defaults
 auth           on
 tls            on
 tls_trust_file /etc/ssl/certs/ca-bundle.crt
-logfile        ~/.msmtp.log
+logfile        /var/log/msmtp.log
 
 account        gmail
 host           smtp.gmail.com
 port           587
-from           <your-mail>@gmail.com
-user           <your-mail>@gmail.com
-password       <gmail-app-password>
+from           your_email@gmail.com
+user           your_email@gmail.com
+password       your_app_password
 
 account default : gmail
-```
-```bash
-chmod 600 ~/.msmtprc             # only me can read it (it has a password)
 ```
 
 | Setting | Means |
 |---|---|
 | `host` / `port` | Gmail's SMTP server, port 587 |
 | `tls on` | encrypt the connection |
-| `password` | a Gmail **app password** (Google account → Security → App passwords), not the normal password |
-| `chmod 600` | msmtp refuses a config that others can read |
+| `password` | the Gmail **app password** (needs 2-Step Verification), not the normal password |
+| `/etc/msmtprc` + `chmod 644` | **global** config: any user and any script (like `mail.sh`) can send email |
 
-> 🔒 Never push `.msmtprc` or the app password to GitHub.
+> ⚠️ `644` = any user on the server can also **read the app password**. OK for practice; on real servers use a separate alert-only Gmail account, or `chmod 600` and send only as root.
+
+> 🔒 Never push `/etc/msmtprc` or the app password to GitHub.
 
 ### What I found when I tested it
 
@@ -1494,6 +1537,7 @@ Monitoring:  df -hT ──► while loop, line by line ──► usage > 70-80%?
 - `df -hT` → `while read` loop **line by line** → `awk` column 6 (Use%) and 7 (mount) → `cut` the `%` → `-ge` threshold.
 - `message+=` collects **all** high partitions into one email; `<br>` puts each on a new line.
 - `mail.sh` is **reusable**: any alert calls it with 6 arguments; `sed` fills an HTML template; `msmtp` sends it.
+- Alerts are sent as **HTML** (`Content-Type: text/html`) so they look attractive: `<strong>` bold, `<span style="color: ...">` color, `<p>&nbsp;</p>` empty line.
 - Use 75–80% as the real threshold; send the email **only if** something is high.
 - Tools like **Prometheus** do this today, but on **legacy / high-security (banking) servers** external tools aren't allowed, so **native shell scripts** do the job. No tool promises 100% automation; shell scripts can fill the gaps, and they're used in **CI/CD** too.
 

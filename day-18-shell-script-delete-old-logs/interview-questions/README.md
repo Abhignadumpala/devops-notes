@@ -187,7 +187,7 @@ Reusability: disk, CPU and RAM scripts all call the same `mail.sh` with differen
 
 **35. What is msmtp?**
 
-A small command-line SMTP client. It sends the email built by the script through an SMTP server like Gmail (configured in `~/.msmtprc`, `chmod 600`, using an app password).
+A small command-line SMTP client. It sends the email built by the script through an SMTP server like Gmail (configured in the global `/etc/msmtprc` with a Gmail **app password**; 2-Step Verification must be on).
 
 **36. Why `Content-Type: text/html` and an empty `echo ""`?**
 
@@ -208,3 +208,7 @@ Without quotes, bash ends the value at the first space (`line=/dev/nvme0n1p3`) a
 **40. How do you get the Use% number from one `df -hT` line?**
 
 `echo $line | awk '{print $6}' | cut -d "%" -f1`: awk takes column 6 (`81%`), cut removes the `%` (`81`).
+
+**41. Why send alert emails as HTML instead of plain text?**
+
+HTML makes the alert easy to read: the alert type can be bold and colored, the server IP stands out, and `<br>` puts each problem on its own line. The script sends `Content-Type: text/html` so the mail client renders it.

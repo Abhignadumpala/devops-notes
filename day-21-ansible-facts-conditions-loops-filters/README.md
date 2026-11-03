@@ -774,8 +774,10 @@ vim 06-loop-packages.yaml
   vars:
     packages:
     - git
-    - tree
-    - unzip
+    - mysql
+    - nginx
+    - htop
+    - net-tools
   tasks:
   - name: install packages
     package:
@@ -794,7 +796,17 @@ vim 06-loop-packages.yaml
 ansible-playbook 06-loop-packages.yaml
 ```
 
-**Expected:** one line per package: `changed`, or `ok` if it was already installed.
+**Expected:** one line per package (5 lines): `changed`, or `ok` if it was already installed.
+
+| Package | What it is |
+|---|---|
+| `git` | version control |
+| `mysql` | MySQL client (to connect to a database) |
+| `nginx` | web server |
+| `htop` | live view of CPU, memory and processes |
+| `net-tools` | network commands like `netstat` and `ifconfig` |
+
+> ⚠️ If `mysql` fails with **"No package mysql available"**: Amazon Linux 2023 doesn't ship a `mysql` package. Use `mariadb105` instead (a MySQL-compatible client).
 
 ### Step 13: Loop over a list of dictionaries
 
@@ -834,7 +846,7 @@ vim 07-loop-dict.yaml
 ansible-playbook 07-loop-dict.yaml
 ```
 
-**Expected:** `git` → `ok` (already installed), `tree` and `nginx` → `changed` (removed).
+**Expected:** `git` → `ok` (already installed), `tree` → `ok` (not installed, nothing to remove), `nginx` → `changed` (removed; Step 12 installed it).
 
 ### Step 14: Filters
 

@@ -94,7 +94,12 @@ The shell script needs **our own check** (`dnf list installed` + `if`). The `pac
 | 1st | Creates the user → `changed` | Creates the user |
 | 2nd | User exists → `ok` (does nothing) | ❌ **Fails**: `user 'roboshop' already exists` |
 
-**Rule:** use a **module** whenever one exists. Use `command` or `shell` **only when there's no module** for the job, and then add the check yourself with `register` + `when` ([Day 21, Step 15](../day-21-ansible-facts-conditions-loops-filters/README.md#step-15-error-handling-create-a-user-only-if-missing)).
+**Rule:**
+
+| Step in the playbook | What we use |
+|---|---|
+| Ansible **has a module** for this task (install a package, create a user, start a service, copy a file) | ✅ **Always the module**, so the step is idempotent |
+| Ansible has **no module** for this task | Only then use the **`command` / `shell`** module for that one step, and add the check yourself with `register` + `when` ([Day 21, Step 15](../day-21-ansible-facts-conditions-loops-filters/README.md#step-15-error-handling-create-a-user-only-if-missing)) |
 
 ---
 

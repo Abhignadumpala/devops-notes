@@ -119,13 +119,9 @@ The shell script needs **our own check** (`dnf list installed` + `if`). The `pac
 | Safer (no shell tricks / injection) | ✅ | less |
 | **Use for** | **Simple** commands: `id roboshop`, `mkdir /app` | **Complex** commands: pipes, redirections, or when we need the env |
 
-```yaml
-- name: simple command, no shell features needed
-  command: id roboshop
+For **simple commands**, use the **`command`** module, for example `id roboshop`.
 
-- name: needs a pipe and a redirection, so use shell
-  shell: cat /etc/passwd | grep roboshop > /tmp/users.txt
-```
+For **complex commands** with **pipes and redirections**, or when we need the server's env, use the **`shell`** module, for example `cat /etc/passwd | grep roboshop > /tmp/users.txt`.
 
 > **Interview one-liner:** Both run commands on the remote host; `command` runs it directly without a shell, so no env variables, pipes or redirections, and is safer for simple commands; `shell` runs it through `/bin/sh`, so pipes, redirections and env variables work, and we use it for complex commands.
 

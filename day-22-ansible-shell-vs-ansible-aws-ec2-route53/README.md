@@ -9,7 +9,7 @@
 | Part | Topic | What you learn |
 |---|---|---|
 | **Part 1: Concepts** | Shell vs Ansible words · idempotency · command vs shell · Ansible + AWS (boto3) · `register` with loops (`results`) · `group_vars` | What each one is and why we need it |
-| **Part 2: Lab** | Create RoboShop EC2 servers + Route 53 records with one playbook | Install boto3, write `group_vars`, create servers in a loop, read their private IPs, create DNS records, clean up |
+| **Part 2: Lab** | `roboshop.yaml`: create and delete all 10 RoboShop servers + Route 53 records with one playbook | Install boto3, create servers in a loop, read their IPs, create DNS records, override values with `-e`, delete everything |
 
 **Before this:** [Day 21 - Facts, Conditions, Loops, Filters & Error Handling](../day-21-ansible-facts-conditions-loops-filters/README.md)
 
@@ -151,7 +151,7 @@ cat /etc/passwd | grep roboshop > /tmp/users.txt
 
 **Why `pip3.9`?** On RHEL 9, Ansible runs on **Python 3.9**. The libraries must be installed for the **same Python** Ansible uses; otherwise the module fails with `Failed to import the required Python library (botocore and boto3)`.
 
-**Hosts for these playbooks:** we're not configuring a server, we're calling the AWS API, so the play runs on the **Ansible server itself**: `hosts: localhost` + `connection: local`.
+**Hosts for these playbooks:** we're not configuring a server, we're calling the AWS API, so the play runs on the **Ansible server itself**: `hosts: local` (the inventory group with `localhost`) + `connection: local`.
 
 ---
 
@@ -211,18 +211,23 @@ To create DNS records we **loop over `ec2_output.results`**. In the first round 
 
 ## 7. Lab: create RoboShop servers + DNS records with Ansible
 
-**Goal:** with **one playbook**, create the RoboShop EC2 servers and a Route 53 **A record** for each one (`mongodb.abhignadevops.store` → its private IP). Then clean everything up.
+**Goal:** with **one playbook** (`roboshop.yaml`), create all **10 RoboShop servers** and their Route 53 records, and delete them all again, just by changing one variable (`action`).
+
+| Record | Points to | Used by |
+|---|---|---|
+| `mongodb.abhignadevops.store`, `redis…`, `catalogue…` (one per server) | That server's **private IP** | Servers talking to each other inside the VPC |
+| `abhignadevops.store` (the domain itself) | **frontend's public IP** | Users opening the website in a browser |
 
 **Before you start:**
 
 | Need | Why |
 |---|---|
-| Ansible server (RHEL 9, `Redhat-9-DevOps-Practice` AMI) with Ansible installed ([Day 20](../day-20-ansible-data-formats-yaml/README.md)) | Runs the playbook |
+| Ansible server (RHEL 9) with Ansible and the `[local]` inventory from [Day 21](../day-21-ansible-facts-conditions-loops-filters/README.md#step-5-create-the-inventory) | Runs the playbook on itself |
 | **IAM role** on the Ansible server with EC2 + Route 53 permissions | Lets boto3 call AWS without keys |
-| A security group ID for RoboShop (e.g. `roboshop-common`) | Used by every new server |
-| A Route 53 **hosted zone** (`abhignadevops.store`) | Where the DNS records go |
+| Security groups **`roboshop-common`** + **`roboshop-<name>`** for each server (`roboshop-mongodb`, `roboshop-frontend`…) | Every server gets both SGs; the playbook doesn't create them |
+| Route 53 **hosted zone** `abhignadevops.store` | Where the records go |
 
-> ⚠️ This creates real EC2 servers. Do Step 8 (clean up) when you finish.
+> ⚠️ This creates **10 real EC2 servers**. Run the delete (Step 8) when you finish.
 
 ### Step 1: Attach an IAM role to the Ansible server
 
@@ -248,116 +253,152 @@ ansible --version | grep "python version"
 
 **Expected:** `python version = 3.9.x`, the same Python we installed boto3 for.
 
-### Step 3: Create the project and group_vars
+### Step 3: Write the playbook
 
 ```bash
-mkdir -p ~/ansible-aws/group_vars && cd ~/ansible-aws
-```
-
-```bash
-vim group_vars/all.yaml
+vim roboshop.yaml
 ```
 
 ```yaml
-ami_id: ami-0220d79f3f480ecf5          # Redhat-9-DevOps-Practice
-instance_type: t3.micro
-security_group: sg-xxxxxxxxxxxxxxxxx   # your roboshop-common SG ID
-region: us-east-1
-domain: abhignadevops.store            # your Route 53 hosted zone
-instances:
-- mongodb
-- redis
-- mysql
-```
-
-**What it does:** keeps every value in one place. The playbook only reads them (`{{ ami_id }}`), so changing the server list or the domain never touches the playbook.
-
-### Step 4: Playbook part 1: create the servers
-
-```bash
-vim 01-roboshop-infra.yaml
-```
-
-```yaml
-- name: create roboshop servers and DNS records
-  hosts: localhost
+- name: create ec2 instances and r53 records
+  hosts: local
   connection: local
+  vars:
+    # ansible-playbook roboshop.yaml -e "instances=['mongodb', 'redis']"
+    # ansible-playbook roboshop.yaml -e "action=delete"
+    instances: ["mongodb", "redis", "mysql", "rabbitmq", "catalogue", "user", "cart", "shipping", "payment", "frontend"]
+    action: create
+    domain_name: abhignadevops.store
+    ami_id: ami-0055977a6e828a4f4      # RHEL 9 DevOps practice AMI (check the current ID)
   tasks:
-  - name: create ec2 instances
+  - name: create ec2 instance
     amazon.aws.ec2_instance:
-      name: "{{ item }}"                 # Name tag: mongodb, redis, mysql
+      name: "roboshop-{{ item }}"
       image_id: "{{ ami_id }}"
-      instance_type: "{{ instance_type }}"
-      security_group: "{{ security_group }}"
-      region: "{{ region }}"
-      wait: true                         # wait until running, so the IP exists
+      instance_type: t3.micro
+      security_groups:
+      - roboshop-common
+      - "roboshop-{{ item }}"
+      region: us-east-1
     loop: "{{ instances }}"
+    when: action == "create"
     register: ec2_output
 
-  - name: print the results
-    debug:
-      msg: "{{ item.item }} → {{ item.instances[0].private_ip_address }}"
-    loop: "{{ ec2_output.results }}"
-```
-
-| Line | Means |
-|---|---|
-| `hosts: localhost` + `connection: local` | Run on the Ansible server itself: we call AWS, not a remote server |
-| `loop: "{{ instances }}"` | One server per name in `group_vars/all.yaml` |
-| `wait: true` | Don't continue until the server is running and has its IP |
-| `register: ec2_output` | Save all 3 results in `ec2_output.results` |
-
-```bash
-ansible-playbook 01-roboshop-infra.yaml
-```
-
-**Expected:** `changed` for each server, then lines like `mongodb → 172.31.20.11`. Check the EC2 console: 3 servers named mongodb, redis, mysql ✅.
-
-### Step 5: Playbook part 2: create the DNS records
-
-Add this task at the end of the same playbook:
-
-```yaml
-  - name: create route53 records
+  - name: create R53 record
     amazon.aws.route53:
       state: present
-      zone: "{{ domain }}"
-      record: "{{ item.item }}.{{ domain }}"                  # mongodb.abhignadevops.store
+      zone: "{{ domain_name }}"
+      record: "{{ item.item }}.{{ domain_name }}"   # mongodb.abhignadevops.store
       type: A
       ttl: 1
       value: "{{ item.instances[0].private_ip_address }}"
-      overwrite: true                                         # update if the record exists
+      overwrite: true
     loop: "{{ ec2_output.results }}"
+    when: action == "create"
+
+  - name: create R53 record for frontend
+    amazon.aws.route53:
+      state: present
+      zone: "{{ domain_name }}"
+      record: "{{ domain_name }}"                   # abhignadevops.store → frontend public IP
+      type: A
+      ttl: 1
+      value: "{{ item.instances[0].public_ip_address }}"
+      overwrite: true
+    loop: "{{ ec2_output.results }}"
+    when: action == "create" and item.item == "frontend"
+
+  - name: delete R53 records
+    amazon.aws.route53:
+      state: absent
+      zone: "{{ domain_name }}"
+      record: "{{ item }}.{{ domain_name }}"
+      ttl: 1
+      type: A
+    loop: "{{ instances }}"
+    when: action == "delete"
+
+  - name: delete R53 record for frontend
+    amazon.aws.route53:
+      state: absent
+      zone: "{{ domain_name }}"
+      record: "{{ domain_name }}"
+      ttl: 1
+      type: A
+    when: action == "delete"
+
+  - name: delete ec2 instances
+    amazon.aws.ec2_instance:
+      state: absent
+      name: "roboshop-{{ item }}"
+      region: us-east-1
+      wait: false
+    loop: "{{ instances }}"
+    when: action == "delete"
 ```
 
-| Line | Means |
+**How the playbook works:**
+
+| Part | What it does |
 |---|---|
-| `loop: "{{ ec2_output.results }}"` | One round per server we just created |
-| `item.item` | The server name (`mongodb`) from the first loop |
-| `item.instances[0].private_ip_address` | That server's private IP |
-| `overwrite: true` | If the record already exists (old IP), replace it |
+| `vars:` `instances`, `action`, `domain_name`, `ami_id` | Default values. `action: create` means a plain run **creates** everything |
+| `when: action == "create"` / `"delete"` | Every task has a condition, so **one playbook does both jobs**: create tasks run on create, delete tasks run on delete, the rest are `skipping` |
+| **Task 1** `create ec2 instance` | Loops over the 10 names, creates `roboshop-mongodb`, `roboshop-redis`… with **2 SGs** each (`roboshop-common` + its own) and saves everything in `ec2_output` |
+| **Task 2** `create R53 record` | Loops over `ec2_output.results`: `item.item` = `mongodb`, `item.instances[0].private_ip_address` = its private IP → `mongodb.abhignadevops.store` |
+| **Task 3** `create R53 record for frontend` | Same loop, but `item.item == "frontend"` keeps only frontend: the **domain itself** → frontend's **public IP**, so users can open the site |
+| **Task 4** `delete R53 records` | Loops over the **names** (no `ec2_output` on delete) and removes `<name>.abhignadevops.store` |
+| **Task 5** `delete R53 record for frontend` | Removes the domain record |
+| **Task 6** `delete ec2 instances` | Terminates `roboshop-<name>`; `wait: false` = don't wait for termination to finish |
+
+> 💡 **Variables from the command line (`-e`):** `-e` (extra vars) has the **highest priority**, so it overrides the values in `vars:`. That's how the comments at the top change what the same playbook does, with no file edits.
+
+### Step 4: Create all 10 servers + records
 
 ```bash
-ansible-playbook 01-roboshop-infra.yaml
+ansible-playbook roboshop.yaml
 ```
 
-**Expected:** servers → `ok` (already exist), DNS records → `changed`.
+**Expected:** Task 1 → `changed` for 10 servers, Task 2 → 10 records, Task 3 → `changed` only for frontend (`skipping` for the other 9), Tasks 4–6 → `skipping`. EC2 console: 10 servers named `roboshop-mongodb` … `roboshop-frontend` ✅.
 
-### Step 6: Check the DNS records
+### Step 5: Check the DNS records
 
 ```bash
 nslookup mongodb.abhignadevops.store
 ```
 
-**Expected:** `Address: 172.31.20.11`, the same private IP the playbook printed ✅. Also visible in **Route 53 → Hosted zones → abhignadevops.store**.
+**Expected:** mongodb's **private IP** (e.g. `172.31.20.11`).
+
+```bash
+nslookup abhignadevops.store
+```
+
+**Expected:** frontend's **public IP**. Open `http://abhignadevops.store` later, once the frontend is configured.
+
+### Step 6: Create only some servers
+
+```bash
+ansible-playbook roboshop.yaml -e "instances=['mongodb', 'redis']"
+```
+
+**What it does:** `-e` replaces the list of 10 with just 2, so only those servers and records are created (or reported `ok` if they already exist).
 
 ### Step 7: Run it again (idempotency)
 
 ```bash
-ansible-playbook 01-roboshop-infra.yaml
+ansible-playbook roboshop.yaml
 ```
 
-**Expected:** **no new servers**. `ec2_instance` finds the running servers by their **Name tag** (and AMI), so it reports `ok` instead of creating duplicates. This is the advantage over the shell script, where `run-instances` would create 3 more servers every time.
+**Expected:** **no new servers**: `ec2_instance` finds the running servers by their **Name tag**, so it reports `ok` instead of creating duplicates. The shell script with `aws ec2 run-instances` ([Day 15](../day-15-shell-loops-error-handling-aws-cli/README.md)) would create 10 more every time.
+
+### Step 8: Delete everything
+
+```bash
+ansible-playbook roboshop.yaml -e "action=delete"
+```
+
+**Expected:** Tasks 1–3 → `skipping`, Tasks 4–6 → records deleted and all 10 servers terminating ✅.
+
+> ⚠️ Task 5 has no check for frontend, so **any** delete run also removes the domain record. `-e "action=delete instances=['mongodb']"` deletes mongodb **and** `abhignadevops.store`.
 
 **Troubleshooting:**
 
@@ -365,55 +406,9 @@ ansible-playbook 01-roboshop-infra.yaml
 |---|---|---|
 | `Failed to import the required Python library (botocore and boto3)` | boto3 installed for a different Python | `sudo pip3.9 install botocore boto3` |
 | `Unable to locate credentials` / `UnauthorizedOperation` | No IAM role, or missing permissions | Attach the role (Step 1), check with `aws sts get-caller-identity` |
-| `InvalidGroup.NotFound` | Wrong SG ID, or a different region | Check `security_group` and `region` in `group_vars/all.yaml` |
-| `'dict object' has no attribute 'instances'` / empty IP | Server not running yet | Keep `wait: true` on the EC2 task |
-| `Zone abhignadevops.store does not exist` | Wrong `domain` | Must match the hosted zone name exactly |
-
-### Step 8: Clean up
-
-```bash
-vim 02-roboshop-cleanup.yaml
-```
-
-```yaml
-- name: delete roboshop servers and DNS records
-  hosts: localhost
-  connection: local
-  tasks:
-  - name: get server details
-    amazon.aws.ec2_instance_info:
-      region: "{{ region }}"
-      filters:
-        "tag:Name": "{{ item }}"
-        instance-state-name: running
-    loop: "{{ instances }}"
-    register: info
-
-  - name: delete route53 records
-    amazon.aws.route53:
-      state: absent
-      zone: "{{ domain }}"
-      record: "{{ item.item }}.{{ domain }}"
-      type: A
-      ttl: 1
-      value: "{{ item.instances[0].private_ip_address }}"
-    loop: "{{ info.results }}"
-    when: item.instances | length > 0      # skip if the server is already gone
-
-  - name: terminate ec2 instances
-    amazon.aws.ec2_instance:
-      state: absent
-      region: "{{ region }}"
-      filters:
-        "tag:Name": "{{ item }}"
-    loop: "{{ instances }}"
-```
-
-```bash
-ansible-playbook 02-roboshop-cleanup.yaml
-```
-
-**Expected:** DNS records deleted, servers terminated ✅. The `when` with the `length` filter uses what we learned on Day 21.
+| `InvalidGroup.NotFound: The security group 'roboshop-xxx' does not exist` | A `roboshop-<name>` SG is missing | Create the SG, or check the region |
+| `'dict object' has no attribute 'instances'` or an empty IP | Server details not ready when the record is made | Run the playbook again (servers report `ok`, records are filled in), or add `wait: true` to Task 1 |
+| `Zone abhignadevops.store does not exist` | Wrong `domain_name` | Must match the hosted zone name exactly |
 
 ---
 
@@ -430,10 +425,11 @@ ansible-playbook 02-roboshop-cleanup.yaml
 - **`group_vars/all.yaml`** = variables for every host, kept outside the playbook.
 
 **Part 2: Lab**
-- One playbook created the RoboShop servers and their Route 53 records; running it again created **no duplicates**.
+- One playbook (`roboshop.yaml`) creates all 10 servers, a private-IP record per server and the domain → frontend public IP. `-e "action=delete"` removes everything; running create again makes **no duplicates**.
+- `-e` (extra vars) overrides `vars:`, so the same playbook can create only some servers or delete.
 
 ```
- group_vars ──► ec2_instance (loop) ──► register ec2_output ──► loop ec2_output.results ──► route53 A records
+ vars / -e ──► ec2_instance (loop) ──► register ec2_output ──► loop ec2_output.results ──► route53 A records
 ```
 
 ## 9. Interview one-liners
@@ -447,7 +443,9 @@ ansible-playbook 02-roboshop-cleanup.yaml
 | What do AWS modules need? | `amazon.aws` collection + `boto3` / `botocore` + AWS permissions (IAM role) |
 | What is in a registered loop variable? | A `results` list, one entry per item, each with `item` and that round's output |
 | What is `group_vars`? | A folder of per-group variable files (`all.yaml` = every host), same job as inventory variables |
-| Why `hosts: localhost` to create EC2? | We call the AWS API from the Ansible server; there's no remote server yet |
+| Why `hosts: local` + `connection: local` to create EC2? | We call the AWS API from the Ansible server; there's no remote server yet |
+| How does one playbook both create and delete? | Every task has `when: action == "create"` or `"delete"`, and `-e "action=delete"` switches it |
+| What does `-e` do? | Passes extra variables from the command line; they have the highest priority and override `vars:` |
 
 ---
 

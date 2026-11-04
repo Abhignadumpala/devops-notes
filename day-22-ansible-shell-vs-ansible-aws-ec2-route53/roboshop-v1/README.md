@@ -8,7 +8,7 @@
 
 | Part | Files | What you learn |
 |---|---|---|
-| **Part 1: Project setup** | `ansible.cfg`, `inventory.ini`, `group_vars/`, `roboshop.yaml`, `ec2_output.yaml` | How Ansible finds the servers, logs in and gets its variables |
+| **Part 1: Project setup** | `ansible.cfg`, `inventory.ini`, `group_vars/`, `roboshop.yaml`, `ec2_output.yaml` | How Ansible finds the servers, logs in and gets its variables; create and delete the 10 servers + DNS records |
 | **Part 2: Modules and templates** | (used by every playbook) | What each module does, with the shell command it replaces; what a `.j2` template is |
 | **Part 3: Databases** | `01-mongodb.yaml` · `02-redis.yaml` · `03-mysql.yaml` · `04-rabbitmq.yaml` + `mongo.repo`, `rabbitmq.repo` | Install and open each database |
 | **Part 4: Backend services** | `05-catalogue.yaml` · `06-user.yaml` · `07-cart.yaml` · `08-shipping.yaml` · `09-payment.yaml` + their `.service.j2` | The common app pattern, then what's special in each |
@@ -23,6 +23,8 @@
 3. [inventory.ini](#3-inventoryini)
 4. [group_vars](#4-group_vars)
 5. [roboshop.yaml and ec2_output.yaml](#5-roboshopyaml-and-ec2_outputyaml)
+   - [roboshop.yaml: create the servers and DNS records](#roboshopyaml-create-the-servers-and-dns-records)
+   - [ec2_output.yaml: what register holds](#ec2_outputyaml-what-register-ec2_output-holds)
 
 **Part 2: Modules and templates**
 6. [Modules used in this project](#6-modules-used-in-this-project)
@@ -93,9 +95,37 @@
 stdout_callback=yaml
 inventory=inventory.ini
 log_path = /home/ec2-user/roboshop-logs/ansible.log
+
+[privilege_escalation]
+
+[persistent_connection]
+
+
+[connection]
+
+[colors]
+
+[selinux]
+
+
+[diff]
+
+
+[galaxy]
+
+[inventory]
+
+
+[netconf_connection]
+
+[paramiko_connection]
+
+[jinja2]
+
+[tags]
 ```
 
-The rest of the file is empty section headers (`[privilege_escalation]`, `[connection]`…), places where more settings could go.
+Only `[defaults]` has settings. The other sections (`[privilege_escalation]`, `[connection]`…) are empty places where more settings could go.
 
 | Line | What it does |
 |---|---|
@@ -209,13 +239,243 @@ rabbitmq_password: <rabbitmq-password>
 
 ## 5. roboshop.yaml and ec2_output.yaml
 
-**`roboshop.yaml`** creates (or deletes) the 10 EC2 servers and their Route 53 records. It's explained task by task in [Day 22, section 7](../README.md#7-lab-create-roboshop-servers--dns-records-with-ansible). Run it **first**, because every other playbook needs the servers and their DNS names.
+### roboshop.yaml: create the servers and DNS records
 
-**`ec2_output.yaml`** is a **saved copy of what `register: ec2_output` holds** after the create task: for each server, a long list of details (instance ID, AMI, private and public IP, security groups…).
+**Definition:** `roboshop.yaml` is the playbook that **creates (or deletes) all 10 RoboShop EC2 servers** and a **Route 53 record for each one**. It runs on the Ansible server itself and talks to the AWS API, so it needs the `amazon.aws` modules, boto3 and an IAM role. Run it **first**: every other playbook needs these servers and their DNS names.
 
-| Why it's kept | How it helps |
+
+**Goal:** with **one playbook** (`roboshop.yaml`), create all **10 RoboShop servers** and their Route 53 records, and delete them all again, just by changing one variable (`action`).
+
+| Record | Points to | Used by |
+|---|---|---|
+| `mongodb.abhignadevops.store`, `redis…`, `catalogue…` (one per server) | That server's **private IP** | Servers talking to each other inside the VPC |
+| `abhignadevops.store` (the domain itself) | **frontend's public IP** | Users opening the website in a browser |
+
+**Before you start:**
+
+| Need | Why |
 |---|---|
-| To see the **structure** | Shows `results` → `item` → `instances[0]` → `private_ip_address`, so we know the exact path to write in the Route 53 task |
+| Ansible server (RHEL 9) with Ansible and the `[local]` inventory from [Day 21](../../day-21-ansible-facts-conditions-loops-filters/README.md#step-5-create-the-inventory) | Runs the playbook on itself |
+| **IAM role** on the Ansible server with EC2 + Route 53 permissions | Lets boto3 call AWS without keys |
+| Security groups **`roboshop-common`** + **`roboshop-<name>`** for each server (`roboshop-mongodb`, `roboshop-frontend`…) | Every server gets both SGs; the playbook doesn't create them |
+| Route 53 **hosted zone** `abhignadevops.store` | Where the records go |
+
+> ⚠️ This creates **10 real EC2 servers**. Run the delete (Step 8) when you finish.
+
+#### Step 1: Attach an IAM role to the Ansible server
+
+In the console: **EC2 → select the Ansible server → Actions → Security → Modify IAM role** → choose a role with `AmazonEC2FullAccess` and `AmazonRoute53FullAccess` → **Update IAM role**.
+
+```bash
+aws sts get-caller-identity
+```
+
+**Expected:** the `Arn` shows `assumed-role/<your-role>/...` ✅. The server now has AWS access without any keys.
+
+#### Step 2: Install boto3 and botocore
+
+```bash
+sudo pip3.9 install botocore boto3
+```
+
+**What it does:** installs the AWS Python libraries for Python 3.9, the Python Ansible uses on RHEL 9.
+
+```bash
+ansible --version | grep "python version"
+```
+
+**Expected:** `python version = 3.9.x`, the same Python we installed boto3 for.
+
+#### Step 3: Write the playbook
+
+```bash
+vim roboshop.yaml
+```
+
+```yaml
+- name: create ec2 instances and r53 records
+  hosts: local
+  connection: local
+  vars:
+    # ansible-playbook roboshop.yaml -e "instances=['mongodb', 'redis']"
+    # ansible-playbook roboshop.yaml -e "action=delete"
+    instances: ["mongodb", "redis", "mysql", "rabbitmq", "catalogue", "user", "cart", "shipping", "payment", "frontend"]
+    action: create
+    domain_name: abhignadevops.store
+    ami_id: ami-0055977a6e828a4f4
+  tasks:
+  - name: create ec2 instance
+    amazon.aws.ec2_instance:
+      name: "roboshop-{{ item }}"
+      image_id: "{{ ami_id }}"
+      instance_type: t3.micro
+      security_groups:
+      - roboshop-common
+      - "roboshop-{{ item }}"
+      region: us-east-1
+    loop: "{{ instances }}"
+    when: action == "create"
+    register: ec2_output
+
+  # - name: print ec2 creation output
+  #   debug:
+  #     msg: "{{ ec2_output }}"
+
+  - name: create R53 record
+    amazon.aws.route53:
+      state: present
+      zone: "{{ domain_name }}"
+      record: "{{ item.item }}.{{ domain_name }}" # mongodb.abhignadevops.store
+      type: A
+      ttl: 1
+      value: "{{ item.instances[0].private_ip_address }}"
+      overwrite: true
+    loop: "{{ ec2_output.results }}"
+    when: action == "create"
+
+  - name: create R53 record for frontend
+    amazon.aws.route53:
+      state: present
+      zone: "{{ domain_name }}"
+      record: "{{ domain_name }}" # abhignadevops.store points to frontend public IP
+      type: A
+      ttl: 1
+      value: "{{ item.instances[0].public_ip_address }}"
+      overwrite: true
+    loop: "{{ ec2_output.results }}"
+    when: action == "create" and item.item == "frontend"
+
+  - name: delete R53 records
+    amazon.aws.route53:
+      state: absent
+      zone: "{{ domain_name }}"
+      record: "{{ item }}.{{ domain_name }}"
+      ttl: 1
+      type: A
+    loop: "{{ instances }}"
+    when: action == "delete"
+
+  - name: delete R53 record for frontend
+    amazon.aws.route53:
+      state: absent
+      zone: "{{ domain_name }}"
+      record: "{{ domain_name }}"
+      ttl: 1
+      type: A
+    when: action == "delete"
+
+  - name: delete ec2 instances
+    amazon.aws.ec2_instance:
+      state: absent
+      name: "roboshop-{{ item }}"
+      region: us-east-1
+      wait: false
+    loop: "{{ instances }}"
+    when: action == "delete"
+```
+
+**How the playbook works:**
+
+| Part | What it does |
+|---|---|
+| `vars:` `instances`, `action`, `domain_name`, `ami_id` | Default values. `action: create` means a plain run **creates** everything |
+| `when: action == "create"` / `"delete"` | Every task has a condition, so **one playbook does both jobs**: create tasks run on create, delete tasks run on delete, the rest are `skipping` |
+| **Task 1** `create ec2 instance` | Loops over the 10 names, creates `roboshop-mongodb`, `roboshop-redis`… with **2 SGs** each (`roboshop-common` + its own) and saves everything in `ec2_output` |
+| **Task 2** `create R53 record` | Loops over `ec2_output.results`: `item.item` = `mongodb`, `item.instances[0].private_ip_address` = its private IP → `mongodb.abhignadevops.store` |
+| **Task 3** `create R53 record for frontend` | Same loop, but `item.item == "frontend"` keeps only frontend: the **domain itself** → frontend's **public IP**, so users can open the site |
+| **Task 4** `delete R53 records` | Loops over the **names** (no `ec2_output` on delete) and removes `<name>.abhignadevops.store` |
+| **Task 5** `delete R53 record for frontend` | Removes the domain record |
+| **Task 6** `delete ec2 instances` | Terminates `roboshop-<name>`; `wait: false` = don't wait for termination to finish |
+
+> 💡 **Variables from the command line (`-e`):** `-e` (extra vars) has the **highest priority**, so it overrides the values in `vars:`. That's how the comments at the top change what the same playbook does, with no file edits.
+
+#### Step 4: Create all 10 servers + records
+
+```bash
+ansible-playbook roboshop.yaml
+```
+
+**Expected:** Task 1 → `changed` for 10 servers, Task 2 → 10 records, Task 3 → `changed` only for frontend (`skipping` for the other 9), Tasks 4–6 → `skipping`. EC2 console: 10 servers named `roboshop-mongodb` … `roboshop-frontend` ✅.
+
+#### Step 5: Check the DNS records
+
+```bash
+nslookup mongodb.abhignadevops.store
+```
+
+**Expected:** mongodb's **private IP** (e.g. `172.31.20.11`).
+
+```bash
+nslookup abhignadevops.store
+```
+
+**Expected:** frontend's **public IP**. Open `http://abhignadevops.store` later, once the frontend is configured.
+
+#### Step 6: Create only some servers
+
+```bash
+ansible-playbook roboshop.yaml -e "instances=['mongodb', 'redis']"
+```
+
+**What it does:** `-e` replaces the list of 10 with just 2, so only those servers and records are created (or reported `ok` if they already exist).
+
+#### Step 7: Run it again (idempotency)
+
+```bash
+ansible-playbook roboshop.yaml
+```
+
+**Expected:** **no new servers**: `ec2_instance` finds the running servers by their **Name tag**, so it reports `ok` instead of creating duplicates. The shell script with `aws ec2 run-instances` ([Day 15](../../day-15-shell-loops-error-handling-aws-cli/README.md)) would create 10 more every time.
+
+#### Step 8: Delete everything
+
+```bash
+ansible-playbook roboshop.yaml -e "action=delete"
+```
+
+**Expected:** Tasks 1–3 → `skipping`, Tasks 4–6 → records deleted and all 10 servers terminating ✅.
+
+> ⚠️ Task 5 has no check for frontend, so **any** delete run also removes the domain record. `-e "action=delete instances=['mongodb']"` deletes mongodb **and** `abhignadevops.store`.
+
+#### Troubleshooting
+
+| Error | Cause | Fix |
+|---|---|---|
+| `Failed to import the required Python library (botocore and boto3)` | boto3 installed for a different Python | `sudo pip3.9 install botocore boto3` |
+| `Unable to locate credentials` / `UnauthorizedOperation` | No IAM role, or missing permissions | Attach the role (Step 1), check with `aws sts get-caller-identity` |
+| `InvalidGroup.NotFound: The security group 'roboshop-xxx' does not exist` | A `roboshop-<name>` SG is missing | Create the SG, or check the region |
+| `'dict object' has no attribute 'instances'` or an empty IP | Server details not ready when the record is made | Run the playbook again (servers report `ok`, records are filled in), or add `wait: true` to Task 1 |
+| `Zone abhignadevops.store does not exist` | Wrong `domain_name` | Must match the hosted zone name exactly |
+
+### ec2_output.yaml: what `register: ec2_output` holds
+
+**Definition:** `ec2_output.yaml` is a **saved copy of the `ec2_output` variable** after the create task. For each server it holds a long list of details (instance ID, AMI, IPs, security groups…). We keep it to **see the structure**, so we know the exact path to write in the Route 53 tasks.
+
+The real file is about 25 KB of AWS details for every server, so here are only the parts we use:
+
+```yaml
+results:
+- item: mongodb                          # ← item.item
+  instance_ids:
+  - i-0c5ef82d0cef10c6a
+  instances:                             # ← item.instances (a list)
+  - instance_id: i-0c5ef82d0cef10c6a     #   [0] = the first (only) server
+    image_id: ami-0055977a6e828a4f4
+    instance_type: t3.micro
+    private_ip_address: 172.31.20.11     # ← item.instances[0].private_ip_address
+    public_ip_address: 100.53.44.200     # ← item.instances[0].public_ip_address
+- item: redis
+  instances:
+  - private_ip_address: 172.31.25.40
+# … one entry per server
+```
+
+| Path in the playbook | Value | Used in |
+|---|---|---|
+| `ec2_output.results` | The list, one entry per server | `loop:` of the Route 53 tasks |
+| `item.item` | `mongodb` | Record name `mongodb.abhignadevops.store` |
+| `item.instances[0].private_ip_address` | `172.31.20.11` | Private records |
+| `item.instances[0].public_ip_address` | `100.53.44.200` | Domain → frontend |
 
 ---
 
@@ -478,7 +738,74 @@ gpgcheck=0
 | `vhost: /` | The **virtual host** (like a separate namespace inside RabbitMQ); `/` is the default |
 | `configure_priv / read_priv / write_priv: .*` | Allowed to create, read and write **all** queues (`.*` = everything) |
 
-**`rabbitmq.repo`** defines 4 repos: `modern-erlang` + `modern-erlang-noarch` (Erlang) and `rabbitmq-el9` + `rabbitmq-el9-noarch` (RabbitMQ), each with two download mirrors (`yum1`, `yum2`). Unlike `mongo.repo`, it checks signatures:
+**`rabbitmq.repo`**, the file being copied:
+
+```ini
+[modern-erlang]
+name=modern-erlang-el9
+baseurl=https://yum1.rabbitmq.com/erlang/el/9/$basearch
+        https://yum2.rabbitmq.com/erlang/el/9/$basearch
+repo_gpgcheck=1
+enabled=1
+gpgkey=https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key
+gpgcheck=1
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300
+pkg_gpgcheck=1
+autorefresh=1
+type=rpm-md
+
+[modern-erlang-noarch]
+name=modern-erlang-el9-noarch
+baseurl=https://yum1.rabbitmq.com/erlang/el/9/noarch
+        https://yum2.rabbitmq.com/erlang/el/9/noarch
+repo_gpgcheck=1
+enabled=1
+gpgkey=https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key
+       https://github.com/rabbitmq/signing-keys/releases/download/3.0/rabbitmq-release-signing-key.asc
+gpgcheck=1
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300
+pkg_gpgcheck=1
+autorefresh=1
+type=rpm-md
+
+[rabbitmq-el9]
+name=rabbitmq-el9
+baseurl=https://yum2.rabbitmq.com/rabbitmq/el/9/$basearch
+        https://yum1.rabbitmq.com/rabbitmq/el/9/$basearch
+repo_gpgcheck=1
+enabled=1
+gpgkey=https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-server.9F4587F226208342.key
+       https://github.com/rabbitmq/signing-keys/releases/download/3.0/rabbitmq-release-signing-key.asc
+gpgcheck=1
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300
+pkg_gpgcheck=1
+autorefresh=1
+type=rpm-md
+
+[rabbitmq-el9-noarch]
+name=rabbitmq-el9-noarch
+baseurl=https://yum2.rabbitmq.com/rabbitmq/el/9/noarch
+        https://yum1.rabbitmq.com/rabbitmq/el/9/noarch
+repo_gpgcheck=1
+enabled=1
+gpgkey=https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-server.9F4587F226208342.key
+       https://github.com/rabbitmq/signing-keys/releases/download/3.0/rabbitmq-release-signing-key.asc
+gpgcheck=1
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300
+pkg_gpgcheck=1
+autorefresh=1
+type=rpm-md
+```
+
+It defines 4 repos: `modern-erlang` + `modern-erlang-noarch` (Erlang) and `rabbitmq-el9` + `rabbitmq-el9-noarch` (RabbitMQ), each with two download mirrors (`yum1`, `yum2`). Unlike `mongo.repo`, it checks signatures:
 
 | Line | Means |
 |---|---|
@@ -753,11 +1080,24 @@ WantedBy=multi-user.target
       enabled: yes
 ```
 
-**`user.service.j2`**, only the environment lines differ from catalogue's:
+**`user.service.j2`** (same layout as catalogue's; only the environment lines differ):
 
 ```ini
+[Unit]
+Description=User Service
+After=network-online.target
+
+[Service]
+User=roboshop
 Environment=REDIS_URL="redis://{{ redis_host }}:6379"
 Environment=MONGO_URL="mongodb://{{ mongodb_host }}:27017/users"
+ExecStart=/bin/node /app/server.js
+SyslogIdentifier=user
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 | Line | Means |
@@ -772,24 +1112,101 @@ Environment=MONGO_URL="mongodb://{{ mongodb_host }}:27017/users"
 **Definition:** **cart** is the Node.js service that manages each user's **shopping cart**. It keeps carts in **Redis** and asks **catalogue** for product details. The playbook is the common pattern; the only difference is that the **download URL uses a variable** for the version.
 
 ```yaml
+- name: configure cart server
+  hosts: cart
+  become: yes
+  tasks:
+  - name: disable default nodejs
+    command: dnf module disable nodejs -y
+
+  - name: enable nodejs24
+    command: dnf module enable nodejs:24 -y
+
+  - name: install nodejs
+    dnf:
+      name: nodejs
+      state: present
+
+  - name: create roboshop system user
+    user:
+      name: roboshop
+      create_home: false
+      home: /app
+      system: true
+      shell: /sbin/nologin
+      comment: "roboshop system user"
+
+  - name: remove existing app directory
+    file:
+      path: /app
+      state: absent
+
+  - name: remove cart.zip
+    file:
+      path: /tmp/cart.zip
+      state: absent
+
+  - name: create app directory
+    file:
+      path: /app
+      state: directory
+
   - name: download cart application
     get_url:
       url: https://raw.githubusercontent.com/daws-92s/roboshop-documentation/refs/heads/main/artifacts/cart-{{ app_version }}.zip
       dest: /tmp/cart.zip
+
+  - name: unzip cart
+    unarchive:
+      src: /tmp/cart.zip
+      dest: /app
+      remote_src: yes
+
+  - name: install dependencies
+    community.general.npm:
+      path: /app
+
+  - name: copy cart service
+    template:
+      src: cart.service.j2
+      dest: /etc/systemd/system/cart.service
+
+  - name: daemon reload
+    systemd_service:
+      daemon_reload: true
+
+  - name: start and enable cart
+    service:
+      name: cart
+      state: restarted
+      enabled: yes
 ```
 
-The other tasks are the same as `06-user.yaml`, with `user` replaced by `cart` (`/tmp/cart.zip`, `cart.service.j2`, service `cart`).
+The tasks are the same as `06-user.yaml`, with `user` replaced by `cart`. The one real difference is the download URL:
 
 | What | Why |
 |---|---|
 | `cart-{{ app_version }}.zip` | `app_version: v4` comes from **`group_vars/cart.yaml`** → `cart-v4.zip`. To deploy a new version we change one variable, not the playbook |
 
-**`cart.service.j2`** environment lines:
+**`cart.service.j2`:**
 
 ```ini
+[Unit]
+Description=Cart Service
+After=network-online.target
+
+[Service]
+User=roboshop
 Environment=REDIS_HOST={{ redis_host }}
 Environment=CATALOGUE_HOST={{ catalogue_host }}
 Environment=CATALOGUE_PORT=8080
+ExecStart=/bin/node /app/server.js
+SyslogIdentifier=cart
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 | Line | Means |
@@ -819,6 +1236,22 @@ Environment=CATALOGUE_PORT=8080
       - maven-openjdk25 # installing this so that we no need to set JAVA_HOME again
       - mysql
       state: present
+
+  # - name: find java25 path
+  #   shell: readlink -f $(ls /usr/lib/jvm/java-25-openjdk*/bin/java | head -1)
+  #   register: java25
+
+  # - name: print the output
+  #   debug:
+  #     msg: "{{ java25 }}"
+
+  # - name: make java25 as default
+  #   command: alternatives --set java {{ java25.stdout }}
+
+  # - name: set JAVA_HOME
+  #   copy:
+  #     content: "export JAVA_HOME={{ java25.stdout | dirname | dirname  }}"
+  #     dest: /etc/profile.d/java.sh
 
   - name: create roboshop system user
     user:
@@ -869,6 +1302,8 @@ Environment=CATALOGUE_PORT=8080
     command: mvn clean package
     args:
      chdir: /app
+    # environment:
+    #   JAVA_HOME: "{{ java25.stdout | dirname | dirname  }}"
 
   - name: move shipping jar file
     command: mv target/shipping.jar shipping.jar
@@ -915,7 +1350,7 @@ Environment=CATALOGUE_PORT=8080
       enabled: yes
 ```
 
-The class file also has commented-out tasks that found the Java 25 path and set `JAVA_HOME` by hand. They're not needed, because `maven-openjdk25` makes Maven use Java 25 automatically.
+The commented-out tasks (`find java25 path`, `make java25 as default`, `set JAVA_HOME`, `environment: JAVA_HOME`) were the old way to point Maven at Java 25 by hand. They're not needed any more, because `maven-openjdk25` makes Maven use Java 25 automatically.
 
 **Runtime and build:**
 
@@ -940,14 +1375,26 @@ The class file also has commented-out tasks that found the Java 25 path and set 
 | `tags: - mysql` | A **label** on a task. `ansible-playbook 08-shipping.yaml --tags mysql` runs **only** the 4 MySQL tasks (handy to re-load data without rebuilding) |
 | `cities_count.rc` | The **return code**: `0` = success, anything else = failed |
 
-**`shipping.service.j2`** environment lines:
+**`shipping.service.j2`:**
 
 ```ini
+[Unit]
+Description=Shipping Service
+After=network-online.target
+
+[Service]
+User=roboshop
 Environment=CART_ENDPOINT={{ cart_host }}:8080
 Environment=DB_HOST={{ mysql_host }}
 Environment=DB_USER={{ shipping_db_user }}
 Environment=DB_PASSWORD={{ shipping_db_password }}
 ExecStart=/bin/java -jar /app/shipping.jar
+SyslogIdentifier=shipping
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 | Line | Means |
@@ -1039,6 +1486,12 @@ ExecStart=/bin/java -jar /app/shipping.jar
 **`payment.service.j2`:**
 
 ```ini
+[Unit]
+Description=Payment Service
+After=network-online.target
+
+[Service]
+User=roboshop
 WorkingDirectory=/app
 Environment=CART_HOST={{ cart_host }}
 Environment=CART_PORT=8080
@@ -1048,6 +1501,12 @@ Environment=AMQP_HOST={{ rabbitmq_host }}
 Environment=AMQP_USER={{ rabbitmq_user }}
 Environment=AMQP_PASS={{ rabbitmq_password }}
 ExecStart=/app/.venv/bin/gunicorn --config gunicorn.conf.py --no-control-socket payment:app
+SyslogIdentifier=payment
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 | Line | Means |
@@ -1133,7 +1592,82 @@ ExecStart=/app/.venv/bin/gunicorn --config gunicorn.conf.py --no-control-socket 
 | `copy roboshop config` | Fills `roboshop.conf.j2` and saves it in `/etc/nginx/default.d/` | nginx's default server loads every `.conf` in that folder |
 | `restart frontend` | Restarts nginx | Load the new config |
 
-**`roboshop.conf.j2`** (the important parts):
+**`roboshop.conf.j2`**, the full file first, then the important parts:
+
+```nginx
+server_tokens off;
+
+# nginx gives every request a unique id ($request_id). It is sent to the
+# services and back to the browser, so one click can be traced on all servers
+add_header X-Request-Id $request_id always;
+add_header X-Content-Type-Options nosniff always;
+add_header X-Frame-Options SAMEORIGIN always;
+add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+gzip on;
+gzip_types text/css application/javascript application/json image/svg+xml;
+gzip_min_length 1024;
+
+# common settings for all backend calls
+proxy_http_version 1.1;
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Request-Id      $request_id;
+# the services send the id back too, nginx already adds it, so hide theirs
+proxy_hide_header X-Request-Id;
+proxy_connect_timeout 5s;
+proxy_read_timeout    30s;   # 504 if a service takes longer than this
+
+# the trailing / removes the /api/<service> part:
+# /api/catalogue/products -> http://<CATALOGUE-IP>:8080/products
+location /api/catalogue/ { proxy_pass http://{{ catalogue_host }}:8080/; }
+location /api/user/      { proxy_pass http://{{ user_host }}:8080/; }
+location /api/cart/      { proxy_pass http://{{ cart_host }}:8080/; }
+location /api/shipping/  { proxy_pass http://{{ shipping_host }}:8080/; }
+location /api/payment/   { proxy_pass http://{{ payment_host }}:8080/; }
+
+# when nginx itself cannot reach a service, answer in JSON like the services do.
+# errors a service returns on its own (its 404, 503...) pass through untouched
+error_page 502 = @bad_gateway;
+error_page 504 = @gateway_timeout;
+location @bad_gateway {
+    default_type application/json;
+    return 502 '{"message":"service not reachable (502 Bad Gateway from nginx)"}';
+}
+location @gateway_timeout {
+    default_type application/json;
+    return 504 '{"message":"service did not answer in time (504 Gateway Timeout from nginx)"}';
+}
+
+# nginx's own connection counters
+location = /health {
+    stub_status on;
+    access_log off;
+}
+
+# product images, missing ones fall back to the placeholder
+location /images/ {
+    expires 1h;
+    try_files $uri /images/placeholder.jpg;
+}
+
+# file names in /assets contain a hash of their content, so they can be cached forever
+location /assets/ {
+    expires max;
+    try_files $uri =404;
+}
+
+# React handles all other paths (/product/RMC, /cart ...) in the browser,
+# so every unknown path returns index.html
+location / {
+    expires -1;
+    try_files $uri $uri/ /index.html;
+}
+```
+
+**The important parts:**
 
 ```nginx
 location /api/catalogue/ { proxy_pass http://{{ catalogue_host }}:8080/; }
@@ -1153,7 +1687,7 @@ location / {
 | `location /api/catalogue/ { proxy_pass http://…:8080/; }` | A request to `/api/catalogue/products` goes to `catalogue:8080/products`. The **trailing `/`** removes `/api/catalogue` from the path |
 | `location / { try_files … /index.html; }` | Any other path (`/cart`, `/product/RMC`) returns `index.html`; the React app in the browser shows the right page |
 
-**The rest of the file, in short:**
+**The rest of the file:**
 
 | Block | What it does |
 |---|---|

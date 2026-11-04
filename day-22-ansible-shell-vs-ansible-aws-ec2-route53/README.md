@@ -13,6 +13,8 @@
 
 **Before this:** [Day 21 - Facts, Conditions, Loops, Filters & Error Handling](../day-21-ansible-facts-conditions-loops-filters/README.md)
 
+**Project:** [RoboShop v1 with Ansible: every file explained](roboshop-v1/README.md) (all 10 servers configured with playbooks)
+
 ## Table of Contents
 
 **Part 1: Concepts**

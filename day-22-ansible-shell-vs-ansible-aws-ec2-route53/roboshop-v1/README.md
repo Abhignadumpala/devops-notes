@@ -125,7 +125,25 @@ log_path = /home/ec2-user/roboshop-logs/ansible.log
 [tags]
 ```
 
-Only `[defaults]` has settings. The other sections (`[privilege_escalation]`, `[connection]`…) are empty places where more settings could go.
+Only `[defaults]` has settings. The other sections are empty: each is a group for one kind of setting, ready for when we need it.
+
+| Section | What goes here | Example setting |
+|---|---|---|
+| `[defaults]` | Main settings: inventory, user, log file, output | `inventory=inventory.ini` |
+| `[privilege_escalation]` | `become` defaults, so playbooks don't need `become: yes` | `become=True`, `become_user=root` |
+| `[persistent_connection]` | Timeouts for connections kept open (used with network devices) | `command_timeout=30` |
+| `[connection]` | How Ansible connects over SSH | `pipelining=True` (faster runs) |
+| `[colors]` | Colours of the output | `changed=yellow` |
+| `[selinux]` | SELinux settings for special file systems | (rarely changed) |
+| `[diff]` | How `--diff` shows file changes | `always=True` (show diffs every run) |
+| `[galaxy]` | `ansible-galaxy`: where roles and collections are downloaded from | `server=https://galaxy.ansible.com` |
+| `[inventory]` | Which inventory formats (plugins) are allowed | `enable_plugins=ini, yaml` |
+| `[netconf_connection]` | NETCONF connections to network devices (routers, switches) | (not used for Linux servers) |
+| `[paramiko_connection]` | Paramiko, a Python SSH library Ansible can use instead of OpenSSH | `record_host_keys=False` |
+| `[jinja2]` | Jinja2 template settings | (rarely changed) |
+| `[tags]` | Tags to run or skip by default | `run=mysql`, `skip=debug` |
+
+> For RoboShop we only need `[defaults]`. The rest is good to recognise, not something to fill in.
 
 | Line | What it does |
 |---|---|

@@ -1,84 +1,116 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
-  <defs>
-    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3c4043"/></marker>
-  </defs>
-  <rect width="960" height="640" rx="12" fill="#ffffff"/>
-  <text x="480" y="36" text-anchor="middle" font-size="20" font-weight="700" fill="#202124">Ansible project structure: which file does what</text>
-
-  <!-- left: folder tree -->
-  <rect x="30" y="60" width="380" height="390" rx="10" fill="#f8f9fa" stroke="#9aa0a6" stroke-width="1.5"/>
-  <text x="50" y="90" font-size="16" font-weight="700" fill="#202124">Project folder (on the Ansible server)</text>
-  <g font-family="Consolas, Menlo, monospace" font-size="14" fill="#202124">
-    <text x="50" y="125" font-weight="700">roboshop-ansible/</text>
-    <text x="62" y="155">├── <tspan fill="#5f6368" font-weight="700">ansible.cfg</tspan></text>
-    <text x="62" y="185">├── <tspan fill="#1a73e8" font-weight="700">inventory.ini</tspan></text>
-    <text x="62" y="215">├── <tspan fill="#9334e6" font-weight="700">group_vars/</tspan></text>
-    <text x="66" y="240">│</text><text x="100" y="240">├── <tspan fill="#9334e6">all.yaml</tspan></text>
-    <text x="66" y="265">│</text><text x="100" y="265">└── <tspan fill="#9334e6">mysql.yaml</tspan></text>
-    <text x="62" y="295">├── <tspan fill="#188038" font-weight="700">01-mongodb.yaml</tspan></text>
-    <text x="62" y="320">├── <tspan fill="#188038" font-weight="700">05-catalogue.yaml</tspan></text>
-    <text x="62" y="345">├── <tspan fill="#188038">…  10-frontend.yaml</tspan></text>
-    <text x="62" y="375">├── <tspan fill="#e37400" font-weight="700">mongo.repo</tspan></text>
-    <text x="62" y="405">└── <tspan fill="#c5221f" font-weight="700">catalogue.service.j2</tspan></text>
-  </g>
-  <text x="50" y="435" font-size="13" fill="#5f6368">Run every command from inside this folder</text>
-
-  <!-- right: what each file does -->
-  <g font-size="14" fill="#202124">
-    <rect x="440" y="60" width="490" height="56" rx="8" fill="#f1f3f4" stroke="#5f6368" stroke-width="1.5"/>
-    <text x="456" y="83" font-weight="700">ansible.cfg  →  SETTINGS</text>
-    <text x="456" y="104" font-size="13" fill="#3c4043">Which inventory to use, log file, output style</text>
-
-    <rect x="440" y="124" width="490" height="56" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.5"/>
-    <text x="456" y="147" font-weight="700" fill="#174ea6">inventory.ini  →  WHICH servers</text>
-    <text x="456" y="168" font-size="13" fill="#3c4043">Groups: [catalogue] catalogue.abhignadevops.store</text>
-
-    <rect x="440" y="188" width="490" height="56" rx="8" fill="#f3e8fd" stroke="#9334e6" stroke-width="1.5"/>
-    <text x="456" y="211" font-weight="700" fill="#681da8">group_vars/  →  VARIABLES per group</text>
-    <text x="456" y="232" font-size="13" fill="#3c4043">all.yaml = every server · mysql.yaml = only [mysql]</text>
-
-    <rect x="440" y="252" width="490" height="56" rx="8" fill="#e6f4ea" stroke="#188038" stroke-width="1.5"/>
-    <text x="456" y="275" font-weight="700" fill="#0d652d">*.yaml playbooks  →  WHAT to do</text>
-    <text x="456" y="296" font-size="13" fill="#3c4043">hosts: catalogue + tasks (one playbook per server)</text>
-
-    <rect x="440" y="316" width="490" height="56" rx="8" fill="#fef7e0" stroke="#e37400" stroke-width="1.5"/>
-    <text x="456" y="339" font-weight="700" fill="#b06000">files (.repo)  →  copied AS IT IS</text>
-    <text x="456" y="360" font-size="13" fill="#3c4043">copy module · no variables inside</text>
-
-    <rect x="440" y="380" width="490" height="70" rx="8" fill="#fce8e6" stroke="#c5221f" stroke-width="1.5"/>
-    <text x="456" y="403" font-weight="700" fill="#a50e0e">templates (.j2)  →  FILLED with variables, then copied</text>
-    <text x="456" y="424" font-size="13" fill="#3c4043">template module · {{ mongodb_host }} → mongodb.abhignadevops.store</text>
-    <text x="456" y="442" font-size="13" fill="#3c4043">(values come from group_vars)</text>
-  </g>
-
-  <!-- bottom: flow -->
-  <text x="480" y="490" text-anchor="middle" font-size="16" font-weight="700" fill="#202124">What happens when we run:  ansible-playbook 05-catalogue.yaml</text>
-  <g font-size="13" fill="#202124" text-anchor="middle">
-    <rect x="30" y="510" width="160" height="70" rx="8" fill="#f1f3f4" stroke="#5f6368" stroke-width="1.5"/>
-    <text x="110" y="538" font-weight="700">1. ansible.cfg</text>
-    <text x="110" y="560" fill="#3c4043">use inventory.ini</text>
-
-    <rect x="218" y="510" width="160" height="70" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.5"/>
-    <text x="298" y="538" font-weight="700">2. inventory.ini</text>
-    <text x="298" y="560" fill="#3c4043">[catalogue] → host</text>
-
-    <rect x="406" y="510" width="160" height="70" rx="8" fill="#f3e8fd" stroke="#9334e6" stroke-width="1.5"/>
-    <text x="486" y="538" font-weight="700">3. group_vars</text>
-    <text x="486" y="560" fill="#3c4043">login + hostnames</text>
-
-    <rect x="594" y="510" width="160" height="70" rx="8" fill="#e6f4ea" stroke="#188038" stroke-width="1.5"/>
-    <text x="674" y="538" font-weight="700">4. playbook tasks</text>
-    <text x="674" y="560" fill="#3c4043">.repo, .j2 copied</text>
-
-    <rect x="782" y="510" width="148" height="70" rx="8" fill="#ffffff" stroke="#202124" stroke-width="2"/>
-    <text x="856" y="538" font-weight="700">catalogue server</text>
-    <text x="856" y="560" fill="#3c4043">configured over SSH</text>
-  </g>
-  <g stroke="#3c4043" stroke-width="2" marker-end="url(#a)">
-    <line x1="190" y1="545" x2="216" y2="545"/>
-    <line x1="378" y1="545" x2="404" y2="545"/>
-    <line x1="566" y1="545" x2="592" y2="545"/>
-    <line x1="754" y1="545" x2="780" y2="545"/>
-  </g>
-  <text x="480" y="615" text-anchor="middle" font-size="13" fill="#5f6368">Everything lives on the Ansible server; only the task results land on the remote server</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="754" viewBox="0 0 960 754" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#202124"/></marker></defs>
+<rect width="960" height="754" rx="12" fill="#ffffff"/>
+<text x="480.0" y="40" text-anchor="middle" font-size="21" font-weight="700" fill="#202124">Ansible project structure: which file does what</text>
+<path d="M44,118.0 V152.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V200.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V248.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M86,262.0 V296.0 H110" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M86,262.0 V344.0 H110" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V392.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V440.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V488.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V536.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V584.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V632.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M44,118.0 V680.0 H68" fill="none" stroke="#202124" stroke-width="1.6"/>
+<path d="M30,93.0 h11 l4,4 h15 v18 h-30 z" fill="#d6336c"/>
+<text x="70" y="109.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">roboshop-ansible/</text>
+<line x1="238.10000000000002" y1="104.0" x2="516" y2="104.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="87.0" width="416" height="34" rx="8" fill="#fde2ec" stroke="#d6336c" stroke-width="1.5"/>
+<text x="728.0" y="109.0" text-anchor="middle" font-size="14" fill="#9c1c4c">Root folder of the Ansible project</text>
+<rect x="75" y="139.0" width="22" height="26" rx="2" fill="#f1f3f4" stroke="#6c757d" stroke-width="1.6"/>
+<line x1="80" y1="147.0" x2="92" y2="147.0" stroke="#6c757d" stroke-width="1.3"/>
+<line x1="80" y1="152.0" x2="92" y2="152.0" stroke="#6c757d" stroke-width="1.3"/>
+<line x1="80" y1="157.0" x2="92" y2="157.0" stroke="#6c757d" stroke-width="1.3"/>
+<text x="112" y="157.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">ansible.cfg</text>
+<line x1="224.3" y1="152.0" x2="516" y2="152.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="135.0" width="416" height="34" rx="8" fill="#f1f3f4" stroke="#6c757d" stroke-width="1.5"/>
+<text x="728.0" y="157.0" text-anchor="middle" font-size="14" fill="#3c4043">Settings: default inventory, log file, output</text>
+<rect x="75" y="187.0" width="22" height="26" rx="2" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.6"/>
+<line x1="80" y1="195.0" x2="92" y2="195.0" stroke="#1a73e8" stroke-width="1.3"/>
+<line x1="80" y1="200.0" x2="92" y2="200.0" stroke="#1a73e8" stroke-width="1.3"/>
+<line x1="80" y1="205.0" x2="92" y2="205.0" stroke="#1a73e8" stroke-width="1.3"/>
+<text x="112" y="205.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">inventory.ini</text>
+<line x1="242.9" y1="200.0" x2="516" y2="200.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="183.0" width="416" height="34" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.5"/>
+<text x="728.0" y="205.0" text-anchor="middle" font-size="14" fill="#174ea6">WHICH servers, in groups like [catalogue]</text>
+<path d="M72,237.0 h11 l4,4 h15 v18 h-30 z" fill="#2f9e44"/>
+<text x="112" y="253.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">group_vars/</text>
+<line x1="224.3" y1="248.0" x2="516" y2="248.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="231.0" width="416" height="34" rx="8" fill="#e6f4ea" stroke="#2f9e44" stroke-width="1.5"/>
+<text x="728.0" y="253.0" text-anchor="middle" font-size="14" fill="#0d652d">Variables per inventory group</text>
+<rect x="117" y="283.0" width="22" height="26" rx="2" fill="#e6f4ea" stroke="#2f9e44" stroke-width="1.6"/>
+<line x1="122" y1="291.0" x2="134" y2="291.0" stroke="#2f9e44" stroke-width="1.3"/>
+<line x1="122" y1="296.0" x2="134" y2="296.0" stroke="#2f9e44" stroke-width="1.3"/>
+<line x1="122" y1="301.0" x2="134" y2="301.0" stroke="#2f9e44" stroke-width="1.3"/>
+<text x="154" y="301.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">all.yaml</text>
+<line x1="238.4" y1="296.0" x2="516" y2="296.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="279.0" width="416" height="34" rx="8" fill="#e6f4ea" stroke="#2f9e44" stroke-width="1.5"/>
+<text x="728.0" y="301.0" text-anchor="middle" font-size="14" fill="#0d652d">Variables for EVERY server (login, hostnames)</text>
+<rect x="117" y="331.0" width="22" height="26" rx="2" fill="#e6f4ea" stroke="#2f9e44" stroke-width="1.6"/>
+<line x1="122" y1="339.0" x2="134" y2="339.0" stroke="#2f9e44" stroke-width="1.3"/>
+<line x1="122" y1="344.0" x2="134" y2="344.0" stroke="#2f9e44" stroke-width="1.3"/>
+<line x1="122" y1="349.0" x2="134" y2="349.0" stroke="#2f9e44" stroke-width="1.3"/>
+<text x="154" y="349.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">mysql.yaml</text>
+<line x1="257.0" y1="344.0" x2="516" y2="344.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="327.0" width="416" height="34" rx="8" fill="#e6f4ea" stroke="#2f9e44" stroke-width="1.5"/>
+<text x="728.0" y="349.0" text-anchor="middle" font-size="14" fill="#0d652d">Variables only for the [mysql] group</text>
+<rect x="75" y="379.0" width="22" height="26" rx="2" fill="#fef0e1" stroke="#e8710a" stroke-width="1.6"/>
+<line x1="80" y1="387.0" x2="92" y2="387.0" stroke="#e8710a" stroke-width="1.3"/>
+<line x1="80" y1="392.0" x2="92" y2="392.0" stroke="#e8710a" stroke-width="1.3"/>
+<line x1="80" y1="397.0" x2="92" y2="397.0" stroke="#e8710a" stroke-width="1.3"/>
+<text x="112" y="397.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">roboshop.yaml</text>
+<line x1="242.9" y1="392.0" x2="516" y2="392.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="375.0" width="416" height="34" rx="8" fill="#fef0e1" stroke="#e8710a" stroke-width="1.5"/>
+<text x="728.0" y="397.0" text-anchor="middle" font-size="14" fill="#b05300">Creates / deletes EC2 servers + DNS records</text>
+<rect x="75" y="427.0" width="22" height="26" rx="2" fill="#e0f7fa" stroke="#0b9fb8" stroke-width="1.6"/>
+<line x1="80" y1="435.0" x2="92" y2="435.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<line x1="80" y1="440.0" x2="92" y2="440.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<line x1="80" y1="445.0" x2="92" y2="445.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<text x="112" y="445.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">01-mongodb.yaml</text>
+<line x1="261.5" y1="440.0" x2="516" y2="440.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="423.0" width="416" height="34" rx="8" fill="#e0f7fa" stroke="#0b9fb8" stroke-width="1.5"/>
+<text x="728.0" y="445.0" text-anchor="middle" font-size="14" fill="#006b7d">Playbook: WHAT to do on the mongodb server</text>
+<rect x="75" y="475.0" width="22" height="26" rx="2" fill="#e0f7fa" stroke="#0b9fb8" stroke-width="1.6"/>
+<line x1="80" y1="483.0" x2="92" y2="483.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<line x1="80" y1="488.0" x2="92" y2="488.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<line x1="80" y1="493.0" x2="92" y2="493.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<text x="112" y="493.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">05-catalogue.yaml</text>
+<line x1="280.1" y1="488.0" x2="516" y2="488.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="471.0" width="416" height="34" rx="8" fill="#e0f7fa" stroke="#0b9fb8" stroke-width="1.5"/>
+<text x="728.0" y="493.0" text-anchor="middle" font-size="14" fill="#006b7d">Playbook: WHAT to do on the catalogue server</text>
+<rect x="75" y="523.0" width="22" height="26" rx="2" fill="#e0f7fa" stroke="#0b9fb8" stroke-width="1.6"/>
+<line x1="80" y1="531.0" x2="92" y2="531.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<line x1="80" y1="536.0" x2="92" y2="536.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<line x1="80" y1="541.0" x2="92" y2="541.0" stroke="#0b9fb8" stroke-width="1.3"/>
+<text x="112" y="541.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">… 10-frontend.yaml</text>
+<line x1="289.4" y1="536.0" x2="516" y2="536.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="519.0" width="416" height="34" rx="8" fill="#e0f7fa" stroke="#0b9fb8" stroke-width="1.5"/>
+<text x="728.0" y="541.0" text-anchor="middle" font-size="14" fill="#006b7d">One playbook per server</text>
+<rect x="75" y="571.0" width="22" height="26" rx="2" fill="#efeafd" stroke="#7048e8" stroke-width="1.6"/>
+<line x1="80" y1="579.0" x2="92" y2="579.0" stroke="#7048e8" stroke-width="1.3"/>
+<line x1="80" y1="584.0" x2="92" y2="584.0" stroke="#7048e8" stroke-width="1.3"/>
+<line x1="80" y1="589.0" x2="92" y2="589.0" stroke="#7048e8" stroke-width="1.3"/>
+<text x="112" y="589.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">mongo.repo</text>
+<line x1="215.0" y1="584.0" x2="516" y2="584.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="567.0" width="416" height="34" rx="8" fill="#efeafd" stroke="#7048e8" stroke-width="1.5"/>
+<text x="728.0" y="589.0" text-anchor="middle" font-size="14" fill="#4b2bb3">Static file, copied AS IT IS (copy module)</text>
+<rect x="75" y="619.0" width="22" height="26" rx="2" fill="#f6ece6" stroke="#a0522d" stroke-width="1.6"/>
+<line x1="80" y1="627.0" x2="92" y2="627.0" stroke="#a0522d" stroke-width="1.3"/>
+<line x1="80" y1="632.0" x2="92" y2="632.0" stroke="#a0522d" stroke-width="1.3"/>
+<line x1="80" y1="637.0" x2="92" y2="637.0" stroke="#a0522d" stroke-width="1.3"/>
+<text x="112" y="637.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">catalogue.service.j2</text>
+<line x1="308.0" y1="632.0" x2="516" y2="632.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="615.0" width="416" height="34" rx="8" fill="#f6ece6" stroke="#a0522d" stroke-width="1.5"/>
+<text x="728.0" y="637.0" text-anchor="middle" font-size="14" fill="#6e3519">Jinja2 template: {{ vars }} filled in (template)</text>
+<rect x="75" y="667.0" width="22" height="26" rx="2" fill="#f6ece6" stroke="#a0522d" stroke-width="1.6"/>
+<line x1="80" y1="675.0" x2="92" y2="675.0" stroke="#a0522d" stroke-width="1.3"/>
+<line x1="80" y1="680.0" x2="92" y2="680.0" stroke="#a0522d" stroke-width="1.3"/>
+<line x1="80" y1="685.0" x2="92" y2="685.0" stroke="#a0522d" stroke-width="1.3"/>
+<text x="112" y="685.0" font-family="Consolas, Menlo, monospace" font-size="15" font-weight="700" fill="#202124">roboshop.conf.j2</text>
+<line x1="270.8" y1="680.0" x2="516" y2="680.0" stroke="#202124" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="520" y="663.0" width="416" height="34" rx="8" fill="#f6ece6" stroke="#a0522d" stroke-width="1.5"/>
+<text x="728.0" y="685.0" text-anchor="middle" font-size="14" fill="#6e3519">Jinja2 template: nginx config for frontend</text>
+<text x="480.0" y="736" text-anchor="middle" font-size="13" fill="#5f6368">All files live on the Ansible server · run ansible-playbook from inside this folder</text>
 </svg>

@@ -8,8 +8,8 @@
 
 | Part | Topic | What you learn |
 |---|---|---|
-| **Part 1: Concepts** | AWS credentials (`aws configure` vs IAM role) · controller vs remote machine · `remote_src` · the 3 deployment steps · `alternatives` and `JAVA_HOME` | What each one is and why we need it |
-| **Part 2: Lab** | Give the Ansible server AWS access · break and fix `remote_src` · deploy a new catalogue version · switch Java versions by hand and with Ansible | Do each one on real servers |
+| **Part 1: Concepts** | AWS credentials (`aws configure` vs IAM role) · controller vs remote machine · `remote_src` · the 3 deployment steps · `alternatives` and `JAVA_HOME` · Jinja2 templates | What each one is and why we need it |
+| **Part 2: Lab** | Give the Ansible server AWS access · break and fix `remote_src` · deploy a new catalogue version · switch Java versions by hand and with Ansible · fill a Jinja2 template | Do each one on real servers |
 
 **Before this:** [Day 22 - Ansible vs Shell Script, command vs shell, and Creating EC2 + Route 53 Records](../day-22-ansible-shell-vs-ansible-aws-ec2-route53/README.md)
 
@@ -24,6 +24,7 @@
 4. [The 3 steps of every deployment](#4-the-3-steps-of-every-deployment)
 5. [Many Java versions: alternatives](#5-many-java-versions-alternatives)
 6. [JAVA_HOME](#6-java_home)
+7. [Jinja2 templates](#7-jinja2-templates)
 
 **Part 2: Lab**
 - [Lab setup](#lab-setup)
@@ -33,6 +34,7 @@
 - [Step 4: Deploy a new version of catalogue](#step-4-deploy-a-new-version-of-catalogue)
 - [Step 5: Switch Java versions by hand](#step-5-switch-java-versions-by-hand)
 - [Step 6: Switch Java versions with Ansible](#step-6-switch-java-versions-with-ansible)
+- [Step 7: Fill a Jinja2 template](#step-7-fill-a-jinja2-template)
 
 **Wrap-up**
 - [What I learned](#what-i-learned)
@@ -193,6 +195,58 @@ export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
 **In Ansible:** every task runs in a **new shell**, so `export` in one task is gone in the next one. Set it on the task that needs it with the **`environment:`** keyword ([Step 6](#step-6-switch-java-versions-with-ansible)).
 
 > **Interview one-liner:** `JAVA_HOME` is the Java install folder (above `bin/`); Maven builds with the Java in `JAVA_HOME`, not the one `alternatives` picked, so for a build we set `JAVA_HOME`, and in Ansible we pass it with `environment:` because `export` doesn't survive between tasks.
+
+---
+
+## 7. Jinja2 templates
+
+**Definition:** **Jinja2** is a **templating language** (from Python) that Ansible uses to put **variable values into text**. A **template** is a normal config file with placeholders like `{{ mongodb_host }}`, saved with the `.j2` extension. The **`template`** module fills in every placeholder with the variable's value on the Ansible server, then copies the finished file to the remote machine. For example, `{{ mongodb_host }}` becomes `mongodb.abhignadevops.store`.
+
+**Why we use it:** config files need values that change: hostnames, passwords, ports, `dev` vs `prod`. Without templates, we'd keep one copy of the file per server or environment, or edit it with `sed` after copying (the shell-script way). With Jinja2 we write the file **once**, and the values come from `group_vars` / `vars` / `-e`.
+
+| | Shell script | Ansible + Jinja2 |
+|---|---|---|
+| Put the MongoDB host in a file | `cp catalogue.service /etc/systemd/system/` + `sed -i 's/<MONGODB-SERVER-IP>/10.0.1.5/' …` | `template: src=catalogue.service.j2` with `{{ mongodb_host }}` inside |
+| Different value for prod | Another file or another `sed` | Change the variable, same template |
+| Re-run | `sed` runs every time | `template` is **idempotent**: `ok` if the file is already correct |
+
+**Jinja2 syntax (only 5 things to know):**
+
+| Syntax | What it does | Example |
+|---|---|---|
+| `{{ var }}` | Print a variable's value | `{{ mongodb_host }}` |
+| `{{ var \| filter }}` | Change the value first | `{{ env \| upper }}` → `PROD` |
+| `{% if %} … {% else %} … {% endif %}` | Add lines only if a check is true | Different log level for prod |
+| `{% for x in list %} … {% endfor %}` | Repeat lines for every item | One `listen` line per port |
+| `{# … #}` | Comment, not copied to the server | `{# todo #}` |
+
+**Example: `app.conf.j2` → the file on the server** (with `env: dev`, `app_ports: [8080, 8081]`):
+
+```
+ app.conf.j2 (on the Ansible server)        /etc/app.conf (on catalogue)
+ ───────────────────────────────────        ────────────────────────────
+ server={{ inventory_hostname }}       ──►   server=catalogue.abhignadevops.store
+ db={{ mongodb_host }}                 ──►   db=mongodb.abhignadevops.store
+ {% if env == "prod" %}                      log_level=debug
+ log_level=error                             listen 8080
+ {% else %}                                  listen 8081
+ log_level=debug
+ {% endif %}
+ {% for port in app_ports %}
+ listen {{ port }}
+ {% endfor %}
+```
+
+**`copy` vs `template`:**
+
+| | `copy` | `template` |
+|---|---|---|
+| File type | Static file (`mongo.repo`) | Jinja2 file (`.j2`) |
+| Changes the content | ❌ Copied as it is | ✅ `{{ }}`, `if`, `for` filled in first |
+
+**Jinja2 is also in our playbooks:** every `{{ item }}`, `{{ ec2_output.results }}` and every `when:` check is Jinja2. `when:` is already Jinja2, so we write it **without** `{{ }}`: `when: env == "prod"`.
+
+> **Interview one-liner:** Jinja2 is the templating language Ansible uses to put variables into text; a `.j2` file has placeholders like `{{ var }}` plus `if` and `for`, and the `template` module fills them in and copies the result, so one config file works for every server and environment, unlike `copy`, which copies the file as it is.
 
 ---
 
@@ -612,10 +666,109 @@ ansible-playbook java-version.yaml
 | `mvn --version` still shows Java 21 | This Maven package is tied to its own default Java and doesn't use our `JAVA_HOME` | Install `maven-openjdk25`, which makes Maven use Java 25 ([RoboShop v1, 08-shipping.yaml](../day-22-ansible-shell-vs-ansible-aws-ec2-route53/roboshop-v1/README.md#16-08-shippingyaml)) |
 | `alternatives` task fails with `… has not been configured as an alternative for java` | `java25.stdout` is empty or wrong | Print `java25` with `debug` and check the path exists |
 
+---
+
+## Step 7: Fill a Jinja2 template
+
+Back in `~/day23-lab`, let's write a template with a variable, an `if` and a `for`:
+
+```bash
+vim app.conf.j2
+```
+
+```
+# {{ ansible_managed }}
+server={{ inventory_hostname }}
+db={{ mongodb_host }}
+env={{ env | upper }}
+{% if env == "prod" %}
+log_level=error
+{% else %}
+log_level=debug
+{% endif %}
+{% for port in app_ports %}
+listen {{ port }}
+{% endfor %}
+```
+
+| Line | Filled with |
+|---|---|
+| `{{ ansible_managed }}` | A built-in note saying "Ansible managed", so people know not to edit the file by hand |
+| `{{ inventory_hostname }}` | The server's name in the inventory (`catalogue.abhignadevops.store`) |
+| `{{ env \| upper }}` | `dev` → `DEV` (the `upper` filter) |
+
+```bash
+vim template-test.yaml
+```
+
+```yaml
+- name: jinja2 template test
+  hosts: catalogue
+  become: yes
+  vars:
+    env: dev
+    mongodb_host: mongodb.abhignadevops.store
+    app_ports:
+    - 8080
+    - 8081
+  tasks:
+  - name: create /tmp/app.conf from the template
+    template:
+      src: app.conf.j2
+      dest: /tmp/app.conf
+```
+
+```bash
+ansible-playbook template-test.yaml
+```
+
+**Expected:** `changed` ✅
+
+```bash
+ansible catalogue -m command -a "cat /tmp/app.conf"
+```
+
+**Expected:**
+
+```
+# Ansible managed
+server=catalogue.abhignadevops.store
+db=mongodb.abhignadevops.store
+env=DEV
+log_level=debug
+listen 8080
+listen 8081
+```
+
+**Run it again:**
+
+```bash
+ansible-playbook template-test.yaml
+```
+
+**Expected:** `ok` (not `changed`) ✅. The file is already correct, so `template` changes nothing: it's idempotent.
+
+**Same template, prod values, see the change before it's made:**
+
+```bash
+ansible-playbook template-test.yaml -e "env=prod" --diff
+```
+
+**Expected:** `--diff` shows `-env=DEV` / `+env=PROD` and `-log_level=debug` / `+log_level=error` ✅. One template, a different file per environment.
+
+| Problem | Cause | Fix |
+|---|---|---|
+| `AnsibleUndefinedVariable: 'mongodb_host' is undefined` | A variable used in the template isn't defined anywhere | Add it to `vars:`, `group_vars` or `-e` |
+| `Could not find or access 'app.conf.j2'` | `template` reads `src` from the **controller**; wrong folder | Run from `~/day23-lab`, where the `.j2` file is |
+
 **Clean up the test files on catalogue:**
 
 ```bash
 ansible catalogue -b -m file -a "path=/tmp/unzip-test state=absent"
+```
+
+```bash
+ansible catalogue -b -m file -a "path=/tmp/app.conf state=absent"
 ```
 
 ---
@@ -631,12 +784,14 @@ ansible catalogue -b -m file -a "path=/tmp/unzip-test state=absent"
 - Every deployment: **remove old code → download new code → restart** (`state: restarted`).
 - **`alternatives`** picks which Java the `java` command runs (`--config` = menu, `--set` = scripts).
 - **`JAVA_HOME`** = Java folder above `bin/`, used by Maven. In Ansible set it with **`environment:`**.
+- **Jinja2** fills `{{ vars }}`, `{% if %}` and `{% for %}` in `.j2` files; the **`template`** module copies the result. One config file for every server and environment.
 
 **Part 2: Lab**
 - Checked which credentials are used with `aws sts get-caller-identity` (`assumed-role` = role, `user` = keys).
 - Saw `Could not find or access … on the Ansible Controller` and fixed it with `remote_src: yes`.
 - Deployed catalogue with a 3-step playbook; `-e "version=…"` picks the version.
 - Switched Java 21 ↔ 25 by hand and with Ansible, and checked Maven's Java with `mvn --version`.
+- Filled a Jinja2 template, saw `ok` on re-run, and switched dev → prod with `-e` + `--diff`.
 
 ```
  credentials + boto3 ──► create servers ──► remove old code ──► get_url + unarchive (remote_src) ──► restart
@@ -658,7 +813,10 @@ ansible catalogue -b -m file -a "path=/tmp/unzip-test state=absent"
 | Two Java versions on one server: how to pick one? | `alternatives --config java` (menu) or `alternatives --set java <full-path>` (scripts) |
 | What is `JAVA_HOME`? | The Java install folder above `bin/`; Maven builds with this Java |
 | Why doesn't `export JAVA_HOME` work across Ansible tasks? | Each task runs in a new shell; use `environment:` on the task |
+| What is Jinja2? | The templating language Ansible uses to put variables into text (`{{ }}`, `{% if %}`, `{% for %}`) |
+| Why use templates? | One config file for every server/environment; values come from variables, no `sed`, and it's idempotent |
+| `copy` vs `template`? | `copy` sends the file as it is; `template` fills in the Jinja2 placeholders first |
 
 ---
 
-**Source:** [ansible.builtin.unarchive](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/unarchive_module.html) · [Setting the remote environment](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_environment.html) · [boto3 credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html) · [aws configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html)
+**Source:** [ansible.builtin.unarchive](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/unarchive_module.html) · [ansible.builtin.template](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/template_module.html) · [Templating (Jinja2)](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_templating.html) · [Setting the remote environment](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_environment.html) · [boto3 credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html) · [aws configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html)

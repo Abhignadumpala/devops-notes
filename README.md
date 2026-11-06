@@ -28,6 +28,7 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 20 - Ansible Basics: How Ansible Works, Modules, Inventory, Playbooks & Variables](day-20-ansible-data-formats-yaml/README.md)
 - [Day 21 - Ansible Facts, Config Order, Data Types, Conditions, Loops, Filters & Error Handling](day-21-ansible-facts-conditions-loops-filters/README.md)
 - [Day 22 - Ansible vs Shell Script, command vs shell, and Creating EC2 + Route 53 Records with Ansible](day-22-ansible-shell-vs-ansible-aws-ec2-route53/README.md)
+- [Day 23 - Ansible AWS Access, unarchive remote_src, App Deployment Steps & Managing Java Versions](day-23-ansible-aws-access-remote-src-deployment-java/README.md)
 
 ## Projects
 

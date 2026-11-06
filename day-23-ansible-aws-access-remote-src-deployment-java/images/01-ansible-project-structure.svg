@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3c4043"/></marker>
+  </defs>
+  <rect width="960" height="640" rx="12" fill="#ffffff"/>
+  <text x="480" y="36" text-anchor="middle" font-size="20" font-weight="700" fill="#202124">Ansible project structure: which file does what</text>
+
+  <!-- left: folder tree -->
+  <rect x="30" y="60" width="380" height="390" rx="10" fill="#f8f9fa" stroke="#9aa0a6" stroke-width="1.5"/>
+  <text x="50" y="90" font-size="16" font-weight="700" fill="#202124">Project folder (on the Ansible server)</text>
+  <g font-family="Consolas, Menlo, monospace" font-size="14" fill="#202124">
+    <text x="50" y="125" font-weight="700">roboshop-ansible/</text>
+    <text x="62" y="155">├── <tspan fill="#5f6368" font-weight="700">ansible.cfg</tspan></text>
+    <text x="62" y="185">├── <tspan fill="#1a73e8" font-weight="700">inventory.ini</tspan></text>
+    <text x="62" y="215">├── <tspan fill="#9334e6" font-weight="700">group_vars/</tspan></text>
+    <text x="66" y="240">│</text><text x="100" y="240">├── <tspan fill="#9334e6">all.yaml</tspan></text>
+    <text x="66" y="265">│</text><text x="100" y="265">└── <tspan fill="#9334e6">mysql.yaml</tspan></text>
+    <text x="62" y="295">├── <tspan fill="#188038" font-weight="700">01-mongodb.yaml</tspan></text>
+    <text x="62" y="320">├── <tspan fill="#188038" font-weight="700">05-catalogue.yaml</tspan></text>
+    <text x="62" y="345">├── <tspan fill="#188038">…  10-frontend.yaml</tspan></text>
+    <text x="62" y="375">├── <tspan fill="#e37400" font-weight="700">mongo.repo</tspan></text>
+    <text x="62" y="405">└── <tspan fill="#c5221f" font-weight="700">catalogue.service.j2</tspan></text>
+  </g>
+  <text x="50" y="435" font-size="13" fill="#5f6368">Run every command from inside this folder</text>
+
+  <!-- right: what each file does -->
+  <g font-size="14" fill="#202124">
+    <rect x="440" y="60" width="490" height="56" rx="8" fill="#f1f3f4" stroke="#5f6368" stroke-width="1.5"/>
+    <text x="456" y="83" font-weight="700">ansible.cfg  →  SETTINGS</text>
+    <text x="456" y="104" font-size="13" fill="#3c4043">Which inventory to use, log file, output style</text>
+
+    <rect x="440" y="124" width="490" height="56" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.5"/>
+    <text x="456" y="147" font-weight="700" fill="#174ea6">inventory.ini  →  WHICH servers</text>
+    <text x="456" y="168" font-size="13" fill="#3c4043">Groups: [catalogue] catalogue.abhignadevops.store</text>
+
+    <rect x="440" y="188" width="490" height="56" rx="8" fill="#f3e8fd" stroke="#9334e6" stroke-width="1.5"/>
+    <text x="456" y="211" font-weight="700" fill="#681da8">group_vars/  →  VARIABLES per group</text>
+    <text x="456" y="232" font-size="13" fill="#3c4043">all.yaml = every server · mysql.yaml = only [mysql]</text>
+
+    <rect x="440" y="252" width="490" height="56" rx="8" fill="#e6f4ea" stroke="#188038" stroke-width="1.5"/>
+    <text x="456" y="275" font-weight="700" fill="#0d652d">*.yaml playbooks  →  WHAT to do</text>
+    <text x="456" y="296" font-size="13" fill="#3c4043">hosts: catalogue + tasks (one playbook per server)</text>
+
+    <rect x="440" y="316" width="490" height="56" rx="8" fill="#fef7e0" stroke="#e37400" stroke-width="1.5"/>
+    <text x="456" y="339" font-weight="700" fill="#b06000">files (.repo)  →  copied AS IT IS</text>
+    <text x="456" y="360" font-size="13" fill="#3c4043">copy module · no variables inside</text>
+
+    <rect x="440" y="380" width="490" height="70" rx="8" fill="#fce8e6" stroke="#c5221f" stroke-width="1.5"/>
+    <text x="456" y="403" font-weight="700" fill="#a50e0e">templates (.j2)  →  FILLED with variables, then copied</text>
+    <text x="456" y="424" font-size="13" fill="#3c4043">template module · {{ mongodb_host }} → mongodb.abhignadevops.store</text>
+    <text x="456" y="442" font-size="13" fill="#3c4043">(values come from group_vars)</text>
+  </g>
+
+  <!-- bottom: flow -->
+  <text x="480" y="490" text-anchor="middle" font-size="16" font-weight="700" fill="#202124">What happens when we run:  ansible-playbook 05-catalogue.yaml</text>
+  <g font-size="13" fill="#202124" text-anchor="middle">
+    <rect x="30" y="510" width="160" height="70" rx="8" fill="#f1f3f4" stroke="#5f6368" stroke-width="1.5"/>
+    <text x="110" y="538" font-weight="700">1. ansible.cfg</text>
+    <text x="110" y="560" fill="#3c4043">use inventory.ini</text>
+
+    <rect x="218" y="510" width="160" height="70" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.5"/>
+    <text x="298" y="538" font-weight="700">2. inventory.ini</text>
+    <text x="298" y="560" fill="#3c4043">[catalogue] → host</text>
+
+    <rect x="406" y="510" width="160" height="70" rx="8" fill="#f3e8fd" stroke="#9334e6" stroke-width="1.5"/>
+    <text x="486" y="538" font-weight="700">3. group_vars</text>
+    <text x="486" y="560" fill="#3c4043">login + hostnames</text>
+
+    <rect x="594" y="510" width="160" height="70" rx="8" fill="#e6f4ea" stroke="#188038" stroke-width="1.5"/>
+    <text x="674" y="538" font-weight="700">4. playbook tasks</text>
+    <text x="674" y="560" fill="#3c4043">.repo, .j2 copied</text>
+
+    <rect x="782" y="510" width="148" height="70" rx="8" fill="#ffffff" stroke="#202124" stroke-width="2"/>
+    <text x="856" y="538" font-weight="700">catalogue server</text>
+    <text x="856" y="560" fill="#3c4043">configured over SSH</text>
+  </g>
+  <g stroke="#3c4043" stroke-width="2" marker-end="url(#a)">
+    <line x1="190" y1="545" x2="216" y2="545"/>
+    <line x1="378" y1="545" x2="404" y2="545"/>
+    <line x1="566" y1="545" x2="592" y2="545"/>
+    <line x1="754" y1="545" x2="780" y2="545"/>
+  </g>
+  <text x="480" y="615" text-anchor="middle" font-size="13" fill="#5f6368">Everything lives on the Ansible server; only the task results land on the remote server</text>
+</svg>

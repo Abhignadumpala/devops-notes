@@ -200,6 +200,10 @@ export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
 
 ## Lab setup
 
+Every Ansible project has the same structure. Our lab folder is a small version of the RoboShop one:
+
+![Ansible project structure: which file does what](images/01-ansible-project-structure.svg)
+
 | What | Details |
 |---|---|
 | **Ansible server** | RHEL 9 EC2 server with Ansible installed ([Ansible Lab](../ansible-lab-control-node-managed-nodes/README.md)) |

@@ -246,6 +246,55 @@ export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
 
 **Jinja2 is also in our playbooks:** every `{{ item }}`, `{{ ec2_output.results }}` and every `when:` check is Jinja2. `when:` is already Jinja2, so we write it **without** `{{ }}`: `when: env == "prod"`.
 
+### Jinja2 inside variables
+
+**Definition:** a variable's value can itself use Jinja2, so one variable can be **built from other variables**. Change one value, and every variable built from it updates automatically.
+
+```yaml
+# group_vars/all.yaml
+app_name: shop
+app_version: "1.4.2"
+app_image: "registry.example.com/{{ app_name }}:{{ app_version }}"
+```
+
+```
+app_image  ──►  registry.example.com/shop:1.4.2
+```
+
+Change `app_version` to `"1.5.0"` and `app_image` becomes `registry.example.com/shop:1.5.0`. Nothing else needs editing.
+
+**Other common uses:**
+
+| Use | Example | Result |
+|---|---|---|
+| Pick a value with a check (one-line `if`) | `{{ 'prod' if env == 'production' else 'dev' }}` | `prod` when `env: production`, else `dev` |
+| Default value | `{{ db_port \| default(5432) }}` | `5432` unless `db_port` is set |
+| Upper case | `{{ name \| upper }}` | `shop` → `SHOP` |
+| Join a list | `{{ servers \| join(',') }}` | `[web1, web2]` → `web1,web2` |
+| File name from a path | `{{ path \| basename }}` | `/app/catalogue.zip` → `catalogue.zip` |
+| Loop in a `.j2` file | `{% for s in servers %}` | One line per server or user |
+
+### ⚠️ Quote it if it starts with `{{`
+
+In YAML, `{` starts a **dictionary**. So a value that **starts** with `{{` must be inside quotes:
+
+```yaml
+image: {{ app_image }}       # ❌ YAML error: it reads the braces as a dictionary
+image: "{{ app_image }}"     # ✅
+```
+
+If `{{` comes later in the value (`url: http://{{ host }}`), quotes aren't required, but quoting every Jinja2 value is the safe habit.
+
+### Why it matters: one playbook, many environments
+
+```
+            ┌── group_vars/dev.yaml       (app_version: 1.5.0, replicas: 1)
+playbook ───┼── group_vars/staging.yaml   (app_version: 1.4.2, replicas: 2)
+ (same)     └── group_vars/prod.yaml      (app_version: 1.4.2, replicas: 4)
+```
+
+The **same playbook** deploys to dev, staging and prod; only the **variable files** change. This is the same idea as **Helm values files** in Kubernetes: one chart (template), a different `values-dev.yaml` / `values-prod.yaml` per environment.
+
 > **Interview one-liner:** Jinja2 is the templating language Ansible uses to put variables into text; a `.j2` file has placeholders like `{{ var }}` plus `if` and `for`, and the `template` module fills them in and copies the result, so one config file works for every server and environment, unlike `copy`, which copies the file as it is.
 
 ---
@@ -816,6 +865,10 @@ ansible catalogue -b -m file -a "path=/tmp/app.conf state=absent"
 | What is Jinja2? | The templating language Ansible uses to put variables into text (`{{ }}`, `{% if %}`, `{% for %}`) |
 | Why use templates? | One config file for every server/environment; values come from variables, no `sed`, and it's idempotent |
 | `copy` vs `template`? | `copy` sends the file as it is; `template` fills in the Jinja2 placeholders first |
+| Can a variable use other variables? | Yes: `app_image: "registry/{{ app_name }}:{{ app_version }}"`; change the version, the image updates |
+| Why quote `"{{ var }}"` in YAML? | A value starting with `{` is read as a dictionary, so it must be quoted |
+| Variable might not be set: what to do? | Use the `default` filter: `{{ db_port \| default(5432) }}` |
+| One playbook for dev, staging and prod: how? | Same playbook, different variable files per environment (like Helm values files) |
 
 ---
 

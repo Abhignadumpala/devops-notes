@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#202124"/></marker></defs>
+<rect width="960" height="470" rx="12" fill="#ffffff"/>
+<text x="480.0" y="40" text-anchor="middle" font-size="21" font-weight="700" fill="#202124">Module vs plugin: where the code runs</text>
+<rect x="40" y="74" width="430" height="330" rx="10" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.6"/>
+<text x="255" y="104" font-size="17" font-weight="700" fill="#1a73e8" text-anchor="middle">Ansible controller (Ansible server)</text>
+<text x="255" y="128" font-size="14" font-weight="700" fill="#202124" text-anchor="middle">PLUGINS run here</text>
+<rect x="64" y="150" width="382" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="80" y="175" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">connection</text>
+<text x="196" y="175" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">ssh: how to reach the servers</text>
+<rect x="64" y="198" width="382" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="80" y="223" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">lookup</text>
+<text x="196" y="223" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">fetch a secret from AWS SSM</text>
+<rect x="64" y="246" width="382" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="80" y="271" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">filter</text>
+<text x="196" y="271" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">{{ path | dirname }}</text>
+<rect x="64" y="294" width="382" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="80" y="319" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">callback</text>
+<text x="196" y="319" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">stdout_callback = yaml output</text>
+<rect x="64" y="342" width="382" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="80" y="367" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">inventory</text>
+<text x="196" y="367" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">aws_ec2: list servers from AWS</text>
+<rect x="560" y="74" width="360" height="330" rx="10" fill="#e6f4ea" stroke="#137333" stroke-width="1.6"/>
+<text x="740" y="104" font-size="17" font-weight="700" fill="#137333" text-anchor="middle">Target server (catalogue)</text>
+<text x="740" y="128" font-size="14" font-weight="700" fill="#202124" text-anchor="middle">MODULES run here</text>
+<rect x="584" y="150" width="312" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="600" y="175" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">dnf</text>
+<text x="700" y="175" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">install a package</text>
+<rect x="584" y="198" width="312" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="600" y="223" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">service</text>
+<text x="700" y="223" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">start / restart nginx</text>
+<rect x="584" y="246" width="312" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="600" y="271" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">template</text>
+<text x="700" y="271" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">write the final config file</text>
+<rect x="584" y="294" width="312" height="38" rx="8" fill="#ffffff" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="600" y="319" font-size="14" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">user</text>
+<text x="700" y="319" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="start">create the roboshop user</text>
+<line x1="472" y1="250" x2="556" y2="250" stroke="#202124" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="514" y="238" font-size="13" font-weight="700" fill="#202124" text-anchor="middle">SSH</text>
+<text x="514" y="272" font-size="12" font-weight="400" fill="#5f6368" text-anchor="middle">copies the</text>
+<text x="514" y="288" font-size="12" font-weight="400" fill="#5f6368" text-anchor="middle">module</text>
+<text x="480.0" y="440" font-size="14" font-weight="400" fill="#5f6368" text-anchor="middle">A module changes the target server and returns JSON. A plugin extends Ansible itself on the controller.</text>
+</svg>

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="700" viewBox="0 0 960 700" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#202124"/></marker></defs>
+<rect width="960" height="700" rx="12" fill="#ffffff"/>
+<text x="480.0" y="40" text-anchor="middle" font-size="21" font-weight="700" fill="#202124">Ansible role structure: what each folder holds</text>
+<rect x="40" y="80" width="250" height="170" rx="10" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.6"/>
+<text x="60" y="108" font-size="15" font-weight="700" fill="#202124" text-anchor="start">main.yaml (playbook)</text>
+<text x="60.0" y="136" font-size="13" font-weight="400" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">- name: configure {{ component }}</text>
+<text x="75.6" y="158" font-size="13" font-weight="400" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">hosts: &quot;{{ component }}&quot;</text>
+<text x="75.6" y="180" font-size="13" font-weight="400" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">become: yes</text>
+<text x="75.6" y="202" font-size="13" font-weight="400" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">roles:</text>
+<text x="75.6" y="224" font-size="13" font-weight="400" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">- &quot;{{ component }}&quot;</text>
+<text x="165" y="280" font-size="13" font-weight="400" fill="#5f6368" text-anchor="middle" font-family="Consolas, Menlo, monospace">ansible-playbook main.yaml</text>
+<text x="165" y="298" font-size="13" font-weight="400" fill="#5f6368" text-anchor="middle" font-family="Consolas, Menlo, monospace">-e component=catalogue</text>
+<line x1="292" y1="165" x2="360" y2="118" stroke="#202124" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="370" y="123" font-size="15" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">roles/</text>
+<path d="M380,126 V162 H398" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="404" y="167" font-size="15" font-weight="700" fill="#202124" text-anchor="start" font-family="Consolas, Menlo, monospace">catalogue/</text>
+<path d="M414,170 V206 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="211" font-size="15" font-weight="600" fill="#1a73e8" text-anchor="start" font-family="Consolas, Menlo, monospace">tasks/main.yaml</text>
+<text x="640" y="211" font-size="14" font-weight="400" fill="#202124" text-anchor="start">All the tasks (Ansible starts here)</text>
+<path d="M414,214 V250 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="255" font-size="15" font-weight="600" fill="#1a73e8" text-anchor="start" font-family="Consolas, Menlo, monospace">handlers/main.yaml</text>
+<text x="640" y="255" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Tasks that run only when notified (restart)</text>
+<path d="M414,258 V294 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="299" font-size="15" font-weight="600" fill="#137333" text-anchor="start" font-family="Consolas, Menlo, monospace">vars/main.yaml</text>
+<text x="640" y="299" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Role variables, HIGH priority</text>
+<path d="M414,302 V338 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="343" font-size="15" font-weight="600" fill="#137333" text-anchor="start" font-family="Consolas, Menlo, monospace">defaults/main.yaml</text>
+<text x="640" y="343" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Default variables, LOWEST priority</text>
+<path d="M414,346 V382 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="387" font-size="15" font-weight="600" fill="#b06000" text-anchor="start" font-family="Consolas, Menlo, monospace">templates/*.j2</text>
+<text x="640" y="387" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Jinja2 files for the template module</text>
+<path d="M414,390 V426 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="431" font-size="15" font-weight="600" fill="#b06000" text-anchor="start" font-family="Consolas, Menlo, monospace">files/</text>
+<text x="640" y="431" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Plain files for the copy module</text>
+<path d="M414,434 V470 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="475" font-size="15" font-weight="600" fill="#9334e6" text-anchor="start" font-family="Consolas, Menlo, monospace">meta/main.yaml</text>
+<text x="640" y="475" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Dependencies: roles to run first</text>
+<path d="M414,478 V514 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="519" font-size="15" font-weight="600" fill="#5f6368" text-anchor="start" font-family="Consolas, Menlo, monospace">library/</text>
+<text x="640" y="519" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Custom modules (optional)</text>
+<path d="M414,522 V558 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="563" font-size="15" font-weight="600" fill="#5f6368" text-anchor="start" font-family="Consolas, Menlo, monospace">module_utils/</text>
+<text x="640" y="563" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Shared Python code for custom modules</text>
+<path d="M414,566 V602 H432" fill="none" stroke="#202124" stroke-width="1.4"/>
+<text x="438" y="607" font-size="15" font-weight="600" fill="#5f6368" text-anchor="start" font-family="Consolas, Menlo, monospace">lookup_plugins/</text>
+<text x="640" y="607" font-size="14" font-weight="400" fill="#202124" text-anchor="start">Custom plugins, e.g. lookup (optional)</text>
+<line x1="630" y1="190" x2="630" y2="614" stroke="#dadce0" stroke-width="1"/>
+<text x="480.0" y="670" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="middle">Ansible loads main.yaml (or main.yml) from each folder automatically; template/copy look in templates/ and files/ by themselves.</text>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#202124"/></marker></defs>
+<rect width="960" height="470" rx="12" fill="#ffffff"/>
+<text x="480.0" y="40" text-anchor="middle" font-size="21" font-weight="700" fill="#202124">Foreground vs &amp; vs nohup: what happens when the SSH session drops</text>
+<text x="40" y="88" font-size="14" font-weight="700" fill="#5f6368" text-anchor="start">Command</text>
+<text x="290" y="88" font-size="14" font-weight="700" fill="#5f6368" text-anchor="start">While you are logged in</text>
+<text x="700" y="88" font-size="14" font-weight="700" fill="#5f6368" text-anchor="start">SSH session drops</text>
+<rect x="40" y="104" width="220" height="92" rx="10" fill="#f1f3f4" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="150" y="144" font-size="16" font-weight="700" fill="#202124" text-anchor="middle" font-family="Consolas, Menlo, monospace">sleep 300</text>
+<text x="150" y="170" font-size="14" font-weight="400" fill="#5f6368" text-anchor="middle">Foreground</text>
+<line x1="262" y1="150" x2="288" y2="150" stroke="#202124" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="290" y="104" width="370" height="92" rx="10" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.6"/>
+<text x="475" y="156" font-size="15" font-weight="400" fill="#202124" text-anchor="middle">Terminal is busy until it finishes</text>
+<line x1="662" y1="150" x2="698" y2="150" stroke="#202124" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="700" y="104" width="220" height="92" rx="10" fill="#fdecea" stroke="#c5221f" stroke-width="1.6"/>
+<text x="810" y="156" font-size="15" font-weight="700" fill="#c5221f" text-anchor="middle">Killed</text>
+<rect x="40" y="216" width="220" height="92" rx="10" fill="#f1f3f4" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="150" y="256" font-size="16" font-weight="700" fill="#202124" text-anchor="middle" font-family="Consolas, Menlo, monospace">sleep 300 &amp;</text>
+<text x="150" y="282" font-size="14" font-weight="400" fill="#5f6368" text-anchor="middle">Background (&amp;)</text>
+<line x1="262" y1="262" x2="288" y2="262" stroke="#202124" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="290" y="216" width="370" height="92" rx="10" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.6"/>
+<text x="475" y="268" font-size="15" font-weight="400" fill="#202124" text-anchor="middle">Terminal is free, job runs behind</text>
+<line x1="662" y1="262" x2="698" y2="262" stroke="#202124" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="700" y="216" width="220" height="92" rx="10" fill="#fdecea" stroke="#c5221f" stroke-width="1.6"/>
+<text x="810" y="268" font-size="15" font-weight="700" fill="#c5221f" text-anchor="middle">Killed (gets SIGHUP)</text>
+<rect x="40" y="328" width="220" height="92" rx="10" fill="#f1f3f4" stroke="#9aa0a6" stroke-width="1.6"/>
+<text x="150" y="368" font-size="16" font-weight="700" fill="#202124" text-anchor="middle" font-family="Consolas, Menlo, monospace">nohup sleep 300 &amp;</text>
+<text x="150" y="394" font-size="14" font-weight="400" fill="#5f6368" text-anchor="middle">Background + nohup</text>
+<line x1="262" y1="374" x2="288" y2="374" stroke="#202124" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="290" y="328" width="370" height="92" rx="10" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1.6"/>
+<text x="475" y="380" font-size="15" font-weight="400" fill="#202124" text-anchor="middle">Terminal is free, output → nohup.out</text>
+<line x1="662" y1="374" x2="698" y2="374" stroke="#202124" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="700" y="328" width="220" height="92" rx="10" fill="#e6f4ea" stroke="#137333" stroke-width="1.6"/>
+<text x="810" y="380" font-size="15" font-weight="700" fill="#137333" text-anchor="middle">Keeps running</text>
+<text x="480.0" y="452" font-size="13.5" font-weight="400" fill="#5f6368" text-anchor="middle">Real projects: long-running apps run as a systemd service; nohup is for one-off long jobs (a long script or playbook run).</text>
+</svg>

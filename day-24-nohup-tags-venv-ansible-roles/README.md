@@ -66,18 +66,53 @@
 | `sleep 300 &` | Free | Killed (the shell passes `SIGHUP` to its jobs) |
 | `nohup sleep 300 &` | Free | **Keeps running**, output in `nohup.out` |
 
-**Where we use it:** a long playbook or script (loading data, a big build) that takes 20+ minutes. If our Wi-Fi drops halfway, a normal run dies and leaves the server half-configured. With `nohup … &` it finishes, and we read the log later.
+**Where we use it: configure RoboShop servers in parallel.** Run one after another, catalogue, user and cart take minutes each. They don't depend on each other (only on the databases), so we can start all three **at the same time**, each in the background with `nohup`. They keep running even if our SSH session drops.
+
+| Way | What happens |
+|---|---|
+| `ansible-playbook 05-catalogue.yaml 06-user.yaml 07-cart.yaml` | **One after another** (not parallel), and stops if the session drops |
+| `ansible-playbook 05-catalogue.yaml &` (one per playbook) | Parallel, but all die if the session drops |
+| `nohup ansible-playbook 05-catalogue.yaml &` (one per playbook) | Parallel **and** survives logout ✅ |
+
+**Separate log per playbook:** without a redirect, every `nohup` job appends to the **same `nohup.out`**, so the output of all three is mixed together. Give each one its own log file instead.
 
 ```
-nohup ansible-playbook roboshop.yaml > roboshop.log 2>&1 &
+mkdir -p /home/ec2-user/roboshop-logs
+```
+
+```
+nohup ansible-playbook 05-catalogue.yaml &> /home/ec2-user/roboshop-logs/catalogue.log &
+```
+
+```
+nohup ansible-playbook 06-user.yaml &> /home/ec2-user/roboshop-logs/user.log &
+```
+
+```
+nohup ansible-playbook 07-cart.yaml &> /home/ec2-user/roboshop-logs/cart.log &
 ```
 
 | Part | Meaning |
 |---|---|
 | `nohup` | Don't die when the session ends |
-| `> roboshop.log` | Save the output in our own log file (instead of `nohup.out`) |
-| `2>&1` | Send errors (stream 2) to the same file as normal output (stream 1) |
-| `&` | Run in the background, give the terminal back |
+| `&> file` | Send **both** normal output and errors to this file (short for `> file 2>&1`) |
+| `&` at the end | Run in the background and give the terminal back |
+
+**Check on them:**
+
+```
+pgrep -af ansible-playbook
+```
+
+**What it does:** lists the playbooks still running (one line each). When a playbook finishes, it disappears from the list.
+
+```
+tail -f /home/ec2-user/roboshop-logs/cart.log
+```
+
+**What it does:** shows cart's log live; the `PLAY RECAP` line at the end says whether it passed (`failed=0`).
+
+> ⚠️ Run in parallel **only** playbooks that don't depend on each other. The databases (`01`–`04`) must finish first, because catalogue, user and cart connect to them.
 
 > **Real projects:** apps that must always run (catalogue, cart…) run as a **systemd service**, not with `nohup`; systemd restarts them and starts them at boot. `nohup` is for **one-off long jobs**.
 
@@ -877,7 +912,7 @@ Keep `~/day24-lab`: next we turn the RoboShop playbooks into roles the same way.
 ## What I learned
 
 **Part 1: Concepts**
-- **`&`** runs a command in the background but it dies when the session drops; **`nohup … &`** survives logout, with output in `nohup.out` (or our own log with `> file 2>&1`).
+- **`&`** runs a command in the background but it dies when the session drops; **`nohup … &`** survives logout, with output in `nohup.out` (or our own log with `&> file`). We use it to run catalogue, user and cart **in parallel**, each with its own log.
 - `command`/`shell` aren't idempotent, so we **check first**: load data only if `rc != 0` (no database) or count is `0` (empty table). `-N -B` print only the number.
 - **Tags** label tasks; `--tags` runs only those, `--skip-tags` skips them, `--list-tags` shows them, `always` runs every time.
 - A **venv** keeps one app's Python libraries apart from the system Python; Ansible's **`pip`** module creates it (`virtualenv`, `virtualenv_command`) and installs `requirements.txt`.
@@ -913,7 +948,8 @@ Keep `~/day24-lab`: next we turn the RoboShop playbooks into roles the same way.
 | Question | Answer |
 |---|---|
 | `&` vs `nohup`? | `&` runs in the background but dies when the session ends; `nohup … &` ignores the hang-up signal and keeps running, output in `nohup.out` |
-| How do you keep a long playbook running if SSH disconnects? | `nohup ansible-playbook x.yaml > x.log 2>&1 &`, then `tail -f x.log` |
+| How do you keep a long playbook running if SSH disconnects? | `nohup ansible-playbook x.yaml &> x.log &`, then `tail -f x.log` |
+| How do you configure several servers in parallel with separate logs? | Start each playbook with `nohup ansible-playbook <file> &> <component>.log &`; without the redirect they all mix into one `nohup.out` |
 | How do you make a data load idempotent with `command`/`shell`? | Run a count query first, `register` it, and load only when `rc != 0` or the count is `0` |
 | What does the `always` tag do? | The task runs even when other tags are selected; only `--skip-tags always` skips it |
 | What is a Python virtual environment? | A private folder with its own `python`, `pip` and libraries for one app, so it doesn't clash with the system Python |

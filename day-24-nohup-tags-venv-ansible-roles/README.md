@@ -26,7 +26,8 @@
 6. [Ansible roles: the folder structure](#6-ansible-roles-the-folder-structure)
 7. [How a playbook uses a role](#7-how-a-playbook-uses-a-role)
 8. [Role variables: vars vs defaults](#8-role-variables-vars-vs-defaults)
-9. [Module vs plugin](#9-module-vs-plugin)
+9. [Role dependencies: meta](#9-role-dependencies-meta)
+10. [Module vs plugin](#10-module-vs-plugin)
 
 **Part 2: Lab**
 - [Lab setup](#lab-setup)
@@ -472,7 +473,56 @@ COURSE: ansible, DURATION: 10hrs, TRAINER: <name>
 
 ---
 
-## 9. Module vs plugin
+## 9. Role dependencies: meta
+
+**Definition:** `meta/main.yaml` lists a role's **dependencies**: other roles that must run **before** this role. When a role runs, Ansible first runs every role in its `dependencies:` list, and only then runs the role's own `tasks/`.
+
+```yaml
+# roles/shipping/meta/main.yaml
+dependencies:
+  - role: mysql-data
+```
+
+```
+ ansible-playbook main.yaml -e component=shipping
+        │
+        ▼
+ roles/shipping/meta/main.yaml → dependencies: mysql-data
+        │
+        ├─① runs roles/mysql-data/tasks/main.yaml   (first)
+        └─② runs roles/shipping/tasks/main.yaml     (then)
+```
+
+### ⚠️ A dependency runs on the same server
+
+This is the most important rule about `meta`: a dependency role runs on the **same hosts** as the role that needs it.
+
+| Situation | Use `meta`? | Why |
+|---|---|---|
+| catalogue needs the **MongoDB server** to be ready first | ❌ **No** | `dependencies: - role: mongodb` would **install MongoDB on the catalogue server**. Wrong server! |
+| shipping needs the cities data loaded before it starts | ✅ Yes | `mysql-data` runs **from the shipping server**: it uses the `mysql` client to send the data to `mysql.<domain>` |
+| Every app role needs the same setup steps first | ✅ Yes | e.g. `dependencies: - role: common` runs the shared setup on that same app server |
+
+**So how do we make sure MongoDB is ready before catalogue?** We set up the servers **in order**, one playbook run per server:
+
+```bash
+ansible-playbook main.yaml -e component=mongodb
+```
+
+```bash
+ansible-playbook main.yaml -e component=catalogue
+```
+
+| Need | Tool |
+|---|---|
+| Something must happen **on this server** before the role | `meta/main.yaml` dependencies |
+| **Another server** must be ready first (catalogue → mongodb) | Run the playbooks **in order** (databases first, then apps) |
+
+> **Interview one-liner:** `meta/main.yaml` lists role dependencies that Ansible runs before the role's own tasks, on the same hosts. For one server that needs another server first, you order the playbook runs instead.
+
+---
+
+## 10. Module vs plugin
 
 > **In short:**
 > - **Task** = one step in a playbook. Each task calls **one module**.

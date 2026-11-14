@@ -300,6 +300,28 @@ cat group_vars/all/vault.yaml
 
 **Expected:** first line `$ANSIBLE_VAULT;1.1;AES256`, then only numbers ✅. Remember this vault password; you need it in every next step.
 
+### Write code on the laptop? Copy the encrypted text into the repo
+
+In my case, I write the code in VS Code on my laptop and push from there, but the vault password lives only on the Ansible server. So I create `vault.yaml` **on the server**, then copy its **encrypted** text into the laptop repo:
+
+```
+ Ansible server                               Laptop (VS Code)               GitHub
+ ansible-vault create vault.yaml   ──copy──►  paste into                ──push──►  vault.yaml
+ cat vault.yaml (encrypted text)              group_vars/all/vault.yaml          (encrypted only)
+```
+
+| # | Where | Do this |
+|---|---|---|
+| 1 | Ansible server | `ansible-vault create group_vars/all/vault.yaml`: type the real secrets, `:wq` |
+| 2 | Ansible server | `cat group_vars/all/vault.yaml`: copy **everything**, from `$ANSIBLE_VAULT;1.1;AES256` to the last line |
+| 3 | Laptop | Paste it into `group_vars/all/vault.yaml` in the repo, save |
+| 4 | Laptop | `git add`, `git commit`, `git push` |
+| 5 | Ansible server | `git pull`. The file is the same encrypted text, and the vault password on the server opens it |
+
+**Why this is safe:** only the **encrypted** text goes to GitHub. The real passwords and the vault password never leave the Ansible server.
+
+> ⚠️ Copy the whole block exactly: the header line plus every number line, with no extra spaces. If one character is missing, Ansible fails with `Decryption failed`.
+
 ---
 
 ## Step 4: Point main.yaml to the vault variables

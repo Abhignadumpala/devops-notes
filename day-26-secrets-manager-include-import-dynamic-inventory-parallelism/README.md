@@ -72,6 +72,34 @@ roles/catalogue/
 | Short, readable files | `roles/cart/tasks/main.yaml` is just 4 calls to `common` |
 | One playbook for every server | `ansible-playbook main.yaml -e "component=cart"` |
 
+### What goes in each folder (simple)
+
+| Folder | In simple words | What the file contains | Example |
+|---|---|---|---|
+| `tasks/` | **The to-do list.** The steps to set up the server | `main.yaml`: a list of tasks (install, copy, start). Can also call other task files | `- name: install nodejs` / `dnf: name=nodejs` |
+| `handlers/` | **"Do this only if something changed."** Tasks that wait for a `notify:` | `main.yaml`: tasks like restart a service | `- name: restart nginx` / `service: state=restarted` |
+| `vars/` | **Fixed values** for this role. Hard to override | `main.yaml`: `key: value` lines | `component: catalogue` |
+| `defaults/` | **Suggested values.** Used only if nobody sets them anywhere else | `main.yaml`: `key: value` lines | `app_version: v4` |
+| `templates/` | **Files with blanks** (`{{ }}`) that Ansible fills in, then copies | `*.j2` files | `catalogue.service.j2` with `{{ mongodb_host }}` |
+| `files/` | **Files copied as they are**, nothing filled in | Any plain file | `mongo.repo` |
+| `meta/` | **"Run these roles first,"** plus info about the role (author, platforms) | `main.yaml`: `dependencies:` list | `dependencies: - role: common` |
+| `library/` | **Your own modules**, when no built-in module does the job | Python files (`*.py`) | `my_check.py` |
+| `module_utils/` | **Shared helper code** for your own modules | Python files your modules import | `helpers.py` |
+| `lookup_plugins/` (and other `*_plugins/`) | **Your own plugins**, e.g. a lookup that fetches a value from another system | Python files | `my_secret.py` |
+| `tests/` | **A small test playbook** for the role (made by `ansible-galaxy role init`) | `test.yml` + `inventory` | Run the role on localhost |
+| `README.md` | **How to use the role** | Text | Variables it needs, an example |
+
+**Which ones do I really need?**
+
+| Need | Folders |
+|---|---|
+| Always | `tasks/` |
+| Often | `templates/`, `files/`, `handlers/`, `defaults/` |
+| Sometimes | `vars/`, `meta/` |
+| Rarely (advanced) | `library/`, `module_utils/`, `lookup_plugins/` |
+
+> Only create the folders you use. Ansible ignores the ones that don't exist, and in RoboShop V2 most roles have just `tasks/` and `templates/`.
+
 📖 Full guide: [Day 24, sections 5–10](../day-24-nohup-tags-venv-ansible-roles/README.md#5-why-roles-the-problems-with-our-v1-playbooks).
 
 ---

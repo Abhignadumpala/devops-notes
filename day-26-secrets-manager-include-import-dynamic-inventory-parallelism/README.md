@@ -25,12 +25,12 @@
 
 **Part 2: Lab**
 - [Lab setup](#lab-setup)
-- [Step 1: Store the MySQL root password in Secrets Manager (laptop)](#step-1-store-the-mysql-root-password-in-secrets-manager-laptop)
+- [Step 1: Store the RoboShop passwords in Secrets Manager (AWS console)](#step-1-store-the-roboshop-passwords-in-secrets-manager-aws-console)
 - [Step 2: Find the Ansible server's IAM role](#step-2-find-the-ansible-servers-iam-role)
 - [Step 3: Allow the role to read RoboShop secrets (laptop)](#step-3-allow-the-role-to-read-roboshop-secrets-laptop)
 - [Step 4: Read the secret from the Ansible server](#step-4-read-the-secret-from-the-ansible-server)
 - [Step 5: Fetch the secret with a lookup](#step-5-fetch-the-secret-with-a-lookup)
-- [Step 6: Point mysql_root_password to Secrets Manager](#step-6-point-mysql_root_password-to-secrets-manager)
+- [Step 6: Point the passwords to Secrets Manager](#step-6-point-the-passwords-to-secrets-manager)
 - [Step 7: Run the mysql role](#step-7-run-the-mysql-role)
 - [Step 8: Compare import_role and include_role with when](#step-8-compare-import_role-and-include_role-with-when)
 - [Step 9: See import catch an error before anything runs](#step-9-see-import-catch-an-error-before-anything-runs)
@@ -179,7 +179,7 @@ There are separate secrets tools too (for example HashiCorp Vault, a server you 
 
 | Piece | What it does |
 |---|---|
-| **Secret** | Name `roboshop/dev/mysql_root_password`, value = the real password |
+| **Secret** | Name `roboshop/dev`, holding several **key/value pairs**: `ansible_user`, `ansible_password`, `mysql_root_password`, … (AWS stores them as one JSON) |
 | **IAM role** on the Ansible server | Gives permission to **read** the secret (`secretsmanager:GetSecretValue`). No access keys, no vault password |
 | **Lookup plugin** `amazon.aws.secretsmanager_secret` | Runs **on the Ansible server** (it's a plugin, not a module), calls AWS, returns the value |
 | **`no_log: true`** | Keeps the value out of the playbook output |
@@ -188,7 +188,13 @@ There are separate secrets tools too (for example HashiCorp Vault, a server you 
 
 ### Naming secrets
 
-Use a path-like name: **`<project>/<env>/<name>`**, for example `roboshop/dev/mysql_root_password`. Then one IAM policy can allow `roboshop/dev/*`, and dev can't read prod.
+Use a path-like name: **`<project>/<env>`**, for example `roboshop/dev`, with all of that environment's passwords as key/value pairs inside. Then `roboshop/prod` is a separate secret, and an IAM policy can allow dev but not prod.
+
+| One secret, many keys (what we use) | One secret per password |
+|---|---|
+| `roboshop/dev` → `{"ansible_user": …, "ansible_password": …, "mysql_root_password": …}` | `roboshop/dev/mysql_root_password` → the password |
+| One secret to pay for (~$0.40/month) | One charge per secret |
+| Ansible reads it once and picks a key with `from_json` | The lookup returns the value directly |
 
 ### Vault vs Secrets Manager
 
@@ -441,16 +447,32 @@ ansible-galaxy collection list amazon.aws
 
 ---
 
-## Step 1: Store the MySQL root password in Secrets Manager (laptop)
+## Step 1: Store the RoboShop passwords in Secrets Manager (AWS console)
 
-```bash
-aws secretsmanager create-secret --name roboshop/dev/mysql_root_password --secret-string '<mysql-root-password>' --region us-east-1
-```
+**AWS Console → Secrets Manager → Store a new secret**
 
-**What it does:** creates a secret with the name `roboshop/dev/mysql_root_password`. AWS encrypts the value with its default KMS key.
-**Expected:** JSON with `"ARN"` and `"Name": "roboshop/dev/mysql_root_password"` ✅. You can also see it in **AWS Console → Secrets Manager**.
+| Setting | Choose / type |
+|---|---|
+| **Secret type** | **Other type of secret** (API key, OAuth token, other) |
+| **Key/value pairs** | Click **+ Add row** for each password (table below) |
+| **Encryption key** | `aws/secretsmanager` (the default KMS key that Secrets Manager creates) |
+| **Secret name** (next page) | `roboshop/dev` |
+| **Rotation** | Leave off |
 
-> 💡 The command goes into your shell history. In real work, use the console or `--secret-string file://secret.txt`, then delete the file.
+| Key | Value |
+|---|---|
+| `ansible_user` | `ec2-user` |
+| `ansible_password` | `<ssh-password>` |
+| `mysql_root_password` | `<mysql-root-password>` |
+| `rabbitmq_user` | `roboshop` |
+| `rabbitmq_password` | `<rabbitmq-password>` |
+
+Click **Next → Next → Store**.
+
+**What it does:** creates **one secret** named `roboshop/dev` that holds all the RoboShop passwords as key/value pairs. AWS encrypts it with KMS.
+**Expected:** `roboshop/dev` appears in the Secrets list ✅. On its page, **Retrieve secret value** shows the keys.
+
+> 💡 Same thing with the CLI: `aws secretsmanager create-secret --name roboshop/dev --secret-string file://secret.json` (a JSON file with the keys), then delete the file. Don't type passwords on the command line; they stay in your shell history.
 
 ---
 
@@ -470,10 +492,12 @@ aws sts get-caller-identity --query Arn --output text
 ## Step 3: Allow the role to read RoboShop secrets (laptop)
 
 ```bash
-aws iam put-role-policy --role-name <role-name> --policy-name roboshop-read-secrets --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"arn:aws:secretsmanager:us-east-1:<account-id>:secret:roboshop/dev/*"}]}'
+aws iam put-role-policy --role-name <role-name> --policy-name roboshop-read-secrets --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"arn:aws:secretsmanager:us-east-1:<account-id>:secret:roboshop/*"}]}'
 ```
 
-**What it does:** adds a policy that lets the role **read only** secrets whose names start with `roboshop/dev/`.
+**What it does:** adds a policy that lets the role **read only** secrets whose names start with `roboshop/`.
+
+> Why `roboshop/*` and not `roboshop/dev`? AWS adds 6 random characters to every secret's ARN (`…:secret:roboshop/dev-AbC123`), so the resource needs a `*`.
 **Expected:** no output = success ✅.
 
 > If your role already has `AdministratorAccess` or `SecretsManagerReadWrite`, it can read secrets already. A narrow policy like this one is the **least privilege** way.
@@ -483,44 +507,56 @@ aws iam put-role-policy --role-name <role-name> --policy-name roboshop-read-secr
 ## Step 4: Read the secret from the Ansible server
 
 ```bash
-aws secretsmanager get-secret-value --secret-id roboshop/dev/mysql_root_password --query SecretString --output text --region us-east-1
+aws secretsmanager get-secret-value --secret-id roboshop/dev --query SecretString --output text --region us-east-1
 ```
 
 **What it does:** reads the secret with the server's IAM role.
-**Expected:** your MySQL password ✅. `AccessDeniedException` means Step 3 is missing or has the wrong role name.
+**Expected:** one line of JSON with all your keys: `{"ansible_user":"ec2-user","ansible_password":"…",…}` ✅. `AccessDeniedException` means Step 3 is missing or has the wrong role name.
 
 ---
 
 ## Step 5: Fetch the secret with a lookup
 
 ```bash
-ansible localhost -m debug -a "msg={{ lookup('amazon.aws.secretsmanager_secret', 'roboshop/dev/mysql_root_password', region='us-east-1') | length }}"
+ansible localhost -m debug -a "msg={{ (lookup('amazon.aws.secretsmanager_secret', 'roboshop/dev', region='us-east-1') | from_json).keys() | list }}"
 ```
 
-**What it does:** runs the lookup plugin on the Ansible server and prints only the **length** of the password, not the password.
-**Expected:** `"msg": "10"` (your password's length) ✅. The lookup works.
+**What it does:** runs the lookup plugin on the Ansible server. The lookup returns the secret as a JSON **string**; `from_json` turns it into a dictionary, and we print only its **key names**, not the passwords.
+**Expected:** `["ansible_user", "ansible_password", "mysql_root_password", "rabbitmq_user", "rabbitmq_password"]` ✅. The lookup works.
 
 ---
 
-## Step 6: Point mysql_root_password to Secrets Manager
+## Step 6: Point the passwords to Secrets Manager
 
 ```bash
 vim group_vars/all/main.yaml
 ```
 
-Change the MySQL line from the vault variable to the lookup:
+Replace the `vault_` references with the secret from AWS:
 
 ```yaml
-mysql_root_password: "{{ lookup('amazon.aws.secretsmanager_secret', 'roboshop/dev/mysql_root_password', region='us-east-1') }}"
+roboshop_secrets: "{{ lookup('amazon.aws.secretsmanager_secret', 'roboshop/dev', region='us-east-1') | from_json }}"
+ansible_user: "{{ roboshop_secrets.ansible_user }}"
+ansible_password: "{{ roboshop_secrets.ansible_password }}"
+mysql_root_password: "{{ roboshop_secrets.mysql_root_password }}"
+rabbitmq_user: "{{ roboshop_secrets.rabbitmq_user }}"
+rabbitmq_password: "{{ roboshop_secrets.rabbitmq_password }}"
 ```
 
-Then remove `vault_mysql_root_password` from the vault:
+| Line | Meaning |
+|---|---|
+| `roboshop_secrets` | Fetch the `roboshop/dev` secret and turn its JSON into a dictionary |
+| `roboshop_secrets.mysql_root_password` | Pick one key from it |
+
+The variable names (`ansible_password`, `mysql_root_password`, …) stay the same as before, so **no role changes**.
+
+Now the vault isn't needed. Remove it, and remove `vault_password_file` from `ansible.cfg`:
 
 ```bash
-ansible-vault edit group_vars/all/vault.yaml
+git rm group_vars/all/vault.yaml
 ```
 
-**What it does:** every role that uses `mysql_root_password` (mysql, mysql-data/shipping) now gets it from AWS. The roles don't change; only where the value comes from.
+**What it does:** the SSH login and every role that uses these passwords (mysql, mysql-data/shipping, rabbitmq, payment) now get them from AWS. The roles don't change; only where the value comes from.
 
 > Add `no_log: true` to tasks that use `mysql_root_password`, so the value never shows in the output.
 
@@ -532,14 +568,14 @@ ansible-vault edit group_vars/all/vault.yaml
 ansible-playbook main.yaml -e "component=mysql"
 ```
 
-**What it does:** configures MySQL with the root password fetched from Secrets Manager.
+**What it does:** Ansible logs in with the SSH password from AWS and configures MySQL with the root password from AWS.
 **Expected:** `failed=0` ✅.
 
 ```bash
 git diff group_vars/all/main.yaml
 ```
 
-**Expected:** only the lookup line changed, and **no password** appears anywhere ✅. Commit and push.
+**Expected:** only lookups and `roboshop_secrets.<key>` lines, and **no password** anywhere ✅. Commit and push.
 
 ---
 
@@ -759,7 +795,7 @@ rm test-include-import.yaml test-serial.yaml
 Keep the secret if you'll use it again. To delete it (laptop):
 
 ```bash
-aws secretsmanager delete-secret --secret-id roboshop/dev/mysql_root_password --recovery-window-in-days 7 --region us-east-1
+aws secretsmanager delete-secret --secret-id roboshop/dev --recovery-window-in-days 7 --region us-east-1
 ```
 
 **Expected:** a `DeletionDate` 7 days from now ✅. You can restore it before then with `restore-secret`.
@@ -776,6 +812,8 @@ aws secretsmanager delete-secret --secret-id roboshop/dev/mysql_root_password --
 |---|---|---|
 | `AccessDeniedException ... secretsmanager:GetSecretValue` | The Ansible server's IAM role can't read the secret | Add the policy (Step 3) to the right role (Step 2) |
 | `ResourceNotFoundException` | Wrong secret name or region | Check the name and add `region='us-east-1'` to the lookup |
+| `'dict object' has no attribute 'mysql_root_password'` | The key name in AWS is different (typo, extra space) | Compare with **Retrieve secret value** in the console |
+| `AccessDenied` although the policy says `roboshop/dev` | The ARN has 6 random characters after the name | Use `secret:roboshop/*` in the policy |
 | `lookup plugin (amazon.aws.secretsmanager_secret) not found` | The `amazon.aws` collection isn't installed | `ansible-galaxy collection install amazon.aws` |
 | `Failed to import the required Python library (botocore or boto3)` | boto3 missing on the Ansible server | `pip3 install boto3 botocore` |
 | `--graph` shows only `@ungrouped` / no hosts | File name doesn't end with `aws_ec2.yaml`, wrong region, or the filter matches nothing | Rename the file, check `regions` and `filters` |
@@ -795,7 +833,7 @@ aws secretsmanager delete-secret --secret-id roboshop/dev/mysql_root_password --
 - **`forks`** = how many servers run a task at once (speed). **`serial`** = how many servers run the whole play per batch (rolling update, no full downtime).
 
 **Part 2: Lab**
-- Stored the MySQL root password in Secrets Manager, allowed only `roboshop/dev/*` for the Ansible server's role, and fetched it with a lookup (printed only its length).
+- Stored all RoboShop passwords as key/value pairs in one secret (`roboshop/dev`, type "Other type of secret", KMS key `aws/secretsmanager`), allowed only `roboshop/*` for the Ansible server's role, and fetched it with a lookup + `from_json`. The vault is gone.
 - Saw `import_role` skip every task vs `include_role` skip once, and import catch a YAML error before anything ran.
 - Built `inventory.aws_ec2.yaml`, grouped servers by a `Component` tag, and ran `main.yaml` with it.
 - Timed `-f 1` vs `-f 10`, and watched `serial: 2` update 2 servers at a time.

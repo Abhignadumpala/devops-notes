@@ -126,6 +126,19 @@ So we keep the secrets **outside Git**, in AWS.
 
 **Definition:** **AWS Secrets Manager** is a managed AWS service (PaaS) that **stores secrets** such as passwords and API keys. Each secret has a **name** and a **value** (key → value). **AWS takes care of the encryption** (with KMS), and access is controlled with **IAM**. Ansible **fetches the value at run time**, so the password never sits in the repo, not even encrypted.
 
+### My secrets journey: V1 → V2 → Secrets Manager
+
+| Stage | Where the passwords were | Problem |
+|---|---|---|
+| **RoboShop V1** | **Hardcoded** in `group_vars/all.yaml` (MySQL, RabbitMQ) in plain text, pushed to GitHub | Anyone who opens the repo can read them ❌ |
+| **RoboShop V2** | **Ansible Vault**: encrypted `vault.yaml` in Git, vault password on the Ansible server | Safe, but hard to maintain: edit, re-encrypt and push for every change, and share the vault password by hand |
+| **Now** | **AWS Secrets Manager**: one secret `roboshop/dev` with key/value pairs, read at run time | ✅ Nothing in Git, change a password once in AWS. **Secret management became easy** |
+
+```
+ V1: hardcoded passwords ──► V2: Ansible Vault ──► AWS Secrets Manager
+     (plain text in Git)       (encrypted in Git)    (outside Git, AWS encrypts, IAM controls access)
+```
+
 ### Why we moved from Vault to Secrets Manager
 
 In RoboShop V2 we kept the passwords in an encrypted `vault.yaml`. It worked, but it became hard to maintain:

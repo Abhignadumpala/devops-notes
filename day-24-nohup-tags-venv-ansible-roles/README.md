@@ -337,6 +337,11 @@ So V1's 10 playbooks become **1 short `main.yaml` + 10 role folders**. The inven
 
 ## 9. Module vs plugin
 
+> **In short:**
+> - **Task** = one step in a playbook. Each task calls **one module**.
+> - **Module** = runs on the **target server** and changes it (`dnf`, `copy`, `service`).
+> - **Plugin** = runs on the **Ansible controller** and helps Ansible itself, for example fetching secrets from AWS, filtering data, or connecting over SSH.
+
 **Definition:** a **module** is the code that does a task's work **on the target server**: Ansible copies it over SSH, runs it there with the target's Python, and gets back a JSON result (`ok` / `changed` / `failed`). A **plugin** is code that runs **on the Ansible controller** and extends Ansible itself: how it connects, how it shows output, how it changes data, or how it **fetches values from outside**, such as a secret from AWS.
 
 ![Module vs plugin: where the code runs](images/03-module-vs-plugin.svg)

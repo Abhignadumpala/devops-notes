@@ -525,72 +525,9 @@ ansible-playbook main.yaml -e component=catalogue
 
 ## 10. Handlers: restart only when a config changes
 
-> **In short:** handlers work like **notifications**. When a task **changes** something, it can **notify** another task, the handler, to run. Example: if the nginx config changes, the task notifies the `restart nginx` handler.
+> **In short:** handlers work like **notifications**. When a task **changes** something, it can **notify** another task, the handler, to run. Example: if the nginx config changes, the task notifies the `restart nginx` handler, so nginx restarts **only** when its config changed, with no unnecessary downtime.
 
-**Definition:** a **handler** is a task that runs **only when another task notifies it**. A task notifies a handler with `notify:`, and it sends that notification **only if the task changed something**. The most common use: **restart a service only when its config file changed**.
-
-> **Restart the service, not the server:** a handler restarts the **service** (e.g. `nginx`), not the whole machine. During that restart the service is down for a moment, so we don't want to do it when nothing changed.
-
-### The problem: restarting on every run
-
-In V1, every playbook ends with a restart task:
-
-```yaml
-- name: restart frontend
-  service:
-    name: nginx
-    state: restarted        # restarts on EVERY run
-```
-
-This restarts nginx **every time** the playbook runs, even when nothing changed. Each restart = a short **downtime**, and users see errors for no reason.
-
-### The fix: notify a handler
-
-`roles/frontend/tasks/main.yaml`:
-
-```yaml
-- name: copy roboshop config
-  template:
-    src: roboshop.conf.j2
-    dest: /etc/nginx/default.d/roboshop.conf
-  notify: restart nginx     # "if I changed the file, restart nginx"
-```
-
-`roles/frontend/handlers/main.yaml`:
-
-```yaml
-- name: restart nginx       # must match the notify name exactly
-  service:
-    name: nginx
-    state: restarted
-```
-
-```
- copy roboshop config
-        │
-        ├── file changed?   YES → status "changed" → notify "restart nginx" → handler runs ✅
-        │
-        └── file changed?   NO  → status "ok"      → no notification       → no restart, no downtime ✅
-```
-
-| Run | Config file | Task status | Handler | nginx |
-|---|---|---|---|---|
-| 1st run | New file copied | `changed` | **Runs** | Restarted with the new config |
-| 2nd run, nothing changed | Same as before | `ok` | **Skipped** | Keeps running, no downtime |
-| You edit `roboshop.conf.j2`, rerun | Updated | `changed` | **Runs** | Restarted with the new config |
-
-### Rules to remember
-
-| Rule | Meaning |
-|---|---|
-| Runs only on `changed` | An `ok` task never notifies |
-| Runs **once**, at the **end** of the play | Even if 3 tasks notify the same handler, nginx restarts only once |
-| Name must match | `notify: restart nginx` looks for a handler named exactly `restart nginx` |
-| Lives in `handlers/main.yaml` | In a role, Ansible loads it automatically |
-
-You'll see it in the output as `RUNNING HANDLER [frontend : restart nginx]`.
-
-> **Interview one-liner:** a handler is a task that runs only when another task notifies it, and a task notifies only when it changed something. We use it to restart a service only when its config changed, so there's no unnecessary downtime. Handlers run once, at the end of the play.
+📖 Full explanation with the RoboShop frontend code: [Day 25, section 9: Handlers](../day-25-ansible-vault-roboshop-v2/README.md#9-handlers-restart-only-when-a-config-changes). The hands-on demo is in [Step 12](#step-12-fill-the-role) below.
 
 ---
 

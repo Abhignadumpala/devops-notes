@@ -1,15 +1,15 @@
-# Day 25 - Ansible Vault: Encrypting RoboShop V2 Secrets
+# Day 25 - Ansible Vault & Handlers: Encrypting RoboShop V2 Secrets
 
 [← All notes](../README.md)
 
-> **In short:** in RoboShop V1 the passwords (SSH, MySQL root, shipping DB, RabbitMQ) sat in `group_vars/all.yaml`, and most of them were **plain text in a public Git repo**. **Ansible Vault** encrypts them with **AES256**, so the file in Git is unreadable without the **vault password**. In V2, `group_vars/all` becomes a **folder** with two files: `main.yaml` (plain, safe to read) and `vault.yaml` (fully encrypted). `main.yaml` only points to the secrets: `ansible_password: "{{ vault_ansible_password }}"`. We give Ansible the vault password at run time with `--ask-vault-pass` or with a **password file** set in `ansible.cfg`. That file stays on the Ansible server and is **never pushed**.
+> **In short:** in RoboShop V1 the passwords (SSH, MySQL root, shipping DB, RabbitMQ) sat in `group_vars/all.yaml`, and most of them were **plain text in a public Git repo**. **Ansible Vault** encrypts them with **AES256**, so the file in Git is unreadable without the **vault password**. In V2, `group_vars/all` becomes a **folder** with two files: `main.yaml` (plain, safe to read) and `vault.yaml` (fully encrypted). `main.yaml` only points to the secrets: `ansible_password: "{{ vault_ansible_password }}"`. We give Ansible the vault password at run time with `--ask-vault-pass` or with a **password file** set in `ansible.cfg`. That file stays on the Ansible server and is **never pushed**. Finally, **handlers** work like notifications: a task that **changed** a config file notifies a handler to restart the service, so we restart only when something changed and avoid needless downtime.
 
 ## About this class
 
 | Part | Topic | What you learn |
 |---|---|---|
-| **Part 1: Concepts** | What Vault is · whole file vs one value · the `vault_` pattern · `group_vars/all/` as a folder · how to give the vault password · what goes to Git | What each piece is and why we need it |
-| **Part 2: Lab** | Practice the vault commands · move every RoboShop V2 secret into `vault.yaml` · see the error without a password · run with `--ask-vault-pass` · run with a password file · push only encrypted data | Do it on the real Ansible server with the V2 roles |
+| **Part 1: Concepts** | What Vault is · whole file vs one value · the `vault_` pattern · `group_vars/all/` as a folder · how to give the vault password · what goes to Git · handlers | What each piece is and why we need it |
+| **Part 2: Lab** | Practice the vault commands · move every RoboShop V2 secret into `vault.yaml` · see the error without a password · run with `--ask-vault-pass` · run with a password file · push only encrypted data · see the frontend handler run only on a change | Do it on the real Ansible server with the V2 roles |
 
 **Before this:** [Day 24 - Background Jobs (nohup), Ansible Tags, Python venv & Ansible Roles](../day-24-nohup-tags-venv-ansible-roles/README.md)
 
@@ -26,6 +26,7 @@
 6. [group_vars/all as a folder](#6-group_varsall-as-a-folder)
 7. [Giving Ansible the vault password](#7-giving-ansible-the-vault-password)
 8. [What goes to Git and what never does](#8-what-goes-to-git-and-what-never-does)
+9. [Handlers: restart only when a config changes](#9-handlers-restart-only-when-a-config-changes)
 
 **Part 2: Lab**
 - [Lab setup](#lab-setup)
@@ -39,6 +40,9 @@
 - [Step 8: Run with no prompt](#step-8-run-with-no-prompt)
 - [Step 9: Check that Git only has encrypted data, then push](#step-9-check-that-git-only-has-encrypted-data-then-push)
 - [Step 10: Change a secret and the vault password](#step-10-change-a-secret-and-the-vault-password)
+- [Step 11: Add a handler to the frontend role](#step-11-add-a-handler-to-the-frontend-role)
+- [Step 12: Run frontend twice and watch the handler](#step-12-run-frontend-twice-and-watch-the-handler)
+- [Step 13: Change the config and see the handler run again](#step-13-change-the-config-and-see-the-handler-run-again)
 
 **Wrap-up**
 - [Troubleshooting](#troubleshooting)
@@ -193,6 +197,77 @@ roboshop-with-ansible-v2/
 | `~/.ansible_random` (the vault password) | ❌ **never** |
 | SSH private keys, `.pem` files | ❌ **never** |
 | A file after `ansible-vault decrypt` | ❌ never. Encrypt it again first |
+
+---
+
+## 9. Handlers: restart only when a config changes
+
+> **In short:** handlers work like **notifications**. When a task **changes** something, it can **notify** another task, the handler, to run. Example: if the nginx config changes, the task notifies the `restart nginx` handler.
+
+**Definition:** a **handler** is a task that runs **only when another task notifies it**. A task notifies a handler with `notify:`, and it sends that notification **only if the task changed something**. The most common use: **restart a service only when its config file changed**.
+
+> **Restart the service, not the server:** a handler restarts the **service** (e.g. `nginx`), not the whole machine. During that restart the service is down for a moment, so we don't want to do it when nothing changed.
+
+### The problem: restarting on every run
+
+In V1, every playbook ends with a restart task:
+
+```yaml
+- name: restart frontend
+  service:
+    name: nginx
+    state: restarted        # restarts on EVERY run
+```
+
+This restarts nginx **every time** the playbook runs, even when nothing changed. Each restart = a short **downtime**, and users see errors for no reason.
+
+### The fix: notify a handler
+
+`roles/frontend/tasks/main.yaml`:
+
+```yaml
+- name: copy roboshop config
+  template:
+    src: roboshop.conf.j2
+    dest: /etc/nginx/default.d/roboshop.conf
+  notify: restart nginx     # "if I changed the file, restart nginx"
+```
+
+`roles/frontend/handlers/main.yaml`:
+
+```yaml
+- name: restart nginx       # must match the notify name exactly
+  service:
+    name: nginx
+    state: restarted
+```
+
+```
+ copy roboshop config
+        │
+        ├── file changed?   YES → status "changed" → notify "restart nginx" → handler runs ✅
+        │
+        └── file changed?   NO  → status "ok"      → no notification       → no restart, no downtime ✅
+```
+
+| Run | Config file | Task status | Handler | nginx |
+|---|---|---|---|---|
+| 1st run | New file copied | `changed` | **Runs** | Restarted with the new config |
+| 2nd run, nothing changed | Same as before | `ok` | **Skipped** | Keeps running, no downtime |
+| You edit `roboshop.conf.j2`, rerun | Updated | `changed` | **Runs** | Restarted with the new config |
+
+### Rules to remember
+
+| Rule | Meaning |
+|---|---|
+| Runs only on `changed` | An `ok` task never notifies |
+| Runs **once**, at the **end** of the play | Even if 3 tasks notify the same handler, nginx restarts only once |
+| Name must match | `notify: restart nginx` looks for a handler named exactly `restart nginx` |
+| Lives in `handlers/main.yaml` | In a role, Ansible loads it automatically |
+
+You'll see it in the output as `RUNNING HANDLER [frontend : restart nginx]`.
+
+> **Interview one-liner:** a handler is a task that runs only when another task notifies it, and a task notifies only when it changed something. We use it to restart a service only when its config changed, so there's no unnecessary downtime. Handlers run once, at the end of the play.
 
 ---
 
@@ -484,6 +559,89 @@ ansible-playbook main.yaml -e "component=mongodb"
 
 ---
 
+## Step 11: Add a handler to the frontend role
+
+In my case, the frontend role already copies `roboshop.conf.j2`. We tell that task to notify a handler.
+
+```bash
+vim roles/frontend/tasks/main.yaml
+```
+
+Add `notify:` to the config task (the last task):
+
+```yaml
+- name: copy roboshop config
+  template:
+    src: roboshop.conf.j2
+    dest: /etc/nginx/default.d/roboshop.conf
+  notify: restart nginx
+```
+
+```bash
+mkdir -p roles/frontend/handlers
+```
+
+```bash
+vim roles/frontend/handlers/main.yaml
+```
+
+```yaml
+- name: restart nginx
+  service:
+    name: nginx
+    state: restarted
+```
+
+**What it does:** the template task notifies `restart nginx` only when it **changes** the config file. Remove any old "restart nginx" task at the end of `tasks/main.yaml`, otherwise nginx still restarts on every run.
+
+---
+
+## Step 12: Run frontend twice and watch the handler
+
+```bash
+ansible-playbook main.yaml -e "component=frontend"
+```
+
+**Expected (1st run):** `copy roboshop config` is `changed`, then `RUNNING HANDLER [frontend : restart nginx]` ✅.
+
+```bash
+ansible-playbook main.yaml -e "component=frontend"
+```
+
+**Expected (2nd run):** `copy roboshop config` is `ok`, and **no** `RUNNING HANDLER` line ✅. The config didn't change, so nginx keeps running with no restart.
+
+> The frontend role deletes and re-downloads the website files on every run, so those tasks still show `changed`. That's fine: nginx serves the new files without a restart. Only the **config** needs a restart.
+
+---
+
+## Step 13: Change the config and see the handler run again
+
+```bash
+vim roles/frontend/templates/roboshop.conf.j2
+```
+
+Make a small change, for example add a comment line at the top: `# managed by ansible`.
+
+```bash
+ansible-playbook main.yaml -e "component=frontend"
+```
+
+**Expected:** `copy roboshop config` is `changed` → `RUNNING HANDLER [frontend : restart nginx]` ✅.
+
+```bash
+ansible frontend -b -m command -a "systemctl is-active nginx"
+```
+
+**Expected:** `active` ✅. The website works with the new config.
+
+| Run | Config | Handler |
+|---|---|---|
+| Step 12, 1st run | New file | Runs ✅ |
+| Step 12, 2nd run | Same | Skipped ✅ |
+| Step 13 | Changed | Runs ✅ |
+
+---
+
 # Wrap-up
 
 ## Troubleshooting
@@ -498,6 +656,8 @@ ansible-playbook main.yaml -e "component=mongodb"
 | YAML error near `{{ vault_... }}` | Value not in quotes | Write `"{{ vault_xyz }}"` |
 | Password visible in `-v` output | A task prints the variable | Add `no_log: true` to tasks that use secrets |
 | `ERROR! input is already encrypted` | Ran `encrypt` on a vault file | It's already done; use `edit` |
+| `The requested handler 'restart nginx' was not found` | `notify:` name doesn't match the handler name, or the handler isn't in `roles/<role>/handlers/main.yaml` | Use the exact same name in both places |
+| Handler never runs | The notifying task is `ok`, not `changed` | Expected: handlers run only on a change |
 
 ## What I learned
 
@@ -509,12 +669,14 @@ ansible-playbook main.yaml -e "component=mongodb"
 - **`group_vars/all/`** can be a folder; Ansible loads every file inside.
 - Password: `--ask-vault-pass` (prompt) or `vault_password_file` in `ansible.cfg` (no prompt). The file is outside the repo, `chmod 600`, not executable.
 - Git gets the **encrypted file**; the **vault password never**.
+- **Handlers** run only when a task **notifies** them, and a task notifies only when it **changed** something. They run **once**, at the **end** of the play.
 
 **Part 2: Lab**
 - Practised `encrypt`, `view`, `edit`, `rekey`, `decrypt`, `encrypt_string` on a test file.
 - Moved every RoboShop secret (SSH, MySQL root, shipping DB, RabbitMQ) into `group_vars/all/vault.yaml`.
 - Saw `no vault secrets found` without a password, ran with `--ask-vault-pass`, then with no prompt using `~/.ansible_random`.
 - Checked Git has only `$ANSIBLE_VAULT` data and no password file before pushing.
+- Added `notify: restart nginx` to the frontend config task: the handler ran on the 1st run and after a config change, and was skipped when nothing changed.
 
 ```
  V1: group_vars/all.yaml   (1 value encrypted inline, the rest plain text ❌)
@@ -533,6 +695,7 @@ ansible-playbook main.yaml -e "component=mongodb"
 | Question | Answer |
 |---|---|
 | How do you store passwords securely in Ansible? | Encrypt them with **Ansible Vault** (`ansible-vault create`/`encrypt`). The encrypted file can go to Git; the vault password is given at run time with `--ask-vault-pass` or a password file that is never committed |
+| What are handlers? | Tasks that run only when another task **notifies** them. A task notifies only when it **changed** something, e.g. restart nginx only when its config changed, so there's no needless downtime |
 | How does Ansible get the vault password in a pipeline (no one to type it)? | A password file (`--vault-password-file` or `vault_password_file` in `ansible.cfg`) written at run time from a CI secret or AWS Secrets Manager / SSM, never stored in the repo |
 
 ### Other Questions
@@ -546,6 +709,7 @@ ansible-playbook main.yaml -e "component=mongodb"
 | Why use `vault_` prefixed variables? | So the normal vars file shows which variables exist (`x: "{{ vault_x }}"`) without decrypting, and roles keep using the normal names |
 | What does "Attempting to decrypt but no vault secrets found" mean? | A vault-encrypted file was loaded but no vault password was supplied |
 | How do you stop a secret from showing in the output? | `no_log: true` on the task |
+| When do handlers run? | Once, at the end of the play, even if several tasks notify them. Use `meta: flush_handlers` to run them earlier |
 | What are vault IDs? | Labels for different vault passwords, e.g. `--vault-id dev@prompt --vault-id prod@~/.vault_prod`, so dev and prod use different passwords |
 | Can a vault password file be a script? | Yes. If it's executable, Ansible runs it and uses its output (e.g. to read the password from a secrets manager) |
 | You pushed a plain password by mistake. Is deleting it enough? | No. It stays in Git history. Rotate the password, then clean the history if needed |
@@ -553,4 +717,4 @@ ansible-playbook main.yaml -e "component=mongodb"
 
 ---
 
-**Source:** [Ansible Vault](https://docs.ansible.com/ansible/latest/vault_guide/index.html) · [Encrypting content](https://docs.ansible.com/ansible/latest/vault_guide/vault_encrypting_content.html) · [Using encrypted variables and files](https://docs.ansible.com/ansible/latest/vault_guide/vault_using_encrypted_content.html) · [Organizing host and group variables](https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#organizing-host-and-group-variables)
+**Source:** [Ansible Vault](https://docs.ansible.com/ansible/latest/vault_guide/index.html) · [Encrypting content](https://docs.ansible.com/ansible/latest/vault_guide/vault_encrypting_content.html) · [Using encrypted variables and files](https://docs.ansible.com/ansible/latest/vault_guide/vault_using_encrypted_content.html) · [Organizing host and group variables](https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#organizing-host-and-group-variables) · [Handlers](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_handlers.html)

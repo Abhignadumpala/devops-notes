@@ -30,7 +30,8 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 22 - Ansible vs Shell Script, command vs shell, and Creating EC2 + Route 53 Records with Ansible](day-22-ansible-shell-vs-ansible-aws-ec2-route53/README.md)
 - [Day 23 - Ansible AWS Access, unarchive remote_src, App Deployment Steps & Managing Java Versions](day-23-ansible-aws-access-remote-src-deployment-java/README.md)
 - [Day 24 - Background Jobs (nohup), Ansible Tags, Python venv & Ansible Roles](day-24-nohup-tags-venv-ansible-roles/README.md)
-- [Day 25 - Ansible Vault: Encrypting RoboShop V2 Secrets](day-25-ansible-vault-roboshop-v2/README.md)
+- [Day 25 - Ansible Vault & Handlers: Encrypting RoboShop V2 Secrets](day-25-ansible-vault-roboshop-v2/README.md)
+- [Day 26 - Roles Recap, AWS Secrets Manager, include_role vs import_role, Dynamic Inventory & Parallelism (forks, serial)](day-26-secrets-manager-include-import-dynamic-inventory-parallelism/README.md)
 
 ## Projects
 

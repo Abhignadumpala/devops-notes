@@ -421,6 +421,53 @@ So V1's 10 playbooks become **1 short `main.yaml` + 10 role folders**. The inven
 | `defaults/` | A value users **should be able to change** | `app_version: v4`, a port |
 | `vars/` | A value that **should not change** for this role | `component: catalogue`, the service name |
 
+**Example: the same variable in both folders (RoboShop V2 catalogue role)**
+
+`roles/catalogue/defaults/main.yaml`:
+
+```yaml
+course: devops
+duration: 100hrs
+trainer: <name>
+```
+
+`roles/catalogue/vars/main.yaml`:
+
+```yaml
+course: ansible
+duration: 10hrs
+```
+
+`roles/catalogue/tasks/main.yaml` prints them:
+
+```yaml
+- name: print variables
+  debug:
+    msg: "COURSE: {{ course }}, DURATION: {{ duration }}, TRAINER: {{ trainer }}"
+```
+
+Running `ansible-playbook main.yaml -e component=catalogue` prints:
+
+```
+COURSE: ansible, DURATION: 10hrs, TRAINER: <name>
+```
+
+| Variable | In `defaults/` | In `vars/` | Used | Why |
+|---|---|---|---|---|
+| `course` | devops | ansible | **ansible** | Set in both → `vars/` wins |
+| `duration` | 100hrs | 10hrs | **10hrs** | Set in both → `vars/` wins |
+| `trainer` | `<name>` | (not set) | **`<name>`** | Only `defaults/` has it → it's used |
+
+**Why `vars/` wins:** the two folders have different jobs.
+
+| | `defaults/` | `vars/` |
+|---|---|---|
+| Meaning | "Use this **if nobody gives a value**" | "This role **needs this value**" |
+| Meant to be changed? | ✅ Yes, by whoever uses the role | ❌ No, it's internal to the role |
+| Like a form field that is | **Pre-filled**: you can type over it from anywhere | **Locked**: `group_vars` can't change it by accident |
+
+> **Rule of thumb:** if users should be able to change a value, put it in `defaults/`; if they shouldn't, put it in `vars/`. Only `-e` beats `vars/`.
+
 > **Interview one-liner:** role `defaults` have the lowest priority of all and are meant to be overridden; role `vars` have high priority and are for values that shouldn't change; `-e` beats both.
 
 ---

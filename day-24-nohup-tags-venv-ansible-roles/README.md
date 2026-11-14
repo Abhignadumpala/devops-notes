@@ -288,6 +288,96 @@ roles/
 
 > **Interview one-liner:** a role is a standard folder structure (`tasks`, `handlers`, `vars`, `defaults`, `templates`, `files`, `meta`) for one component; Ansible loads `main.yaml` from each folder automatically, so playbooks stay short and the code is reusable.
 
+### RoboShop V2: what goes where
+
+**Every file in the V2 project, in 3 groups:**
+
+| Group | Where | What it holds |
+|---|---|---|
+| **① Project files** | Repo root + `group_vars/` | Settings, server list, the one playbook, variables for all servers |
+| **② Common role** (shared code) | `roles/common/tasks/` | Steps that **2 or more apps repeat**, written with `{{ component }}` instead of an app name |
+| **③ Own role** (own code) | `roles/<component>/` | Steps, templates and files that **only this one app** needs |
+
+```
+roboshop-ansible-v2/
+├── ansible.cfg, inventory.ini, main.yaml, roboshop.yaml   ① project files
+├── group_vars/all/main.yaml + vault.yaml                  ① variables for every server
+└── roles/
+    ├── common/tasks/app-setup.yaml, nodejs.yaml, java.yaml,
+    │               python.yaml, systemd-setup.yaml, restart.yaml   ② shared code
+    └── catalogue/, user/, cart/, shipping/, payment/,
+        mongodb/, redis/, mysql/, rabbitmq/, frontend/              ③ own code
+```
+
+**① Project files (outside `roles/`)**
+
+| File | What it contains | Example |
+|---|---|---|
+| `ansible.cfg` | Ansible settings | `inventory=inventory.ini`, `vault_password_file=~/.ansible_random` |
+| `inventory.ini` | The server list, one **group** per component | `[catalogue]` → `catalogue.<domain>` |
+| `main.yaml` | The **only playbook** we run. It picks the servers and the role | `hosts: "{{ component }}"`, `roles: - "{{ component }}"` |
+| `roboshop.yaml` | Creates/deletes the EC2 servers + Route 53 records | same as V1 |
+| `group_vars/all/main.yaml` | Variables for **every** server. This is **not** a role file: Ansible loads every file in `group_vars/all/` | `mongodb_host: mongodb.<domain>`, `ansible_password: "{{ vault_ansible_password }}"` |
+| `group_vars/all/vault.yaml` | Encrypted passwords ([Day 25](../day-25-ansible-vault-roboshop-v2/README.md)) | `vault_mysql_root_password: …` (AES256) |
+
+**② Common role: `roles/common/tasks/` (shared code)**
+
+| File | What it does | Used by |
+|---|---|---|
+| `app-setup.yaml` | Create the `roboshop` user, clean and create `/app`, download `{{ component }}-v4.zip`, unzip | catalogue, user, cart, shipping, payment |
+| `nodejs.yaml` | Enable Node.js 24, install it, `npm install` | catalogue, user, cart |
+| `java.yaml` | Install Maven + Java 25, `mvn clean package`, move the jar | shipping |
+| `python.yaml` | Install Python 3.14, create a venv, `pip install` | payment |
+| `systemd-setup.yaml` | Copy `{{ component }}.service.j2` to `/etc/systemd/system/` | catalogue, user, cart, shipping, payment |
+| `restart.yaml` | `daemon-reload` + restart and enable `{{ component }}` | catalogue, user, cart, shipping, payment |
+
+The common role has **only `tasks/`**. Its files never run by themselves; another role calls them:
+
+```yaml
+- name: nodejs setup
+  include_role:
+    name: common
+    tasks_from: nodejs        # runs roles/common/tasks/nodejs.yaml
+```
+
+**③ Own role: what each folder in `roles/<component>/` contains**
+
+| Folder / file | What it contains | Loaded how | RoboShop V2 example |
+|---|---|---|---|
+| `tasks/main.yaml` | The **steps** for this app: calls to common + its own tasks. **The only file a role must have** | Automatically when the role runs | catalogue: `include_role` common ×4 + mongo repo + mongosh + load products |
+| `handlers/main.yaml` | Tasks that run **only when notified** by a task that **changed** something, once, at the end of the play | A task has `notify: <handler name>` | frontend: `restart nginx` after `roboshop.conf` changes |
+| `templates/` | `.j2` files with `{{ variables }}`, filled in before copying | `template: src: x.j2` looks here | `catalogue.service.j2`, `roboshop.conf.j2` |
+| `files/` | Plain files copied **as they are** (no variables) | `copy: src: x` looks here | `mongo.repo`, `rabbitmq.repo` |
+| `defaults/main.yaml` | Default variables, **lowest priority**: anything else overrides them | Automatically | (class demo) `course: devops` |
+| `vars/main.yaml` | Role variables, **high priority**: only `-e` and a few others beat them | Automatically | (class demo) `course: ansible`, which beats `defaults` |
+| `meta/main.yaml` | **Dependencies**: roles that must run **before** this one | Automatically, before `tasks/` | (class demo) `dependencies: - role: example` |
+
+**Which roles use which parts:**
+
+| Role | Calls common? | Own tasks | `templates/` | `files/` | `handlers/` |
+|---|---|---|---|---|---|
+| catalogue | ✅ app-setup, nodejs, systemd-setup, restart | mongo client + load products | `catalogue.service.j2` | `mongo.repo` | |
+| user, cart | ✅ app-setup, nodejs, systemd-setup, restart | none | `<name>.service.j2` | | |
+| shipping | ✅ app-setup, java, systemd-setup, restart | count cities, load cities, create app DB user | `shipping.service.j2` | | |
+| payment | ✅ app-setup, python, systemd-setup, restart | none | `payment.service.j2` | | |
+| mongodb, rabbitmq | ❌ | everything (install, config, start) | | `mongo.repo` / `rabbitmq.repo` | |
+| redis, mysql | ❌ | everything | | | |
+| frontend | ❌ | install nginx, clean html, download + unzip, copy config | `roboshop.conf.j2` | | ✅ `restart nginx` |
+
+**Why `<name>.service.j2` stays in each app's own role:** every app's service file is different (different environment variables). The common `systemd-setup.yaml` only says "copy `{{ component }}.service.j2`", and Ansible finds the file in the role that called it.
+
+**How to decide where a step goes:**
+
+| Question | Put it in |
+|---|---|
+| Do 2 or more apps repeat this step? | `roles/common/tasks/<name>.yaml`, written with `{{ component }}` |
+| Only one app needs it? | `roles/<component>/tasks/main.yaml` |
+| A config file with variables? | `roles/<component>/templates/<name>.j2` |
+| A file copied as it is? | `roles/<component>/files/` |
+| Restart only when a config changed? | `roles/<component>/handlers/main.yaml` + `notify:` |
+| A value every server needs? | `group_vars/all/main.yaml` |
+| A password? | `group_vars/all/vault.yaml` (encrypted) |
+
 ---
 
 ## 7. How a playbook uses a role

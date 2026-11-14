@@ -79,6 +79,7 @@ ssh -i /c/devops/practice/devops-key ec2-user@<public-ip>      # absolute
   rm aiops.txt
   rm -r aws
   ```
+- Empty a folder but keep it: `find <dir> -mindepth 1 -delete` (includes hidden files) or `rm -rf <dir>/*` (skips hidden files). Preview first with `-print` instead of `-delete`. See [Empty a Folder](README.md#empty-a-folder-keep-the-folder).
 
 Linux is case-sensitive throughout — `Devops` and `devops` are two different names, whether for files, folders, or commands.
 

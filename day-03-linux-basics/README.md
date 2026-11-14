@@ -236,6 +236,46 @@ rm -r aws                  # delete folder (recursive)
 
 > There's no recycle bin in Linux. `rm` is permanent.
 
+### Empty a Folder (keep the folder)
+
+**Definition:** delete everything **inside** a folder but keep the folder itself, for example clearing `/app` before unzipping a new app version.
+
+| Command | Deletes | Hidden files (`.env`, `.git`) |
+|---|---|---|
+| `rm -rf <dir>/*` | All files and subfolders inside | ❌ Kept: `*` doesn't match names starting with `.` |
+| `find <dir> -mindepth 1 -delete` | Everything inside | ✅ Deleted too |
+| `rm -rf <dir>` | The folder itself **and** everything inside | ✅ Deleted |
+
+**Step 1: Preview what will be deleted**
+
+```bash
+find /app -mindepth 1 -print
+```
+
+**Step 2: Delete everything inside, including hidden files**
+
+```bash
+find /app -mindepth 1 -delete
+```
+
+`-mindepth 1` skips depth 0, which is `/app` itself, so only its contents are deleted.
+
+**Or delete only the visible files**
+
+```bash
+rm -rf /app/*
+```
+
+**Check that the folder still exists and is empty**
+
+```bash
+ls -la /app
+```
+
+> ⚠️ Double-check the path before pressing Enter. An empty variable is the classic disaster: in a script, `rm -rf $APP_DIR/*` with `APP_DIR` unset becomes `rm -rf /*`. Use `rm -rf "${APP_DIR:?}"/*` so the script stops if the variable is empty.
+
+**Interview one-liner:** *"`rm -rf dir/*` empties a folder but misses hidden files; `find dir -mindepth 1 -delete` removes everything inside and keeps the folder."*
+
 ---
 
 ## Listing Files (ls)

@@ -126,6 +126,41 @@ So we keep the secrets **outside Git**, in AWS.
 
 **Definition:** **AWS Secrets Manager** is a managed AWS service (PaaS) that **stores secrets** such as passwords and API keys. Each secret has a **name** and a **value** (key → value). **AWS takes care of the encryption** (with KMS), and access is controlled with **IAM**. Ansible **fetches the value at run time**, so the password never sits in the repo, not even encrypted.
 
+### Why we moved from Vault to Secrets Manager
+
+In RoboShop V2 we kept the passwords in an encrypted `vault.yaml`. It worked, but it became hard to maintain:
+
+| With Vault, every time… | We had to… |
+|---|---|
+| We **added or changed a password** | Open the vault (`ansible-vault edit`), change it, save. The file is re-encrypted |
+| The vault file changed | Copy the new encrypted text into the repo, commit, push to GitHub, then `git pull` on the Ansible server |
+| Someone new (or a new server) ran the playbooks | Share the **vault password** with them by hand. It never goes to GitHub, so it has to be copied around |
+
+So we moved the secrets to **AWS Secrets Manager**:
+
+- It stores **key → value pairs**, but for **confidential information** (passwords, API keys).
+- **AWS takes care of the encryption** (KMS). We don't encrypt anything ourselves.
+- **Ansible fetches the values** from Secrets Manager **at run time**. Nothing secret is in GitHub anymore, not even encrypted.
+- To change a password, we update it **once in AWS**. No code change, no push.
+
+### Why AWS and not a separate tool?
+
+There are separate secrets tools too (for example HashiCorp Vault, a server you install and run yourself). But our servers already run on AWS, so keeping the secrets **inside AWS** makes integration easy:
+
+| We need | Separate tool | Inside AWS |
+|---|---|---|
+| Who can read a secret | Its own users and tokens | **IAM** roles we already use (the Ansible server's EC2 role) |
+| Encryption | Set it up ourselves | **KMS**, automatic |
+| Who read what | Its own logs | **CloudTrail**, with our other AWS logs |
+| Running it | Install, patch and back up another server | **Managed by AWS** (PaaS) |
+
+```
+ Before:  passwords ─► vault.yaml (encrypted) ─► GitHub ─► Ansible server + vault password
+ Now:     passwords ─► AWS Secrets Manager ◄── Ansible server asks at run time (IAM role)
+```
+
+> **Interview one-liner:** Vault became hard to maintain, because every new password meant editing, re-encrypting and pushing the vault file and sharing the vault password. We moved to AWS Secrets Manager: AWS encrypts the key-value secrets, Ansible fetches them at run time through IAM, and since everything is already on AWS, the integration is simple with no extra tool to run.
+
 ### How Ansible gets a secret
 
 ```

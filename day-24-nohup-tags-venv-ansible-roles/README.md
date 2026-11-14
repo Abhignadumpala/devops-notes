@@ -525,6 +525,8 @@ ansible-playbook main.yaml -e component=catalogue
 
 ## 10. Handlers: restart only when a config changes
 
+> **In short:** handlers work like **notifications**. When a task **changes** something, it can **notify** another task, the handler, to run. Example: if the nginx config changes, the task notifies the `restart nginx` handler.
+
 **Definition:** a **handler** is a task that runs **only when another task notifies it**. A task notifies a handler with `notify:`, and it sends that notification **only if the task changed something**. The most common use: **restart a service only when its config file changed**.
 
 > **Restart the service, not the server:** a handler restarts the **service** (e.g. `nginx`), not the whole machine. During that restart the service is down for a moment, so we don't want to do it when nothing changed.

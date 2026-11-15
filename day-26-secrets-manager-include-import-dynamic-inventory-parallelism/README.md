@@ -9,7 +9,7 @@
 | Part | Topic | What you learn |
 |---|---|---|
 | **Part 1: Concepts** | Roles recap · Vault recap and its limits · AWS Secrets Manager · `include_role` vs `import_role` · dynamic inventory · `forks` vs `serial` | What each one is, why we need it, and when to use which |
-| **Part 2: Lab** | Store the MySQL password in Secrets Manager → give the Ansible server read access → fetch it with a lookup → compare include vs import → build an AWS dynamic inventory → run with `forks` and `serial` | Do it on the real Ansible server with the RoboShop V2 roles |
+| **Part 2: Lab** | Store the passwords in Secrets Manager → give the Ansible server read access → fetch them with a lookup → compare include vs import → create 10 frontend servers and find them with a dynamic inventory → run with `forks` and `serial` | Do it on the real Ansible server with the RoboShop V2 roles |
 
 **Before this:** [Day 24 - Roles](../day-24-nohup-tags-venv-ansible-roles/README.md) · [Day 25 - Ansible Vault & Handlers](../day-25-ansible-vault-roboshop-v2/README.md)
 
@@ -37,12 +37,14 @@
 - [Step 10: tags: import passes them down, include doesn't](#step-10-tags-import-passes-them-down-include-doesnt)
 - [Step 11: loops: only include works](#step-11-loops-only-include-works)
 - [Step 12: errors: import fails before anything runs](#step-12-errors-import-fails-before-anything-runs)
-- [Step 13: Create the AWS dynamic inventory](#step-13-create-the-aws-dynamic-inventory)
-- [Step 14: See the groups AWS gives us](#step-14-see-the-groups-aws-gives-us)
-- [Step 15: Run a role with the dynamic inventory](#step-15-run-a-role-with-the-dynamic-inventory)
-- [Step 16: Watch forks at work](#step-16-watch-forks-at-work)
-- [Step 17: Run a rolling update with serial](#step-17-run-a-rolling-update-with-serial)
-- [Step 18: Clean up](#step-18-clean-up)
+- [Step 13: Create 10 frontend servers](#step-13-create-10-frontend-servers)
+- [Step 14: Create the dynamic inventory project](#step-14-create-the-dynamic-inventory-project)
+- [Step 15: Let Ansible find the servers](#step-15-let-ansible-find-the-servers)
+- [Step 16: Group the servers with keyed_groups](#step-16-group-the-servers-with-keyed_groups)
+- [Step 17: Write the playbook and the login variables](#step-17-write-the-playbook-and-the-login-variables)
+- [Step 18: Watch forks at work](#step-18-watch-forks-at-work)
+- [Step 19: Run a rolling update with serial](#step-19-run-a-rolling-update-with-serial)
+- [Step 20: Clean up](#step-20-clean-up)
 
 **Wrap-up**
 - [Troubleshooting](#troubleshooting)
@@ -377,77 +379,77 @@ In the lab below, `set_fact` changes `run_common` to `false` halfway through the
 
 ## 5. Dynamic inventory
 
-**Definition:** a **dynamic inventory** builds the list of servers **at run time** by asking a source like AWS, instead of reading a hand-written `inventory.ini`. On AWS, the **`amazon.aws.aws_ec2` inventory plugin** asks EC2 which instances are **running** in a region, reads their **tags**, and groups them, so Ansible always has the current servers and IPs.
+**Definition:** a **dynamic inventory** builds the list of servers **at run time** by asking AWS, instead of us writing IPs in `inventory.ini`. The **AWS dynamic inventory plugin** (`amazon.aws.aws_ec2`) runs Python code in the background: it goes to the region we choose, finds the **running** instances, picks the ones we want (e.g. Name = `roboshop-frontend`), and gets their **IP addresses**.
 
-### The problem with a static inventory
+### Why we need it: servers come and go
 
-| Static `inventory.ini` | What goes wrong |
-|---|---|
-| We write each server's name or IP by hand | 10 more frontend servers = 10 more lines to add |
-| Auto Scaling adds or removes servers | The file is out of date in minutes |
-| IPs change after a terminate + create | Wrong or missing hosts |
-
-### How the AWS plugin works
+In real production, servers **increase and decrease** with **Auto Scaling**, based on load:
 
 ```
- ansible-playbook -i inventory.aws_ec2.yaml ...
+ Morning (low load):   2 frontend servers
+ Sale day (high load): 10 frontend servers   ← 8 new servers, 8 new IPs
+ Night (load drops):   3 frontend servers    ← 7 servers and their IPs are gone
+```
+
+The IPs **come and go** with the servers, so writing them in `inventory.ini` by hand isn't possible: the file would be wrong within minutes.
+
+| Static `inventory.ini` | Dynamic inventory |
+|---|---|
+| We write each IP or name by hand | Ansible **asks AWS** each time it runs |
+| Wrong as soon as Auto Scaling adds or removes servers | Always the servers running **right now** |
+| 10 new servers = 10 lines to add | 10 new servers = nothing to change |
+
+### How the plugin works
+
+```
+ ansible-playbook -i frontend.aws_ec2.yaml main.yaml
         │
         ▼
- aws_ec2 plugin ──► AWS EC2 API (region us-east-1)
-        │            "which instances are running?"
+ aws_ec2 plugin (Python + boto3, on the Ansible server)
+        │ ① which region?          → us-east-1
+        │ ② which instances?       → state = running
+        │ ③ which ones do we want? → tag Name = roboshop-frontend
+        │ ④ which address?         → private IP
         ▼
- filters: running + Name tag starts with roboshop-*
-        │
-        ▼
- groups by the Component tag  ──►  [frontend] 10.0.1.5, 10.0.1.9, …
-                                    [catalogue] 10.0.2.7
-        │
-        ▼
- Ansible connects to each private IP
+ 172.31.23.119, 172.31.16.35, 172.31.27.132, … ──► Ansible connects to each
 ```
 
 ### The inventory file
 
-The file name **must end with `aws_ec2.yaml`** (or `aws_ec2.yml`); that's how Ansible knows which plugin reads it. Example `inventory.aws_ec2.yaml`:
+The file name **must end with `.aws_ec2.yaml`** (or `.aws_ec2.yml`). That's how Ansible knows the AWS plugin should read it. Example `frontend.aws_ec2.yaml`:
 
 ```yaml
 plugin: amazon.aws.aws_ec2
+
 regions:
-  - us-east-1
+- us-east-1
+
 filters:
   instance-state-name: running
-  tag:Name: roboshop-*
-keyed_groups:
-  - key: tags.Component      # a tag on each instance, e.g. Component=frontend
-    prefix: ""
-    separator: ""
+  tag:Name: roboshop-frontend
+
 hostnames:
-  - private-ip-address       # connect with the private IP (same VPC)
+- private-ip-address
+
+keyed_groups:
+- key: tags.Name
 ```
 
 | Setting | What it does |
 |---|---|
-| `plugin` | Use the AWS EC2 plugin |
-| `regions` | Which regions to search |
-| `filters` | Only running instances whose Name starts with `roboshop-` |
-| `keyed_groups` | Make one group per value of the `Component` tag: `frontend`, `catalogue`, … These match `hosts: "{{ component }}"` in `main.yaml` |
-| `hostnames` | Show and connect to each host by its private IP |
+| `plugin` | Use the AWS EC2 inventory plugin |
+| `regions` | Which region(s) to search |
+| `filters` | Only **running** instances whose **Name tag** is `roboshop-frontend` (same names as the EC2 console filters) |
+| `hostnames` | Use each server's **private IP** as its name, and connect with it (same VPC) |
+| `keyed_groups` | Make a **group** from a value, here the Name tag, so a playbook can say `hosts: roboshop_frontend` |
 
-> **Why a `Component` tag?** The `Name` tag has a hyphen (`roboshop-frontend`), and group names should be plain words. A tag `Component=frontend` gives a clean group name that matches our role names.
+> **Group names:** Ansible changes characters it doesn't allow in group names, like `-`, to `_`. So the tag `roboshop-frontend` becomes the group **`roboshop_frontend`** (some versions add a leading `_`). Always run `ansible-inventory --graph` and copy the exact group name into `hosts:`.
 
-**Needs:** `boto3` on the Ansible server, the `amazon.aws` collection, and IAM permission `ec2:DescribeInstances`.
+Without `keyed_groups`, every server only lands in the group **`aws_ec2`**.
 
-### Scale example
+**Needs:** `boto3` + `botocore` on the Ansible server, the `amazon.aws` collection, and IAM permission `ec2:DescribeInstances` (the Ansible server's role already has EC2 access).
 
-Creating 10 frontend servers in one command:
-
-```bash
-aws ec2 run-instances --image-id <ami-id> --instance-type t3.micro --security-groups roboshop-common --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=roboshop-frontend},{Key=Component,Value=frontend}]' --count 10
-```
-
-The `frontend` group now has **10 hosts**, and we didn't edit any inventory file. `ansible-playbook main.yaml -i inventory.aws_ec2.yaml -e "component=frontend"` configures all 10.
-
-> **Interview one-liner:** a dynamic inventory asks the cloud at run time which servers exist; on AWS the `aws_ec2` plugin (file name ending in `aws_ec2.yaml`) lists running instances, filters them by tags, and groups them, so scaling needs no inventory edits.
+> **Interview one-liner:** with Auto Scaling, servers and IPs come and go, so we can't keep them in a static inventory. The AWS dynamic inventory plugin (a file ending in `.aws_ec2.yaml`) queries the region at run time for running instances, filters them by tags, and gives Ansible their IPs.
 
 ---
 
@@ -467,7 +469,7 @@ With 10 servers and the default `forks = 5`:
 
 | Set it | Where |
 |---|---|
-| For every run | `ansible.cfg` → `[defaults]` → `forks = 20` |
+| For every run | `ansible.cfg` → `[defaults]` → `forks = 20` (the section is `[defaults]`, with an **s**) |
 | For one run | `ansible-playbook ... -f 20` |
 
 More forks = faster, but uses more CPU and memory on the Ansible server.
@@ -476,7 +478,16 @@ More forks = faster, but uses more CPU and memory on the Ansible server.
 
 **The problem:** 100 frontend servers. Without `serial`, every task runs on all 100: delete the old code on all → download the new code on all → restart all. During that time, **all 100 are down** at once, and the website is down.
 
-**With `serial: 10`:** the whole play runs on 10 servers, then the next 10, and so on.
+**With `serial: 10`:** the whole play runs on 10 servers, then the next 10, and so on. This is a **rolling update**: the update rolls through the servers **set by set**:
+
+```
+ Set 1:  [■■■■■■■■■■] updating      90 servers serving old code
+ Set 2:  [■■■■■■■■■■] updating      10 new ✅ + 80 old serving
+ Set 3:  [■■■■■■■■■■] updating      20 new ✅ + 70 old serving
+ ...
+ Set 10: [■■■■■■■■■■] updating      90 new ✅ serving
+ Done:   100 new ✅
+```
 
 ```yaml
 - name: deploy frontend
@@ -882,140 +893,217 @@ cd ~/roboshop-with-ansible-v2
 
 ---
 
-## Step 13: Create the AWS dynamic inventory
+## Step 13: Create 10 frontend servers
 
-First, give each RoboShop server a `Component` tag with its short name (laptop):
+On the Ansible server (its IAM role can create EC2 instances):
 
 ```bash
-for c in mongodb redis mysql rabbitmq catalogue user cart shipping payment frontend; do id=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=roboshop-$c" "Name=instance-state-name,Values=running" --query 'Reservations[].Instances[].InstanceId' --output text); aws ec2 create-tags --resources $id --tags Key=Component,Value=$c; done
+aws ec2 run-instances --image-id <ami-id> --instance-type t3.micro --security-groups "roboshop-common" --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=roboshop-frontend}]' --query 'Instances[0].InstanceId' --output text --count 10
 ```
 
-**What it does:** tags `roboshop-frontend` with `Component=frontend`, and so on for all 10.
-**Expected:** no output = success ✅.
+**What it does:** creates **10** servers at once (`--count 10`), all with the Name tag `roboshop-frontend`, like Auto Scaling adding servers under load. `roboshop-common` lets the Ansible server SSH to them.
+**Expected:** one instance ID printed, and 10 new `roboshop-frontend` instances in the EC2 console ✅.
 
-> To tag new servers automatically, add `tags: Component: "{{ item }}"` to the `ec2_instance` task in `roboshop.yaml`.
+> In my case, the AMI ID is the same one used in `roboshop.yaml`. 10 × t3.micro cost money every hour; terminate them in Step 20.
 
-On the Ansible server:
+---
+
+## Step 14: Create the dynamic inventory project
 
 ```bash
-vim inventory.aws_ec2.yaml
+mkdir ~/ansible-dynamic-inventory
+```
+
+```bash
+cd ~/ansible-dynamic-inventory
+```
+
+```bash
+vim frontend.aws_ec2.yaml
 ```
 
 ```yaml
 plugin: amazon.aws.aws_ec2
+
 regions:
-  - us-east-1
+- us-east-1
+
 filters:
   instance-state-name: running
-  tag:Name: roboshop-*
-keyed_groups:
-  - key: tags.Component
-    prefix: ""
-    separator: ""
+  tag:Name: roboshop-frontend
+
 hostnames:
-  - private-ip-address
+- private-ip-address
 ```
 
-**What it does:** tells Ansible to ask AWS for running `roboshop-*` instances and to group them by their `Component` tag.
+**What it does:** tells the AWS plugin to search `us-east-1` for **running** servers named `roboshop-frontend` and to use their **private IPs**.
 
 ---
 
-## Step 14: See the groups AWS gives us
+## Step 15: Let Ansible find the servers
 
 ```bash
-ansible-inventory -i inventory.aws_ec2.yaml --graph
+ansible-inventory -i frontend.aws_ec2.yaml --graph
 ```
 
-**What it does:** shows the groups and hosts the plugin built.
-**Expected:** ✅
+**What it does:** runs the plugin and shows what it found. We never typed a single IP.
+**Expected:** 10 private IPs under `@aws_ec2` ✅:
 
 ```
 @all:
   |--@ungrouped:
   |--@aws_ec2:
-  |  |--172.31.x.x
-  |  |--...
-  |--@frontend:
-  |  |--172.31.x.x
-  |--@catalogue:
-  |  |--172.31.x.x
-  ...
+  |  |--172.31.23.119
+  |  |--172.31.16.35
+  |  |-- … (10 IPs)
 ```
-
-```bash
-ansible -i inventory.aws_ec2.yaml frontend -m ping
-```
-
-**Expected:** `"ping": "pong"` from the frontend's private IP ✅.
 
 ---
 
-## Step 15: Run a role with the dynamic inventory
+## Step 16: Group the servers with keyed_groups
 
 ```bash
-ansible-playbook -i inventory.aws_ec2.yaml main.yaml -e "component=catalogue"
+vim frontend.aws_ec2.yaml
 ```
 
-**What it does:** the same V2 playbook, but the hosts come from AWS instead of `inventory.ini`. `hosts: "{{ component }}"` finds the `catalogue` group from the tag.
-**Expected:** `failed=0` ✅.
+Add at the end:
 
-> To make it the default, set `inventory = inventory.aws_ec2.yaml` in `ansible.cfg`. Note: `group_vars/` still works, because it sits next to the inventory file.
+```yaml
+keyed_groups:
+- key: tags.Name
+```
+
+```bash
+ansible-inventory -i frontend.aws_ec2.yaml --graph
+```
+
+**Expected:** a new group made from the Name tag, holding the same 10 IPs ✅, for example `@roboshop_frontend`. **Copy the exact name** you see; we use it in the playbook.
 
 ---
 
-## Step 16: Watch forks at work
+## Step 17: Write the playbook and the login variables
 
 ```bash
-time ansible -i inventory.aws_ec2.yaml all -m command -a "sleep 5" -f 1
+mkdir group_vars
 ```
 
-**Expected:** about **50 s**: one server at a time × 10 servers.
-
 ```bash
-time ansible -i inventory.aws_ec2.yaml all -m command -a "sleep 5" -f 10
-```
-
-**Expected:** about **5–10 s**: all 10 at once ✅. Same work, more forks, much faster.
-
----
-
-## Step 17: Run a rolling update with serial
-
-```bash
-vim test-serial.yaml
+vim group_vars/all.yaml
 ```
 
 ```yaml
-- name: rolling update demo
-  hosts: all
-  serial: 2
+roboshop_secrets: "{{ lookup('amazon.aws.secretsmanager_secret', 'roboshop/dev', region='us-east-1') | from_json }}"
+ansible_user: "{{ roboshop_secrets.ansible_user }}"
+ansible_password: "{{ roboshop_secrets.ansible_password }}"
+```
+
+**What it does:** the SSH login comes from the Secrets Manager secret we created in Step 1. No password in the files.
+
+```bash
+vim main.yaml
+```
+
+```yaml
+- name: ping the server
+  hosts: roboshop_frontend
   tasks:
-  - name: step 1 (stop app)
-    command: sleep 2
-  - name: step 2 (deploy + start)
-    command: sleep 2
+  - name: ping the server
+    ping:
+
+  - name: print Hi
+    debug:
+      msg: "Hi"
 ```
 
 ```bash
-ansible-playbook -i inventory.aws_ec2.yaml test-serial.yaml
+ansible-playbook -i frontend.aws_ec2.yaml main.yaml
 ```
 
-**Expected:** the output shows the **whole play** (step 1 and step 2) on **2 servers**, then the whole play again on the next 2, until all 10 are done ✅:
-
-```
-PLAY [rolling update demo] (servers 1-2) → step 1 → step 2
-PLAY [rolling update demo] (servers 3-4) → step 1 → step 2
-...
-```
-
-Compare: remove `serial: 2` and run again. Now step 1 runs on **all** servers before step 2 starts.
+**What it does:** pings all 10 servers the plugin found, then prints `Hi` on each.
+**Expected:** `ok=3` on all 10 IPs, `failed=0` ✅. (Group not found? Put the exact name from Step 16 in `hosts:`.)
 
 ---
 
-## Step 18: Clean up
+## Step 18: Watch forks at work
 
 ```bash
-rm -rf ~/ansible-import-include test-serial.yaml
+vim ansible.cfg
+```
+
+```ini
+[defaults]
+forks = 5
+```
+
+```bash
+ansible-playbook -i frontend.aws_ec2.yaml main.yaml
+```
+
+**What it does:** with `forks = 5`, Ansible runs each task on **5 servers at a time**: servers 1–5, then 6–10, then the next task.
+**Expected:** for each task, the `ok:` lines appear in **two groups of 5** ✅.
+
+```bash
+ansible-playbook -i frontend.aws_ec2.yaml main.yaml -f 10
+```
+
+**Expected:** all 10 `ok:` lines appear together for each task, and the run is faster ✅. `-f` overrides `ansible.cfg` for one run.
+
+> ⚠️ The section name is **`[defaults]`** with an **s**. With `[default]`, Ansible ignores the setting.
+
+---
+
+## Step 19: Run a rolling update with serial
+
+```bash
+vim main.yaml
+```
+
+Add `serial: 2` under `hosts:`:
+
+```yaml
+- name: ping the server
+  hosts: roboshop_frontend
+  serial: 2
+  tasks:
+  - name: ping the server
+    ping:
+
+  - name: print Hi
+    debug:
+      msg: "Hi"
+```
+
+```bash
+ansible-playbook -i frontend.aws_ec2.yaml main.yaml
+```
+
+**What it does:** runs the **whole play** (ping **and** print Hi) on 2 servers, then the whole play on the next 2, until all 10 are done.
+**Expected:** the `PLAY [ping the server]` header appears **5 times**, each with 2 IPs going through both tasks ✅:
+
+```
+PLAY [ping the server]   → servers 1-2: ping, print Hi
+PLAY [ping the server]   → servers 3-4: ping, print Hi
+PLAY [ping the server]   → servers 5-6: ping, print Hi
+...
+```
+
+Compare with Step 18: there, **ping** finished on all 10 before **print Hi** started. That's the difference between forks and serial.
+
+---
+
+## Step 20: Clean up
+
+```bash
+aws ec2 terminate-instances --instance-ids $(aws ec2 describe-instances --filters "Name=tag:Name,Values=roboshop-frontend" "Name=instance-state-name,Values=running" --query 'Reservations[].Instances[].InstanceId' --output text)
+```
+
+**What it does:** terminates every running `roboshop-frontend`, so the 10 test servers stop costing money.
+**Expected:** each instance shows `"CurrentState": {"Name": "shutting-down"}` ✅.
+
+> ⚠️ This also terminates your real RoboShop frontend if it's running. Recreate it later with `roboshop.yaml -e "instances=['frontend']"`.
+
+```bash
+rm -rf ~/ansible-import-include ~/ansible-dynamic-inventory
 ```
 
 Keep the secret if you'll use it again. To delete it (laptop):
@@ -1025,8 +1113,6 @@ aws secretsmanager delete-secret --secret-id roboshop/dev --recovery-window-in-d
 ```
 
 **Expected:** a `DeletionDate` 7 days from now ✅. You can restore it before then with `restore-secret`.
-
-> Stop or terminate the RoboShop servers when you finish, so they don't keep costing money.
 
 ---
 
@@ -1043,7 +1129,8 @@ aws secretsmanager delete-secret --secret-id roboshop/dev --recovery-window-in-d
 | `lookup plugin (amazon.aws.secretsmanager_secret) not found` | The `amazon.aws` collection isn't installed | `ansible-galaxy collection install amazon.aws` |
 | `Failed to import the required Python library (botocore or boto3)` | boto3 missing on the Ansible server | `pip3 install boto3 botocore` |
 | `--graph` shows only `@ungrouped` / no hosts | File name doesn't end with `aws_ec2.yaml`, wrong region, or the filter matches nothing | Rename the file, check `regions` and `filters` |
-| Groups named `_frontend` or missing | `keyed_groups` prefix/separator, or the `Component` tag is missing | Use `prefix: ""` and `separator: ""`; check the tags in the EC2 console |
+| `Could not match supplied host pattern, ignoring: roboshop_frontend` | The group name in `hosts:` isn't exactly the one the plugin made (e.g. `_roboshop_frontend`) | Run `ansible-inventory --graph` and copy the exact name |
+| `forks` setting ignored | Section written as `[default]` | It must be `[defaults]` |
 | `Could not match supplied host pattern` | The group name from the inventory ≠ the `component` value | Run `ansible-inventory --graph` and compare |
 | Tags or `when` "don't apply" to an included role's tasks | `include_role` doesn't pass them down | Use `import_role`, or `apply: tags:` on the include |
 | `loop` error on `import_role` | Loops don't work with import | Use `include_role` |
@@ -1055,18 +1142,19 @@ aws secretsmanager delete-secret --secret-id roboshop/dev --recovery-window-in-d
 - **Vault** encrypts secrets in Git, but sharing the vault password, slow changes and no audit trail make it hard to maintain.
 - **AWS Secrets Manager** keeps secrets in AWS (KMS encryption, IAM access, CloudTrail logs); Ansible reads them at run time with the `amazon.aws.secretsmanager_secret` **lookup plugin**.
 - **`import_role`** = static (checked before running; `when`/`tags` copied to every task; no loops). **`include_role`** = dynamic (loaded when reached; `when` checked once; loops and variable names work).
-- **Dynamic inventory** (`*.aws_ec2.yaml`) asks AWS for running instances and groups them by tags.
+- **Dynamic inventory** (`*.aws_ec2.yaml`): with Auto Scaling, IPs come and go, so the AWS plugin asks the region for running instances, filters by tag, and returns their IPs.
 - **`forks`** = how many servers run a task at once (speed). **`serial`** = how many servers run the whole play per batch (rolling update, no full downtime).
 
 **Part 2: Lab**
 - Stored all RoboShop passwords as key/value pairs in one secret (`roboshop/dev`, type "Other type of secret", KMS key `aws/secretsmanager`), allowed only `roboshop/*` for the Ansible server's role, and fetched it with a lookup + `from_json`. The vault is gone.
 - Built `ansible-import-include` (role-1 calls common) and saw the 3 differences: `when` re-checked per task with import but once with include, tags passed down only by import, loops only with include, and import catching a YAML error before anything ran.
-- Built `inventory.aws_ec2.yaml`, grouped servers by a `Component` tag, and ran `main.yaml` with it.
+- Created 10 `roboshop-frontend` servers with `--count 10`; `frontend.aws_ec2.yaml` found all 10 IPs with no IP typed by hand, and `keyed_groups` turned the Name tag into a group.
+- Ran ping + Hi with `forks = 5` (2 groups of 5 per task) vs `-f 10`, and with `serial: 2` (the whole play on 2 servers at a time).
 - Timed `-f 1` vs `-f 10`, and watched `serial: 2` update 2 servers at a time.
 
 ```
  Secrets:    plain text (V1) ─► Ansible Vault (V2) ─► AWS Secrets Manager (lookup at run time)
- Inventory:  inventory.ini (by hand) ─────────────► inventory.aws_ec2.yaml (asks AWS)
+ Inventory:  inventory.ini (by hand) ─────────────► frontend.aws_ec2.yaml (asks AWS)
  Deploy:     all servers at once ─────────────────► serial batches (rolling update)
 ```
 
@@ -1078,7 +1166,7 @@ aws secretsmanager delete-secret --secret-id roboshop/dev --recovery-window-in-d
 |---|---|
 | What is the difference between `include_role` and `import_role`? | `import_role` is static: loaded and checked before the play runs, and `when`/`tags` are copied to every task. `include_role` is dynamic: loaded when reached, `when` is checked once, and it supports loops and variable role names |
 | What is the difference between `forks` and `serial`? | `forks` = how many hosts run each task at the same time (speed, default 5). `serial` = how many hosts run the whole play before the next batch (rolling update) |
-| What is a dynamic inventory? | An inventory built at run time from a source like AWS. The `aws_ec2` plugin lists running instances, filters them by tags and groups them, so no hand-written host list |
+| What is a dynamic inventory, and why do we need it? | An inventory built at run time by asking AWS. With Auto Scaling, servers and IPs come and go, so a hand-written list can't keep up; the `aws_ec2` plugin queries the region for running instances, filters by tag, and returns their IPs |
 | How do you manage secrets in Ansible? | Ansible Vault for encrypted files in Git, or better, a secrets manager (AWS Secrets Manager / SSM Parameter Store) read at run time with a lookup plugin |
 
 ### Other Questions
@@ -1095,7 +1183,7 @@ aws secretsmanager delete-secret --secret-id roboshop/dev --recovery-window-in-d
 | Why does a loop fail with `import_role`? | Imports are processed before the play runs, so a loop can't repeat them; use `include_role` |
 | You have 100 servers. How do you deploy without downtime? | `serial: 10` (or `"10%"`) behind a load balancer, with `max_fail_percentage` to stop if a batch fails |
 | What is `serial: [1, 5, 10]`? | Growing batches: 1 server first (a canary), then 5, then 10 at a time |
-| How do you see the hosts a dynamic inventory finds? | `ansible-inventory -i inventory.aws_ec2.yaml --graph` (or `--list`) |
+| How do you see the hosts a dynamic inventory finds? | `ansible-inventory -i frontend.aws_ec2.yaml --graph` (or `--list`) |
 
 ---
 

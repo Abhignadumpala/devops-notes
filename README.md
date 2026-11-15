@@ -32,7 +32,8 @@ Each day has an **interview-questions/** folder for quick revision.
 - [Day 24 - Background Jobs (nohup), Ansible Tags, Python venv & Ansible Roles](day-24-nohup-tags-venv-ansible-roles/README.md)
 - [Day 25 - Ansible Vault & Handlers: Encrypting RoboShop V2 Secrets](day-25-ansible-vault-roboshop-v2/README.md)
 - [Day 26 - Roles Recap, AWS Secrets Manager, include_role vs import_role, Dynamic Inventory & Parallelism (forks, serial)](day-26-secrets-manager-include-import-dynamic-inventory-parallelism/README.md)
-- [Day 27 - Dynamic Inventory Recap, Ansible vs Terraform & Terraform Intro](day-27-dynamic-inventory-ansible-vs-terraform-intro/README.md)
+- [Day 27 - Dynamic Inventory Recap](day-27-dynamic-inventory-recap/README.md)
+- [Day 28 - Ansible vs Terraform & Terraform Intro](day-28-ansible-vs-terraform-terraform-intro/README.md)
 
 ## Projects
 

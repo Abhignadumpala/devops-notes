@@ -32,14 +32,17 @@
 - [Step 5: Fetch the secret with a lookup](#step-5-fetch-the-secret-with-a-lookup)
 - [Step 6: Point the passwords to Secrets Manager](#step-6-point-the-passwords-to-secrets-manager)
 - [Step 7: Run the mysql role](#step-7-run-the-mysql-role)
-- [Step 8: Compare import_role and include_role with when](#step-8-compare-import_role-and-include_role-with-when)
-- [Step 9: See import catch an error before anything runs](#step-9-see-import-catch-an-error-before-anything-runs)
-- [Step 10: Create the AWS dynamic inventory](#step-10-create-the-aws-dynamic-inventory)
-- [Step 11: See the groups AWS gives us](#step-11-see-the-groups-aws-gives-us)
-- [Step 12: Run a role with the dynamic inventory](#step-12-run-a-role-with-the-dynamic-inventory)
-- [Step 13: Watch forks at work](#step-13-watch-forks-at-work)
-- [Step 14: Run a rolling update with serial](#step-14-run-a-rolling-update-with-serial)
-- [Step 15: Clean up](#step-15-clean-up)
+- [Step 8: Create the include vs import project](#step-8-create-the-include-vs-import-project)
+- [Step 9: when: import checks every task, include checks once](#step-9-when-import-checks-every-task-include-checks-once)
+- [Step 10: tags: import passes them down, include doesn't](#step-10-tags-import-passes-them-down-include-doesnt)
+- [Step 11: loops: only include works](#step-11-loops-only-include-works)
+- [Step 12: errors: import fails before anything runs](#step-12-errors-import-fails-before-anything-runs)
+- [Step 13: Create the AWS dynamic inventory](#step-13-create-the-aws-dynamic-inventory)
+- [Step 14: See the groups AWS gives us](#step-14-see-the-groups-aws-gives-us)
+- [Step 15: Run a role with the dynamic inventory](#step-15-run-a-role-with-the-dynamic-inventory)
+- [Step 16: Watch forks at work](#step-16-watch-forks-at-work)
+- [Step 17: Run a rolling update with serial](#step-17-run-a-rolling-update-with-serial)
+- [Step 18: Clean up](#step-18-clean-up)
 
 **Wrap-up**
 - [Troubleshooting](#troubleshooting)
@@ -229,66 +232,112 @@ Use a path-like name: **`<project>/<env>`**, for example `roboshop/dev`, with al
 
 ## 4. include_role vs import_role
 
-**Definition:** both pull a role into the middle of a play, as tasks. **`import_role`** is **static**: Ansible reads and checks the role **before the play starts**, as if its tasks were pasted in. **`include_role`** is **dynamic**: Ansible reads the role **only when it reaches that line** while the play runs.
+**Definition:** `include_role` and `import_role` let **one role call another role** from inside its tasks. We use them when several roles share the same steps: the shared steps live in one role (`common`), and every other role calls it. **`import_role`** is **static**: Ansible reads and checks the called role **before the play starts**. **`include_role`** is **dynamic**: Ansible reads it **only when it reaches that line** while the play runs.
+
+### Where we use it: one role calls another
+
+A small practice project, `ansible-import-include`:
+
+```
+ansible-import-include/
+├── main.yaml                    ← the playbook: runs role-1
+└── roles/
+    ├── role-1/tasks/main.yaml   ← role-1's tasks; it CALLS the common role
+    └── common/tasks/main.yaml   ← shared tasks, written once
+```
+
+`main.yaml`: the playbook runs only `role-1`:
 
 ```yaml
-- name: nodejs setup (dynamic)
-  include_role:
-    name: common
-    tasks_from: nodejs
-
-- name: nodejs setup (static)
-  import_role:
-    name: common
-    tasks_from: nodejs
+- name: include-vs-import
+  hosts: localhost
+  connection: local
+  roles:
+  - role-1
 ```
 
-```
- import_role:  [ read + check ALL tasks ] ──► run task 1 ──► run task 2 ──► ...
-                     ▲ errors found here, nothing has run yet
-
- include_role: run task 1 ──► run task 2 ──► reach include ──► [ read role ] ──► run its tasks
-                                                                    ▲ errors found here, earlier tasks already ran
-```
-
-### The differences
-
-| | `import_role` (static) | `include_role` (dynamic) |
-|---|---|---|
-| **When it's loaded** | Before the play runs (parse time) | When Ansible reaches it (run time) |
-| **Errors in the role** | Found **before** anything runs → nothing executes | Found **only when reached** → earlier tasks already ran |
-| **`when:` on it** | **Copied to every task** in the role and checked **before each task** again | Checked **once**, at the include line. If true, all tasks run; not checked again per task |
-| **`tags:` on it** | **Copied to every task** in the role automatically | Apply only to the include line. With `--tags`, the include **and** the inner task must both match |
-| **Loops** (`loop:`) | ❌ Don't work | ✅ Work |
-| **Variable in the role name** (`"{{ component }}"`) | ❌ Only if the value is known before the play starts | ✅ Works |
-| `--list-tasks` / `--list-tags` | ✅ Shows the role's tasks | ❌ Doesn't show them (not loaded yet) |
-
-### `when:` example: why "checked again" matters
+`roles/common/tasks/main.yaml`: the shared tasks:
 
 ```yaml
-- name: setup
-  import_role:          # or include_role
-    name: example
-  when: run_setup == true
+- name: common task 1
+  debug:
+    msg: "common task 1"
+
+- name: common task 2
+  debug:
+    msg: "common task 2"
 ```
 
-Say a task inside the role changes `run_setup` to `false` halfway:
+`roles/role-1/tasks/main.yaml`: role-1 does its own work, then calls `common`:
 
-| | What happens |
+```yaml
+- name: role-1 task
+  debug:
+    msg: "role-1 own task"
+
+- name: call common role
+  include_role:          # or import_role
+    name: common
+```
+
+```
+ main.yaml ──► role-1/tasks/main.yaml ──► "role-1 own task"
+                        │
+                        └── include_role / import_role: common
+                                   │
+                                   ▼
+                        common/tasks/main.yaml ──► "common task 1", "common task 2"
+```
+
+> **RoboShop V2 does exactly this:** `roles/catalogue/tasks/main.yaml` calls `include_role: name: common, tasks_from: nodejs`. `tasks_from` picks a file other than `main.yaml` inside `common/tasks/`.
+
+### The 3 differences
+
+**① When errors are found**
+
+| `import_role` (static) | `include_role` (dynamic) |
 |---|---|
-| `import_role` | The condition is checked **before every task**, so the tasks after the change are **skipped** |
-| `include_role` | The condition was checked **once** at the start; all tasks **keep running** |
+| Ansible **parses the called role before the play runs**. If it has an error, **nothing runs** | Ansible reads the role **only when it reaches it**. Tasks before it **already ran** when the error appears |
 
-When the condition is false from the start: `import_role` shows **every task** as `skipping`, and `include_role` shows **one** `skipping` line.
+```
+ import_role:  [ read + check everything ] ──► role-1 task ──► common task 1 ──► common task 2
+                     ▲ error found here, nothing ran yet
+
+ include_role: role-1 task ──► reach include ──► [ read common ] ──► common task 1 ──► …
+                                                      ▲ error found here, role-1 task already ran
+```
+
+**② `when:` and `tags:` on the call**
+
+| | `import_role` | `include_role` |
+|---|---|---|
+| `when:` | **Copied to every task** inside `common` and **checked again before each task** | Checked **once**, at the include line. If true, every task inside runs; it is **not checked again**, even if the value changes |
+| `tags:` | **Copied to every task** inside `common` automatically | Stay on the include line only. With `--tags`, Ansible checks **both** levels: the include **and** each task inside must have the tag |
+
+**③ Loops**
+
+| `import_role` | `include_role` |
+|---|---|
+| ❌ `loop:` doesn't work: error *"You cannot use loops on 'import_role' statements"* | ✅ `loop:` works: the role runs once per item |
+
+### In short
+
+| | `import_role` | `include_role` |
+|---|---|---|
+| Type | **Static** (before running) | **Dynamic** (while running) |
+| Errors | Caught **before** anything runs | Caught **when reached** |
+| `when` / `tags` on the call | **Applied to every task** inside | **Not passed down** to the tasks inside |
+| Loops | ❌ | ✅ |
+| Variable in the role name (`"{{ component }}"`) | Only if known before the play starts | ✅ |
 
 ### Which one to use?
 
 | Use | When |
 |---|---|
-| `import_role` | Fixed roles you always run; you want errors caught **before** anything changes and tags to apply everywhere |
-| `include_role` | The role name comes from a variable, you need a loop, or you include it only in some cases. **RoboShop V2 uses `include_role`** to call `common` with `tasks_from` |
+| `import_role` | You always call the role, and you want errors caught early and `when`/`tags` applied to every task |
+| `include_role` | You need a loop, a variable role name, or you call the role only in some cases. **RoboShop V2 uses `include_role`** |
 
-> **Interview one-liner:** `import_role` is static: it's checked before the play runs, and `when`/`tags` are copied to every task; `include_role` is dynamic: it loads at run time, `when` is checked once at the include, and only include supports loops and variable role names.
+> **Interview one-liner:** `import_role` is static: the called role is checked before the play runs, and `when`/`tags` on it are copied to every task inside. `include_role` is dynamic: it's loaded when reached, `when` is checked once, tags aren't passed down, and only include supports loops.
 
 ---
 
@@ -592,54 +641,159 @@ git diff group_vars/all/main.yaml
 
 ---
 
-## Step 8: Compare import_role and include_role with when
-
-Let's create a practice playbook that runs a small role both ways, with a condition that's false. In my case it's the `example` role (a couple of `debug` tasks). If you don't have one, create it with `ansible-galaxy role init roles/example` and add two `debug` tasks to `roles/example/tasks/main.yml`.
-
-> `| bool` turns the value into true/false, so `-e run_it=true` (a string from the command line) works too.
+## Step 8: Create the include vs import project
 
 ```bash
-vim test-include-import.yaml
+mkdir -p ~/ansible-import-include/roles/role-1/tasks ~/ansible-import-include/roles/common/tasks
+```
+
+```bash
+cd ~/ansible-import-include
+```
+
+```bash
+vim main.yaml
 ```
 
 ```yaml
-- name: include vs import
+- name: include-vs-import
   hosts: localhost
   connection: local
   vars:
-    run_it: false
-  tasks:
-  - name: static
-    import_role:
-      name: example
-    when: run_it | bool
-
-  - name: dynamic
-    include_role:
-      name: example
-    when: run_it | bool
+    run_common: true
+  roles:
+  - role-1
 ```
 
 ```bash
-ansible-playbook test-include-import.yaml
+vim roles/common/tasks/main.yaml
 ```
 
-**Expected:**
-- `import_role`: **every task** in the role shows `skipping`. The `when:` was copied to each task ✅.
-- `include_role`: **one** `skipping` line for `dynamic`. The `when:` was checked once, and the role was never loaded ✅.
+```yaml
+- name: common task 1 (turns run_common off)
+  set_fact:
+    run_common: false
+
+- name: common task 2
+  debug:
+    msg: "common task 2 ran"
+```
 
 ```bash
-ansible-playbook test-include-import.yaml --list-tasks
+vim roles/role-1/tasks/main.yaml
 ```
 
-**Expected:** the imported role's tasks are listed; the included role shows only as `dynamic` (it isn't loaded until run time) ✅.
+```yaml
+- name: role-1 task
+  debug:
+    msg: "role-1 own task"
+
+- name: call common role
+  import_role:
+    name: common
+  when: run_common | bool
+```
+
+**What it does:** `role-1` runs its own task, then calls `common` with a condition. Common's first task **changes** `run_common` to `false`, so we can see whether the condition is checked again.
 
 ---
 
-## Step 9: See import catch an error before anything runs
+## Step 9: when: import checks every task, include checks once
 
 ```bash
-vim roles/example/tasks/main.yaml
+ansible-playbook main.yaml
+```
+
+**Expected with `import_role`:** `common task 1` runs, then `common task 2` is **skipping** ✅. The `when:` was copied to each task and checked again; after task 1 set `run_common: false`, task 2 failed the check.
+
+Now switch to `include_role`:
+
+```bash
+sed -i 's/import_role/include_role/' roles/role-1/tasks/main.yaml
+```
+
+```bash
+ansible-playbook main.yaml
+```
+
+**Expected with `include_role`:** both common tasks run, and `common task 2 ran` is printed ✅. The `when:` was checked **once** at the include; the change to `false` didn't matter.
+
+---
+
+## Step 10: tags: import passes them down, include doesn't
+
+```bash
+vim roles/role-1/tasks/main.yaml
+```
+
+Replace the call with this one: remove `when:` and add `tags: common` (keep `include_role` for now):
+
+```yaml
+- name: call common role
+  include_role:
+    name: common
+  tags: common
+```
+
+```bash
+ansible-playbook main.yaml --tags common
+```
+
+**Expected with `include_role`:** the include line runs, but **no common task runs** ✅. The tasks inside have no `common` tag, and include checks both levels.
+
+```bash
+sed -i 's/include_role/import_role/' roles/role-1/tasks/main.yaml
+```
+
+```bash
+ansible-playbook main.yaml --tags common
+```
+
+**Expected with `import_role`:** the common tasks run ✅. The tag was copied to every task inside.
+
+> Want include to pass a tag down? Use `apply:` on the include: `include_role: { name: common, apply: { tags: common } }`.
+
+---
+
+## Step 11: loops: only include works
+
+```bash
+vim roles/role-1/tasks/main.yaml
+```
+
+Replace the call with a loop (and remove `when`/`tags`):
+
+```yaml
+- name: call common role
+  import_role:
+    name: common
+  loop:
+  - one
+  - two
+```
+
+```bash
+ansible-playbook main.yaml
+```
+
+**Expected:** `ERROR! You cannot use loops on 'import_role' statements. You should use 'include_role' instead.` ✅
+
+```bash
+sed -i 's/import_role/include_role/' roles/role-1/tasks/main.yaml
+```
+
+```bash
+ansible-playbook main.yaml
+```
+
+**Expected:** the common tasks run **twice**, once per item ✅.
+
+---
+
+## Step 12: errors: import fails before anything runs
+
+```bash
+vim roles/common/tasks/main.yaml
 ```
 
 Add a broken task at the end (bad indentation on purpose):
@@ -652,24 +806,49 @@ Add a broken task at the end (bad indentation on purpose):
 ```
 
 ```bash
-ansible-playbook test-include-import.yaml -e run_it=true
+vim roles/role-1/tasks/main.yaml
 ```
 
-**Expected:** with `import_role` in the file, the play **fails before any task runs** with a YAML syntax error ✅.
+Put the call back to a plain import (no loop):
 
-Now comment out the `static` (import) task, and run again:
+```yaml
+- name: call common role
+  import_role:
+    name: common
+```
 
 ```bash
-ansible-playbook test-include-import.yaml -e run_it=true
+ansible-playbook main.yaml
 ```
 
-**Expected:** `Gathering Facts` runs first, and the error appears only when Ansible **reaches** `dynamic` ✅. That's the static vs dynamic difference.
+**Expected with `import_role`:** a YAML syntax error **before any task runs**, not even `role-1 task` ✅.
 
-Remove the broken task when you're done.
+```bash
+sed -i 's/import_role/include_role/' roles/role-1/tasks/main.yaml
+```
+
+```bash
+ansible-playbook main.yaml
+```
+
+**Expected with `include_role`:** `role-1 own task` **runs first**, and the error appears only when Ansible reaches the include ✅.
+
+| Step | `import_role` | `include_role` |
+|---|---|---|
+| 9: `when` | Checked before every task → task 2 skipped | Checked once → both run |
+| 10: `tags` | Copied to the inner tasks → they run | Not passed down → they don't run |
+| 11: `loop` | Error | Runs once per item |
+| 12: error in common | Fails before anything runs | Fails when reached |
+
+Back to the RoboShop project for the next steps:
+
+```bash
+cd ~/roboshop-with-ansible-v2
+```
 
 ---
 
-## Step 10: Create the AWS dynamic inventory
+## Step 13: Create the AWS dynamic inventory
 
 First, give each RoboShop server a `Component` tag with its short name (laptop):
 
@@ -707,7 +886,7 @@ hostnames:
 
 ---
 
-## Step 11: See the groups AWS gives us
+## Step 14: See the groups AWS gives us
 
 ```bash
 ansible-inventory -i inventory.aws_ec2.yaml --graph
@@ -737,7 +916,7 @@ ansible -i inventory.aws_ec2.yaml frontend -m ping
 
 ---
 
-## Step 12: Run a role with the dynamic inventory
+## Step 15: Run a role with the dynamic inventory
 
 ```bash
 ansible-playbook -i inventory.aws_ec2.yaml main.yaml -e "component=catalogue"
@@ -750,7 +929,7 @@ ansible-playbook -i inventory.aws_ec2.yaml main.yaml -e "component=catalogue"
 
 ---
 
-## Step 13: Watch forks at work
+## Step 16: Watch forks at work
 
 ```bash
 time ansible -i inventory.aws_ec2.yaml all -m command -a "sleep 5" -f 1
@@ -766,7 +945,7 @@ time ansible -i inventory.aws_ec2.yaml all -m command -a "sleep 5" -f 10
 
 ---
 
-## Step 14: Run a rolling update with serial
+## Step 17: Run a rolling update with serial
 
 ```bash
 vim test-serial.yaml
@@ -799,10 +978,10 @@ Compare: remove `serial: 2` and run again. Now step 1 runs on **all** servers be
 
 ---
 
-## Step 15: Clean up
+## Step 18: Clean up
 
 ```bash
-rm test-include-import.yaml test-serial.yaml
+rm -rf ~/ansible-import-include test-serial.yaml
 ```
 
 Keep the secret if you'll use it again. To delete it (laptop):
@@ -847,7 +1026,7 @@ aws secretsmanager delete-secret --secret-id roboshop/dev --recovery-window-in-d
 
 **Part 2: Lab**
 - Stored all RoboShop passwords as key/value pairs in one secret (`roboshop/dev`, type "Other type of secret", KMS key `aws/secretsmanager`), allowed only `roboshop/*` for the Ansible server's role, and fetched it with a lookup + `from_json`. The vault is gone.
-- Saw `import_role` skip every task vs `include_role` skip once, and import catch a YAML error before anything ran.
+- Built `ansible-import-include` (role-1 calls common) and saw the 3 differences: `when` re-checked per task with import but once with include, tags passed down only by import, loops only with include, and import catching a YAML error before anything ran.
 - Built `inventory.aws_ec2.yaml`, grouped servers by a `Component` tag, and ran `main.yaml` with it.
 - Timed `-f 1` vs `-f 10`, and watched `serial: 2` update 2 servers at a time.
 

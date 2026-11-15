@@ -291,6 +291,40 @@ ansible-import-include/
 
 > **RoboShop V2 does exactly this:** `roles/catalogue/tasks/main.yaml` calls `include_role: name: common, tasks_from: nodejs`. `tasks_from` picks a file other than `main.yaml` inside `common/tasks/`.
 
+### Helper: set_fact (create or change a variable in a task)
+
+**Definition:** `set_fact` is a module that **creates a new variable or changes an existing one while the playbook runs**. Normally variables come from files (`group_vars`, `vars/`, `defaults/`) or `-e`; `set_fact` sets one **from a task**, and every task after it sees the new value.
+
+```yaml
+- name: create a variable
+  set_fact:
+    app_dir: /app
+
+- name: change a variable
+  set_fact:
+    run_common: false
+
+- name: build one from another
+  set_fact:
+    zip_file: "/tmp/{{ component }}.zip"
+
+- name: use it
+  debug:
+    msg: "{{ app_dir }} {{ zip_file }} {{ run_common }}"
+```
+
+| Point | Meaning |
+|---|---|
+| Creates or changes | If the variable exists, `set_fact` **overwrites** it; if not, it **creates** it |
+| From that task on | Only tasks **after** the `set_fact` see the new value |
+| Per server | The value is stored for each host separately (a "fact" of that host) |
+| High priority | It beats `group_vars`, play `vars` and role `defaults`/`vars`; only `-e` beats it |
+| Common use | Save a value worked out at run time, e.g. from a `register` result: `set_fact: java_home: "{{ java25.stdout \| dirname }}"` |
+
+In the lab below, `set_fact` changes `run_common` to `false` halfway through the common role, so we can see whether `when:` is checked again.
+
+> **Interview one-liner:** `set_fact` creates or changes a variable from inside a task at run time; the new value is used by every later task on that host and has higher priority than variables from files.
+
 ### The 3 differences
 
 **① When errors are found**
@@ -694,7 +728,7 @@ vim roles/role-1/tasks/main.yaml
   when: run_common | bool
 ```
 
-**What it does:** `role-1` runs its own task, then calls `common` with a condition. Common's first task **changes** `run_common` to `false`, so we can see whether the condition is checked again.
+**What it does:** `role-1` runs its own task, then calls `common` with a condition. Common's first task uses **`set_fact`** to **change** `run_common` from `true` to `false`, so we can see whether the condition is checked again.
 
 ---
 
@@ -1056,6 +1090,7 @@ aws secretsmanager delete-secret --secret-id roboshop/dev --recovery-window-in-d
 | Is the secret lookup a module or a plugin? Where does it run? | A lookup **plugin**; it runs on the Ansible server |
 | Secrets Manager vs SSM Parameter Store? | Both store encrypted values. Secrets Manager adds automatic rotation and costs per secret; Parameter Store standard parameters are free |
 | What must the AWS inventory file be named? | It must end with `aws_ec2.yaml` or `aws_ec2.yml` |
+| What is `set_fact`? | A module that creates or changes a variable from a task at run time; later tasks on that host see the new value |
 | What does `keyed_groups` do? | Creates groups from instance data, e.g. one group per value of a tag |
 | Why does a loop fail with `import_role`? | Imports are processed before the play runs, so a loop can't repeat them; use `include_role` |
 | You have 100 servers. How do you deploy without downtime? | `serial: 10` (or `"10%"`) behind a load balancer, with `max_fail_percentage` to stop if a batch fails |
